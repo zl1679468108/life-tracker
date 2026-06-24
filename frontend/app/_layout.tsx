@@ -1,0 +1,143 @@
+import 'react-native-gesture-handler';
+import { useFonts } from 'expo-font';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useRef } from 'react';
+import { PaperProvider, MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { TouchableOpacity, ActivityIndicator, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { darkColors } from '../constants/theme';
+import { useAuthStore } from '../stores/authStore';
+import { useNavigation } from '@react-navigation/native';
+import { ThemeProvider } from '../components/ThemeProvider';
+import { useTheme, useColors, useThemeStore } from '../stores/themeStore';
+import { i18n } from '../lib/i18n';
+
+export { ErrorBoundary } from 'expo-router';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+  const router = useRouter();
+  const segments = useSegments();
+  const { user, loading, init } = useAuthStore();
+  const { isDark } = useTheme();
+  const colors = useColors();
+  const { initTheme } = useThemeStore();
+
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    init();
+    initTheme();
+    i18n.init();
+
+    // Web 平台注册 Service Worker 开启深度离线 PWA 缓存
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').then(reg => {
+          console.log('ServiceWorker registration successful with scope: ', reg.scope);
+        }).catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  useEffect(() => {
+    if (loading || !loaded) return;
+    const inAuthGroup = segments[0] === 'auth';
+    if (!user && !inAuthGroup) {
+      const timer = setTimeout(() => router.replace('/auth/login'), 100);
+      return () => clearTimeout(timer);
+    } else if (user && inAuthGroup) {
+      const timer = setTimeout(() => router.replace('/(tabs)'), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading, loaded, segments]);
+
+  if (!loaded || loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.gray[50] }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  // 根据主题动态配置
+  const paperTheme = isDark
+    ? {
+        ...MD3DarkTheme,
+        colors: {
+          ...MD3DarkTheme.colors,
+          primary: darkColors.primary,
+          secondary: darkColors.secondary,
+          background: darkColors.gray[50],
+          surface: darkColors.white,
+        },
+      }
+    : {
+        ...MD3LightTheme,
+        colors: {
+          ...MD3LightTheme.colors,
+          primary: colors.primary,
+          secondary: colors.secondary,
+          background: colors.gray[50],
+          surface: colors.white,
+        },
+      };
+
+  const subPageOptions = {
+    headerShown: true as const,
+    headerTitleAlign: 'center' as const,
+    headerStyle: { backgroundColor: colors.white, elevation: 0, shadowOpacity: 0 },
+    headerTitleStyle: { fontWeight: '600' as const, fontSize: 17, color: colors.gray[900] },
+    headerLeft: () => (
+      <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <MaterialCommunityIcons name="chevron-left" size={24} color={colors.gray[800]} />
+      </TouchableOpacity>
+    ),
+  };
+
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <PaperProvider theme={paperTheme}>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="item/create" options={{ ...subPageOptions, headerTitle: '添加物品' }} />
+            <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '物品详情' }} />
+            <Stack.Screen name="todo/create" options={{ ...subPageOptions, headerTitle: '添加待办' }} />
+            <Stack.Screen name="todo/[id]" options={{ ...subPageOptions, headerTitle: '待办详情' }} />
+            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/category-manage" options={{ ...subPageOptions, headerTitle: '物品分类' }} />
+            <Stack.Screen name="settings/location-manage" options={{ ...subPageOptions, headerTitle: '存放位置' }} />
+            <Stack.Screen name="settings/account" options={{ ...subPageOptions, headerTitle: '账号管理' }} />
+            <Stack.Screen name="settings/feedback" options={{ ...subPageOptions, headerTitle: '反馈建议' }} />
+            <Stack.Screen name="settings/stats" options={{ ...subPageOptions, headerTitle: '数据统计' }} />
+            <Stack.Screen name="settings/notifications" options={{ ...subPageOptions, headerTitle: '通知中心' }} />
+            <Stack.Screen name="settings/change-password" options={{ ...subPageOptions, headerTitle: '修改密码' }} />
+            <Stack.Screen name="settings/theme" options={{ ...subPageOptions, headerTitle: '主题设置' }} />
+          </Stack>
+        </PaperProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}

@@ -1,0 +1,201 @@
+import { create } from 'zustand';
+import { api } from '../lib/api';
+import { scheduleTodoReminder, cancelReminder } from '../lib/notifications';
+import { useAuthStore } from './authStore';
+import { LifeTodo } from '../types';
+import { cache } from '../lib/cache';
+import { networkMonitor } from '../lib/network';
+import { socketService } from '../lib/socket';
+
+const TODOS_CACHE_KEY = 'todos';
+
+interface TodoState {
+  todos: LifeTodo[];
+  loading: boolean;
+  error: string | null;
+  fetchTodos: () => Promise<void>;
+  addTodo: (todo: Omit<LifeTodo, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateTodo: (id: string, updates: Partial<LifeTodo>) => Promise<void>;
+  deleteTodo: (id: string) => Promise<void>;
+  toggleComplete: (id: string) => Promise<void>;
+  reorderTodos: (todos: LifeTodo[]) => Promise<void>;
+}
+
+export const useTodoStore = create<TodoState>((set, get) => ({
+  todos: [],
+  loading: false,
+  error: null,
+  fetchTodos: async () => {
+    const currentTodos = useTodoStore.getState().todos;
+    set({ loading: currentTodos.length === 0, error: null });
+    
+    // 离线模式：优先从缓存加载
+    if (!networkMonitor.isOnline()) {
+      const cached = await cache.get<LifeTodo[]>(TODOS_CACHE_KEY);
+      if (cached) {
+        set({ todos: cached, loading: false });
+        return;
+      }
+    }
+    
+    try {
+      const data = await api.todos.list();
+      const todos = data || [];
+      set({ todos, loading: false });
+      
+      // 缓存数据
+      await cache.set(TODOS_CACHE_KEY, todos);
+    } catch (error) {
+      console.error('fetchTodos error:', error);
+      
+      // 网络错误时尝试从缓存加载
+      if (!networkMonitor.isOnline()) {
+        const cached = await cache.get<LifeTodo[]>(TODOS_CACHE_KEY);
+        if (cached) {
+          set({ todos: cached, loading: false });
+          return;
+        }
+      }
+      
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  addTodo: async (todo) => {
+    set({ loading: true, error: null });
+    try {
+      const data = await api.todos.create(todo);
+      
+      // 如果设置了提醒时间，调度通知
+      if (todo.reminder_date) {
+        const notificationId = await scheduleTodoReminder(
+          data.id,
+          todo.title,
+          new Date(todo.reminder_date)
+        );
+        
+        // 更新 todo 添加 notification_id
+        if (notificationId) {
+          await api.todos.update(data.id, { notification_id: notificationId });
+          data.notification_id = notificationId;
+        }
+      }
+      
+      set((state) => ({ todos: [data, ...state.todos], loading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
+  updateTodo: async (id, updates) => {
+    set({ loading: true, error: null });
+    try {
+      const todo = useTodoStore.getState().todos.find((t) => t.id === id);
+      
+      // 处理提醒更新
+      if (updates.reminder_date !== undefined) {
+        // 取消旧的提醒
+        if (todo?.notification_id) {
+          await cancelReminder(todo.notification_id);
+        }
+        
+        // 设置新的提醒
+        if (updates.reminder_date) {
+          const notificationId = await scheduleTodoReminder(
+            id,
+            updates.title || todo?.title || '',
+            new Date(updates.reminder_date)
+          );
+          updates.notification_id = notificationId || undefined;
+        } else {
+          updates.notification_id = undefined;
+        }
+      }
+      
+      await api.todos.update(id, updates);
+      set((state) => ({ todos: state.todos.map((t) => t.id === id ? { ...t, ...updates } : t), loading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  deleteTodo: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      const todo = useTodoStore.getState().todos.find((t) => t.id === id);
+      
+      // 取消提醒
+      if (todo?.notification_id) {
+        await cancelReminder(todo.notification_id);
+      }
+      
+      await api.todos.delete(id);
+      set((state) => ({ todos: state.todos.filter((t) => t.id !== id), loading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  toggleComplete: async (id) => {
+    const todo = useTodoStore.getState().todos.find((t) => t.id === id);
+    if (!todo) return;
+    
+    // 乐观更新：先更新本地状态
+    const previousCompleted = todo.completed;
+    set((state) => ({
+      todos: state.todos.map((t) => 
+        t.id === id ? { ...t, completed: !t.completed } : t
+      ),
+    }));
+    
+    try {
+      // 调用 API
+      await api.todos.update(id, { completed: !previousCompleted });
+    } catch (error) {
+      // 失败时回滚
+      set((state) => ({
+        todos: state.todos.map((t) => 
+          t.id === id ? { ...t, completed: previousCompleted } : t
+        ),
+      }));
+      set({ error: (error as Error).message });
+    }
+  },
+  reorderTodos: async (reorderedTodos: LifeTodo[]) => {
+    set({ loading: true, error: null });
+    try {
+      // 更新本地状态
+      set({ todos: reorderedTodos });
+      
+      // 批量更新排序顺序
+      const reorderData = reorderedTodos.map((todo, index) => ({
+        id: todo.id,
+        sort_order: index,
+      }));
+      
+      await api.todos.reorder(reorderData);
+      set({ loading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      // 失败时重新获取数据
+      await get().fetchTodos();
+    }
+  },
+}));
+
+// 监听 socket 事件
+socketService.onTodoCreated((todo) => {
+  const currentTodos = useTodoStore.getState().todos;
+  if (!currentTodos.find(t => t.id === todo.id)) {
+    useTodoStore.setState({ todos: [todo, ...currentTodos] });
+  }
+});
+
+socketService.onTodoUpdated((todo) => {
+  useTodoStore.setState((state) => ({
+    todos: state.todos.map(t => t.id === todo.id ? todo : t),
+  }));
+});
+
+socketService.onTodoDeleted(({ id }) => {
+  useTodoStore.setState((state) => ({
+    todos: state.todos.filter(t => t.id !== id),
+  }));
+});

@@ -1,0 +1,144 @@
+import { create } from 'zustand';
+import { api } from '../lib/api';
+import { uploadImages } from '../lib/upload';
+import { useAuthStore } from './authStore';
+import { LifeItem } from '../types';
+import { cache } from '../lib/cache';
+import { networkMonitor } from '../lib/network';
+import { socketService } from '../lib/socket';
+
+const ITEMS_CACHE_KEY = 'items';
+
+interface ItemState {
+  items: LifeItem[];
+  loading: boolean;
+  error: string | null;
+  fetchItems: () => Promise<void>;
+  addItem: (item: Omit<LifeItem, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateItem: (id: string, updates: Partial<LifeItem>) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+}
+
+export const useItemStore = create<ItemState>((set) => ({
+  items: [],
+  loading: false,
+  error: null,
+  fetchItems: async () => {
+    const currentItems = useItemStore.getState().items;
+    set({ loading: currentItems.length === 0, error: null });
+    
+    // 离线模式：优先从缓存加载
+    if (!networkMonitor.isOnline()) {
+      const cached = await cache.get<LifeItem[]>(ITEMS_CACHE_KEY);
+      if (cached) {
+        set({ items: cached, loading: false });
+        return;
+      }
+    }
+    
+    try {
+      const data = await api.items.list();
+      const items = data || [];
+      set({ items, loading: false });
+      
+      // 缓存数据
+      await cache.set(ITEMS_CACHE_KEY, items);
+    } catch (error) {
+      console.error('fetchItems error:', error);
+      
+      // 网络错误时尝试从缓存加载
+      if (!networkMonitor.isOnline()) {
+        const cached = await cache.get<LifeItem[]>(ITEMS_CACHE_KEY);
+        if (cached) {
+          set({ items: cached, loading: false });
+          return;
+        }
+      }
+      
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  addItem: async (item) => {
+    set({ loading: true, error: null });
+    try {
+      const { user } = useAuthStore.getState();
+      if (!user) throw new Error('未登录');
+      
+      // 上传图片
+      let uploadedImages: string[] = [];
+      if (item.images && item.images.length > 0) {
+        uploadedImages = await uploadImages(item.images, user.id);
+      }
+      
+      // 创建物品
+      const data = await api.items.create({
+        ...item,
+        images: uploadedImages,
+      });
+      
+      set((state) => ({ items: [data, ...state.items], loading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
+  },
+  updateItem: async (id, updates) => {
+    set({ loading: true, error: null });
+    try {
+      const { user } = useAuthStore.getState();
+      if (!user) throw new Error('未登录');
+      
+      // 上传新图片
+      let uploadedImages = updates.images;
+      if (updates.images && updates.images.length > 0) {
+        // 过滤出本地图片（不是 URL 的）
+        const localImages = updates.images.filter(img => !img.startsWith('http'));
+        const existingImages = updates.images.filter(img => img.startsWith('http'));
+        
+        if (localImages.length > 0) {
+          const newUrls = await uploadImages(localImages, user.id);
+          uploadedImages = [...existingImages, ...newUrls];
+        }
+      }
+      
+      await api.items.update(id, { ...updates, images: uploadedImages });
+      set((state) => ({ 
+        items: state.items.map((item) => 
+          item.id === id ? { ...item, ...updates, images: uploadedImages } : item
+        ), 
+        loading: false 
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+  deleteItem: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      await api.items.delete(id);
+      set((state) => ({ items: state.items.filter((item) => item.id !== id), loading: false }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+}));
+
+// 监听 socket 事件
+socketService.onItemCreated((item) => {
+  const currentItems = useItemStore.getState().items;
+  if (!currentItems.find(i => i.id === item.id)) {
+    useItemStore.setState({ items: [item, ...currentItems] });
+  }
+});
+
+socketService.onItemUpdated((item) => {
+  useItemStore.setState((state) => ({
+    items: state.items.map(i => i.id === item.id ? item : i),
+  }));
+});
+
+socketService.onItemDeleted(({ id }) => {
+  useItemStore.setState((state) => ({
+    items: state.items.filter(i => i.id !== id),
+  }));
+});
