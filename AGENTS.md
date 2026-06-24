@@ -546,7 +546,7 @@ export class ItemsService {
 **1. 后端部署 (CloudRun)**
 
 ```bash
-# 1.1 确保 Dockerfile 正确（多阶段构建，注入环境变量）
+# 1.1 确保 Dockerfile 正确（多阶段构建，使用 ARG 构建参数）
 # 参见 backend/Dockerfile
 
 # 1.2 打包后端代码
@@ -565,6 +565,13 @@ yes | tcb cloudrun deploy \
   --mem 2 \
   --min-instance 0 \
   --max-instance 5
+
+# 1.4 配置环境变量（部署后必须在控制台配置）
+# 访问 CloudRun 服务详情 → 点击"修改" → 添加环境变量：
+#   - SUPABASE_URL=https://xxx.supabase.co
+#   - SUPABASE_ANON_KEY=xxx
+#   - SUPABASE_SERVICE_ROLE_KEY=xxx
+#   - CORS_ORIGIN=https://<frontend-domain>
 ```
 
 **关键配置**:
@@ -596,30 +603,60 @@ yes | tcb cloudrun deploy \
 
 **3. 环境变量配置**
 
-后端 `backend/Dockerfile`:
+**后端 Dockerfile** 使用构建参数（不在镜像中硬编码密钥）:
+
 ```dockerfile
-ENV SUPABASE_URL=https://xxx.supabase.co
-ENV SUPABASE_ANON_KEY=xxx
-ENV SUPABASE_SERVICE_ROLE_KEY=xxx
+# 构建参数（在 docker build 时传入）
+ARG SUPABASE_URL
+ARG SUPABASE_ANON_KEY
+ARG SUPABASE_SERVICE_ROLE_KEY
+ARG CORS_ORIGIN
+
+# 注入环境变量
+ENV SUPABASE_URL=$SUPABASE_URL
+ENV SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 ENV NODE_ENV=production
-ENV CORS_ORIGIN=https://<frontend-domain>
+ENV CORS_ORIGIN=$CORS_ORIGIN
 ```
 
-前端 `frontend/.env.production`:
+**传递构建参数**（使用 `tcb` CLI）:
+
+```bash
+# 方法一：在部署时通过 --build-arg 传递（推荐）
+# 注意：tcb CLI 目前不支持 --build-arg，需在 CloudRun 控制台配置
+
+# 方法二：在 CloudRun 控制台配置环境变量
+# 1. 访问 CloudRun 服务详情
+# 2. 点击"修改"
+# 3. 添加环境变量（Key-Value）
+#    - SUPABASE_URL
+#    - SUPABASE_ANON_KEY
+#    - SUPABASE_SERVICE_ROLE_KEY
+#    - CORS_ORIGIN
+```
+
+**前端 `frontend/.env.production`**:
 ```env
 EXPO_PUBLIC_API_BASE_URL=https://<backend-domain>
 EXPO_PUBLIC_ENV=production
 ```
 
+**注意**:
+- `cloudbaserc.json` 已添加到 `.gitignore`，不会提交到 Git
+- 使用 `cloudbaserc.json.example` 作为配置模板
+- 部署前确保 `.env.production` 中的 URL 正确
+
 #### 常见问题与解决
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
-| `supabaseUrl is required` | 环境变量未注入 | 在 Dockerfile 中使用 `ENV` 指令注入 |
+| `supabaseUrl is required` | 环境变量未配置 | 在 CloudRun 控制台配置环境变量（参见步骤 1.4） |
 | 健康探针失败 | 端口不匹配 | `main.ts` 监听 80 端口，CloudRun 访问 80 |
 | `your-domain.com` 出现在 API 调用 | 构建缓存 | 清除 `dist/` 和 `node_modules/.cache` 后重新构建 |
 | CORS 错误 | `CORS_ORIGIN` 配置错误 | 设为前端实际域名（不含路径） |
 | Socket.io 连接失败 | `socket.ts` 未读取环境变量 | 使用 `process.env.EXPO_PUBLIC_API_BASE_URL` |
+| 推送代码被 GitHub 阻止 | 代码中含有密钥 | 移除硬编码密钥，使用构建参数或控制台配置 |
 
 #### 验证部署
 
@@ -640,13 +677,15 @@ curl -X POST https://<backend-domain>/api/auth/signup \
 
 #### 部署检查清单
 
-- [ ] 后端 Dockerfile 正确（多阶段构建 + 环境变量注入）
+- [ ] 后端 Dockerfile 正确（多阶段构建 + ARG 构建参数）
 - [ ] 后端 `main.ts` 监听 `0.0.0.0:80`
 - [ ] 前端 `.env.production` 配置正确
 - [ ] 前端构建前清除缓存（`rm -rf dist node_modules/.cache`）
 - [ ] 后端部署后状态为 `normal`
 - [ ] 前端部署后状态为 `SUCCESS`
+- [ ] **后端环境变量已配置**（CloudRun 控制台）
 - [ ] 健康检查端点返回 `{"status":"ok"}`
+- [ ] 代码不含硬编码密钥（检查 `git log` 和 GitHub Secret Scanning）
 - [ ] 前端 API 调用地址正确（非 `your-domain.com`）
 
 ---
