@@ -39,8 +39,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
     
     try {
-      const data = await api.todos.list();
-      const todos = data || [];
+      const response = await api.todos.list();
+      const todos = Array.isArray(response?.data) ? response.data : [];
       set({ todos, loading: false });
       
       // 缓存数据
@@ -63,7 +63,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   addTodo: async (todo) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.todos.create(todo);
+      const response = await api.todos.create(todo);
+      const data = response.data;
       
       // 如果设置了提醒时间，调度通知
       if (todo.reminder_date) {
@@ -111,8 +112,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         }
       }
       
-      await api.todos.update(id, updates);
-      set((state) => ({ todos: state.todos.map((t) => t.id === id ? { ...t, ...updates } : t), loading: false }));
+      const response = await api.todos.update(id, updates);
+      const data = response.data;
+      set((state) => ({ todos: state.todos.map((t) => t.id === id ? { ...t, ...updates, ...data } : t), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -147,7 +149,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     
     try {
       // 调用 API
-      await api.todos.update(id, { completed: !previousCompleted });
+      const response = await api.todos.update(id, { completed: !previousCompleted });
+      const data = response.data;
+      set((state) => ({
+        todos: state.todos.map((t) => t.id === id ? { ...t, ...data } : t),
+      }));
     } catch (error) {
       // 失败时回滚
       set((state) => ({

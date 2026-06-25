@@ -1,6 +1,23 @@
 -- ============================================================
--- LifeTracker 数据库初始化脚本
--- 在 Supabase SQL Editor 中执行
+-- LifeTracker Supabase 数据库初始化脚本
+-- ============================================================
+-- 用途:
+--   1. 创建/补齐 LifeTracker 业务表、索引、触发器和系统预设数据。
+--   2. 作为当前数据库结构的可读基线文档。
+--
+-- 执行位置:
+--   Supabase Dashboard -> SQL Editor。
+--
+-- 执行约束:
+--   - 脚本尽量保持幂等，使用 IF NOT EXISTS / ON CONFLICT / 条件 ALTER。
+--   - 开发和生产目前共用 Supabase 表，改表前必须确认影响面。
+--   - 所有业务表使用 life_ 前缀。
+--   - user_id 为 NULL 的分类/位置表示系统预设。
+--
+-- 变更同步:
+--   - 修改表结构后，同步更新 frontend/types、后端 service/controller、
+--     frontend/lib/api.ts 和相关 store。
+--   - 新增字段涉及时间时，遵守 AGENTS.md 中的时间处理规范。
 -- ============================================================
 
 -- ============================================================
@@ -9,6 +26,7 @@
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
   display_name TEXT,
   avatar_url TEXT,
   phone TEXT,
@@ -16,13 +34,33 @@ CREATE TABLE IF NOT EXISTS life_profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 为已有表添加 email 列（如果不存在）
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_profiles'::regclass
+    AND attname = 'email'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_profiles ADD COLUMN email TEXT;
+  END IF;
+END $$;
+
+-- 用 auth.users 回填已有用户邮箱
+UPDATE life_profiles p
+SET email = u.email
+FROM auth.users u
+WHERE p.id = u.id
+  AND (p.email IS NULL OR p.email = '');
+
 -- 自动创建用户资料（注册时触发）
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.life_profiles (id, display_name, avatar_url)
+  INSERT INTO public.life_profiles (id, email, display_name, avatar_url)
   VALUES (
     NEW.id,
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'display_name', ''),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', '')
   );

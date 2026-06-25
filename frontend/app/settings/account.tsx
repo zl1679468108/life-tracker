@@ -12,10 +12,12 @@ import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import * as ImagePickerLib from 'expo-image-picker';
 import { uploadImage, compressAvatar } from '../../lib/upload';
+import { useTranslation } from '../../lib/i18n';
 
 export default function AccountScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
   const { profile, fetchProfile, updateProfile, cachedAvatarUrl, initCachedAvatar } = useProfileStore();
   const [editing, setEditing] = useState(false);
@@ -27,6 +29,13 @@ export default function AccountScreen() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
+  const syncProfileToForm = React.useCallback(() => {
+    if (!profile) return;
+    setUsername(profile.display_name || user?.email?.split('@')[0] || t('settings.profile'));
+    setEmail(profile.email || user?.email || '');
+    setAvatar(profile.avatar_url || null);
+  }, [profile, user?.email]);
+
   // 初始化数据
   React.useEffect(() => {
     initCachedAvatar();
@@ -34,12 +43,8 @@ export default function AccountScreen() {
   }, []);
 
   React.useEffect(() => {
-    if (profile) {
-      setUsername(profile.display_name || user?.email?.split('@')[0] || '用户');
-      setEmail(user?.email || '');
-      setAvatar(profile.avatar_url || null);
-    }
-  }, [profile, user]);
+    if (!editing) syncProfileToForm();
+  }, [editing, syncProfileToForm]);
 
   // 使用缓存的头像 URL 作为初始值，避免等待 API
   React.useEffect(() => {
@@ -52,6 +57,11 @@ export default function AccountScreen() {
     setToastMsg(msg);
     setToastType(type);
     setToastVisible(true);
+  };
+
+  const handleCancelEdit = () => {
+    syncProfileToForm();
+    setEditing(false);
   };
 
   const pickAvatar = async () => {
@@ -73,6 +83,10 @@ export default function AccountScreen() {
       showToast('请输入用户名', 'error');
       return;
     }
+    if (!email.trim()) {
+      showToast(t('settings.email'), 'error');
+      return;
+    }
     
     setSaving(true);
     try {
@@ -85,13 +99,14 @@ export default function AccountScreen() {
       
       await updateProfile({
         display_name: username.trim(),
+        email: email.trim(),
         avatar_url: avatarUrl || undefined,
       });
       
-      showToast('资料已更新', 'success');
+      showToast(t('settings.syncSuccess'), 'success');
       setEditing(false);
     } catch (error) {
-      showToast('更新失败，请重试', 'error');
+      showToast(t('common.requestFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -99,28 +114,28 @@ export default function AccountScreen() {
 
   const handleLogout = async () => {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('确认退出？退出后需要重新登录');
+      const confirmed = window.confirm(t('auth.logoutConfirm'));
       if (!confirmed) return;
       try {
         await signOut();
         router.replace('/auth/login');
       } catch (error) {
-        showToast('退出失败，请稍后重试', 'error');
+        showToast(t('common.requestFailed'), 'error');
       }
       return;
     }
 
     showAlert(
-      '确认退出？',
-      '退出后需要重新登录',
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
       [
-        { text: '取消', style: 'cancel' },
-        { text: '退出', style: 'destructive', onPress: async () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('auth.logout'), style: 'destructive', onPress: async () => {
           try {
             await signOut();
             router.replace('/auth/login');
           } catch (error) {
-            showAlert('退出失败', '请稍后重试');
+            showAlert(t('common.error'), t('common.requestFailed'));
           }
         }},
       ]
@@ -128,8 +143,8 @@ export default function AccountScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={editing ? pickAvatar : undefined} activeOpacity={0.8} disabled={!editing}>
             {avatar ? (
@@ -157,7 +172,7 @@ export default function AccountScreen() {
             )}
           </TouchableOpacity>
           <Text style={[styles.userName, { color: colors.gray[900] }]}>{username}</Text>
-          <Text style={[styles.userEmail, { color: colors.gray[500] }]}>{email}</Text>
+          <Text style={[styles.userEmail, { color: colors.gray[500] }]}>{email || t('auth.login')}</Text>
         </View>
 
         <View style={styles.section}>
@@ -172,13 +187,13 @@ export default function AccountScreen() {
                 <MaterialCommunityIcons name="account-edit" size={20} color={colors.white} />
               </LinearGradient>
               <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>用户名</Text>
+                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>{t('settings.username')}</Text>
                 {editing ? (
                   <TextInput
                     style={[styles.menuInput, { color: colors.gray[800], borderBottomColor: colors.primary }]}
                     value={username}
                     onChangeText={setUsername}
-                    placeholder="输入用户名"
+                    placeholder={t('settings.username')}
                     placeholderTextColor={colors.gray[400]}
                   />
                 ) : (
@@ -197,13 +212,13 @@ export default function AccountScreen() {
                 <MaterialCommunityIcons name="email" size={20} color={colors.white} />
               </LinearGradient>
               <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>邮箱</Text>
+                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>{t('settings.email')}</Text>
                 {editing ? (
                   <TextInput
                     style={[styles.menuInput, { color: colors.gray[800], borderBottomColor: colors.primary }]}
                     value={email}
                     onChangeText={setEmail}
-                    placeholder="输入邮箱"
+                    placeholder={t('settings.email')}
                     placeholderTextColor={colors.gray[400]}
                     keyboardType="email-address"
                   />
@@ -217,24 +232,24 @@ export default function AccountScreen() {
 
         {editing ? (
           <View style={styles.editActions}>
-            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.gray[100] }]} onPress={() => setEditing(false)} activeOpacity={0.7}>
-              <Text style={[styles.cancelBtnText, { color: colors.gray[700] }]}>取消</Text>
+            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.gray[100] }]} onPress={handleCancelEdit} activeOpacity={0.7}>
+              <Text style={[styles.cancelBtnText, { color: colors.gray[700] }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={handleSave} activeOpacity={0.7}>
-              <Text style={[styles.saveBtnText, { color: colors.white }]}>{saving ? '保存中...' : '保存'}</Text>
+              <Text style={[styles.saveBtnText, { color: colors.white }]}>{saving ? t('common.loading') : t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.section}>
             <TouchableOpacity style={[styles.editCard, { backgroundColor: colors.white }]} onPress={() => setEditing(true)} activeOpacity={0.7}>
               <MaterialCommunityIcons name="pencil" size={20} color={colors.primary} />
-              <Text style={[styles.editCardText, { color: colors.primary }]}>编辑资料</Text>
+              <Text style={[styles.editCardText, { color: colors.primary }]}>{t('common.edit')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>账号操作</Text>
+          <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.account')}</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
             <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings/change-password')} activeOpacity={0.7}>
               <LinearGradient
@@ -246,8 +261,8 @@ export default function AccountScreen() {
                 <MaterialCommunityIcons name="lock" size={20} color={colors.white} />
               </LinearGradient>
               <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>修改密码</Text>
-                <Text style={[styles.menuDesc, { color: colors.gray[400] }]}>更新登录密码</Text>
+                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>{t('settings.changePassword')}</Text>
+                <Text style={[styles.menuDesc, { color: colors.gray[400] }]}>{t('settings.changePassword')}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
             </TouchableOpacity>
@@ -262,8 +277,8 @@ export default function AccountScreen() {
                 <MaterialCommunityIcons name="logout" size={20} color={colors.white} />
               </LinearGradient>
               <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>退出登录</Text>
-                <Text style={[styles.menuDesc, { color: colors.gray[400] }]}>退出当前账号</Text>
+                <Text style={[styles.menuTitle, { color: colors.gray[800] }]}>{t('auth.logout')}</Text>
+                <Text style={[styles.menuDesc, { color: colors.gray[400] }]}>{t('auth.logout')}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
             </TouchableOpacity>

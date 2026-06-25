@@ -120,13 +120,14 @@ export default function CreateItemScreen() {
   }, [navigation, name, loading, handleSubmit, router, isEdit]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.gray[50] }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         <ScrollView
+          style={{ backgroundColor: colors.gray[50] }}
           contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

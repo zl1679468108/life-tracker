@@ -84,7 +84,7 @@ export default function ChangePasswordScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>修改密码</Text>
           <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>

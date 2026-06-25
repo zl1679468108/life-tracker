@@ -23,10 +23,10 @@ export class LocationsService {
     return (data || []).map(convertTimesToBeijing);
   }
 
-  async create(name: string, icon: string | undefined, level: number, userId: string) {
+  async create(name: string, icon: string | undefined, level: number, parentId: string | undefined, userId: string) {
     const { data, error } = await this.supabase
       .from('life_locations')
-      .insert({ name, icon, level, user_id: userId })
+      .insert({ name, icon, level, parent_id: parentId, user_id: userId })
       .select()
       .single();
 

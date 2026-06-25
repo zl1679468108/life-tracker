@@ -38,13 +38,17 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     }
     
     try {
-      const data = await api.categories.list(type);
-      const categories = data || [];
+      const response = await api.categories.list(type);
+      const categories = Array.isArray(response?.data) ? response.data : [];
       set({ categories, loading: false });
       
-      // 缓存所有分类（不按类型过滤）
-      const allData = await api.categories.list();
-      await cache.set(CATEGORIES_CACHE_KEY, allData || []);
+      // 当前请求已是全量分类时，直接复用结果写缓存，避免重复请求同一接口。
+      if (!type) {
+        await cache.set(CATEGORIES_CACHE_KEY, categories);
+      } else {
+        const allResponse = await api.categories.list();
+        await cache.set(CATEGORIES_CACHE_KEY, Array.isArray(allResponse?.data) ? allResponse.data : []);
+      }
     } catch (error) {
       // 网络错误时尝试从缓存加载
       if (!networkMonitor.isOnline()) {
@@ -62,7 +66,8 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   addCategory: async (category) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.categories.create(category);
+      const response = await api.categories.create(category);
+      const data = response.data;
       set((state) => ({ categories: [...state.categories, data], loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
@@ -71,9 +76,10 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   updateCategory: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      await api.categories.update(id, updates);
+      const response = await api.categories.update(id, updates);
+      const data = response.data;
       set((state) => ({
-        categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates, ...data } : c)),
         loading: false,
       }));
     } catch (error) {

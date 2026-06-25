@@ -9,6 +9,7 @@ import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { ColorPicker } from '../../components/ui';
 import { LifeCategory } from '../../types';
+import { useTranslation } from '../../lib/i18n';
 
 // 可选图标列表（MaterialCommunityIcons key）
 const iconOptions = [
@@ -57,6 +58,7 @@ const buildCategoryTree = (categories: LifeCategory[]): LifeCategory[] => {
 export default function CategoryManageScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const { categories, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -94,7 +96,7 @@ export default function CategoryManageScreen() {
 
   const handleAdd = async () => {
     if (!newName.trim()) {
-      showAlert('提示', '请输入分类名称');
+      showAlert(t('common.error'), t('categories.nameRequired'));
       return;
     }
     await addCategory({ name: newName.trim(), type: newType, icon: newIcon, color: newColor, parent_id: newParentId });
@@ -123,7 +125,7 @@ export default function CategoryManageScreen() {
 
   const handleSaveEdit = async () => {
     if (!editName.trim()) {
-      showAlert('提示', '请输入分类名称');
+      showAlert(t('common.error'), t('categories.nameRequired'));
       return;
     }
     if (!editingId) return;
@@ -136,9 +138,9 @@ export default function CategoryManageScreen() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    showAlert('确认删除', `删除分类"${name}"？\n注意：子分类也会被删除`, [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => {
+    showAlert(t('categories.deleteConfirm'), `${name}`, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => {
         deleteCategory(id);
         fetchCategories(undefined, true);
       }},
@@ -188,7 +190,7 @@ export default function CategoryManageScreen() {
               style={[styles.cmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
               value={editName}
               onChangeText={setEditName}
-              placeholder="输入分类名称"
+              placeholder={t('categories.name')}
               placeholderTextColor={colors.gray[400]}
             />
             <View style={styles.cmIconColorRow}>
@@ -201,21 +203,21 @@ export default function CategoryManageScreen() {
                 >
                   <MaterialCommunityIcons name={editIcon as any} size={22} color={colors.white} />
                 </LinearGradient>
-                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>选择图标</Text>
+                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.cmColorSelect, { borderColor: colors.gray[200] }]} onPress={() => openColorPicker('edit')}>
                 <View style={[styles.cmColorPreview, { backgroundColor: editColor || colors.success, borderColor: colors.gray[200] }]} />
-                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>选择颜色</Text>
+                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>{t('categories.color')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
               </TouchableOpacity>
             </View>
             <View style={styles.cmEditActions}>
               <TouchableOpacity style={[styles.cmCancelBtn, { backgroundColor: colors.gray[100] }]} onPress={handleCancelEdit}>
-                <Text style={[styles.cmCancelBtnText, { color: colors.gray[600] }]}>取消</Text>
+                <Text style={[styles.cmCancelBtnText, { color: colors.gray[600] }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleSaveEdit}>
-                <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>保存</Text>
+                <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -231,7 +233,7 @@ export default function CategoryManageScreen() {
             </LinearGradient>
             <Text style={[styles.cmItemName, { color: colors.gray[800] }]}>{cat.name}</Text>
             <View style={[styles.cmTypeBadge, cat.type === 'item' ? { backgroundColor: colors.primary + '15' } : { backgroundColor: colors.success + '15' }]}>
-              <Text style={styles.cmTypeBadgeText}>{cat.type === 'item' ? '物品' : '待办'}</Text>
+              <Text style={styles.cmTypeBadgeText}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
             </View>
             {isCustom && (
               <>
@@ -256,18 +258,18 @@ export default function CategoryManageScreen() {
 
   return (
     <View style={[styles.cmContainer, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={styles.cmContainer} contentContainerStyle={styles.cmContent}>
+      <ScrollView style={[styles.cmContainer, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.cmContent}>
 
         {/* 系统预设 */}
         <View style={styles.cmSection}>
-          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>系统预设</Text>
+          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>{t('categories.systemPreset')}</Text>
           {systemCategories.map((cat) => renderCategoryItem(cat, false))}
         </View>
 
         {/* 自定义分类 */}
         <View style={styles.cmSection}>
         <View style={styles.cmSectionHeader}>
-          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>自定义分类</Text>
+          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>{t('categories.custom')}</Text>
           <TouchableOpacity style={[styles.cmAddBtn, { backgroundColor: colors.primaryLight }]} onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}>
             <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -279,7 +281,7 @@ export default function CategoryManageScreen() {
               style={[styles.cmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
               value={newName}
               onChangeText={setNewName}
-              placeholder={newParentId ? "输入子分类名称" : "输入分类名称"}
+              placeholder={newParentId ? `${t('categories.name')} (${t('locations.parent')})` : t('categories.name')}
               placeholderTextColor={colors.gray[400]}
             />
             {/* 类型选择 */}
@@ -314,12 +316,12 @@ export default function CategoryManageScreen() {
                 >
                   <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
                 </LinearGradient>
-                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>选择图标</Text>
+                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.cmColorSelect, { borderColor: colors.gray[200] }]} onPress={() => openColorPicker('add')}>
                 <View style={[styles.cmColorPreview, { backgroundColor: newColor, borderColor: colors.gray[200] }]} />
-                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>选择颜色</Text>
+                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>{t('categories.color')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
               </TouchableOpacity>
             </View>
@@ -327,29 +329,29 @@ export default function CategoryManageScreen() {
               <View style={[styles.cmParentInfo, { backgroundColor: colors.gray[50] }]}>
                 <MaterialCommunityIcons name="information-outline" size={16} color={colors.gray[500]} />
                 <Text style={[styles.cmParentInfoText, { color: colors.gray[600] }]}>
-                  将创建为 "{categories.find(c => c.id === newParentId)?.name}" 的子分类
+                  {`${t('locations.parent')}: ${categories.find(c => c.id === newParentId)?.name || ''}`}
                 </Text>
               </View>
             )}
             <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleAdd} activeOpacity={0.8}>
-              <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>保存</Text>
+              <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {(itemCategoryTree.length === 0 && todoCategoryTree.length === 0 && !showAdd && editingId === null) ? (
-          <Text style={[styles.cmEmptyText, { color: colors.gray[400] }]}>暂无自定义分类</Text>
+          <Text style={[styles.cmEmptyText, { color: colors.gray[400] }]}>{t('categories.empty')}</Text>
         ) : (
           <>
             {itemCategoryTree.length > 0 && (
               <View>
-                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>物品分类</Text>
+                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>{t('categories.itemCategories')}</Text>
                 {itemCategoryTree.map((cat) => renderCategoryItem(cat as LifeCategory & { children?: LifeCategory[] }, true))}
               </View>
             )}
             {todoCategoryTree.length > 0 && (
               <View>
-                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>待办分类</Text>
+                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>{t('categories.todoCategories')}</Text>
                 {todoCategoryTree.map((cat) => renderCategoryItem(cat as LifeCategory & { children?: LifeCategory[] }, true))}
               </View>
             )}
@@ -363,7 +365,7 @@ export default function CategoryManageScreen() {
         <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
           <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
             <View style={[styles.pickerHandle, { backgroundColor: colors.gray[200] }]} />
-            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>选择图标</Text>
+            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>{t('common.add')}</Text>
             <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
               {iconOptions.map((icon) => (
                 <TouchableOpacity

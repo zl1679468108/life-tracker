@@ -14,8 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { useTheme, useColors, useThemeStore } from '../stores/themeStore';
 import { i18n } from '../lib/i18n';
-
-export { ErrorBoundary } from 'expo-router';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { AuthExpiredHandler } from '../components/AuthExpiredHandler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -114,10 +114,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <PaperProvider theme={paperTheme}>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-          <Stack>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <PaperProvider theme={paperTheme}>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+            <AuthExpiredHandler />
+            <Stack screenOptions={{ contentStyle: { backgroundColor: colors.gray[50] } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="item/create" options={{ ...subPageOptions, headerTitle: '添加物品' }} />
             <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '物品详情' }} />
@@ -135,9 +137,11 @@ export default function RootLayout() {
             <Stack.Screen name="settings/notifications" options={{ ...subPageOptions, headerTitle: '通知中心' }} />
             <Stack.Screen name="settings/change-password" options={{ ...subPageOptions, headerTitle: '修改密码' }} />
             <Stack.Screen name="settings/theme" options={{ ...subPageOptions, headerTitle: '主题设置' }} />
-          </Stack>
-        </PaperProvider>
-      </ThemeProvider>
+            <Stack.Screen name="settings/language" options={{ ...subPageOptions, headerTitle: '语言' }} />
+            </Stack>
+          </PaperProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

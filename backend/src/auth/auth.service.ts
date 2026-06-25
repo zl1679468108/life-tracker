@@ -207,11 +207,18 @@ export class AuthService {
     }
     
     // 如果用户还没有 profile，返回一个默认对象
+    const { data: userData, error: userError } = await userClient.auth.getUser(token);
+    if (userError) {
+      throw new HttpException(userError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const email = data?.email || userData.user?.email || null;
+
     if (!data) {
-      return { id: userId, display_name: null, avatar_url: null, phone: null };
+      return { id: userId, email, display_name: null, avatar_url: null, phone: null };
     }
     
-    return convertTimesToBeijing(data);
+    return { ...convertTimesToBeijing(data), email };
   }
 
   async updateProfile(userId: string, updates: any, token: string) {
@@ -221,6 +228,18 @@ export class AuthService {
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const allowedUpdates: Record<string, any> = {
+      display_name: updates.display_name,
+      avatar_url: updates.avatar_url,
+      phone: updates.phone,
+      email: updates.email,
+    };
+    Object.keys(allowedUpdates).forEach((key) => {
+      if (allowedUpdates[key] === undefined) {
+        delete allowedUpdates[key];
+      }
     });
 
     // 先检查 profile 是否存在，不存在则创建
@@ -234,13 +253,13 @@ export class AuthService {
     if (!existing) {
       result = await userClient
         .from('life_profiles')
-        .insert({ id: userId, ...updates, updated_at: new Date().toISOString() })
+        .insert({ id: userId, ...allowedUpdates, updated_at: new Date().toISOString() })
         .select()
         .single();
     } else {
       result = await userClient
         .from('life_profiles')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...allowedUpdates, updated_at: new Date().toISOString() })
         .eq('id', userId)
         .select()
         .single();

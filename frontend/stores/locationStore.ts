@@ -37,8 +37,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     }
     
     try {
-      const data = await api.locations.list();
-      const locations = data || [];
+      const response = await api.locations.list();
+      const locations = Array.isArray(response?.data) ? response.data : [];
       set({ locations, loading: false });
       
       // 缓存数据
@@ -59,7 +59,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   addLocation: async (location) => {
     set({ loading: true, error: null });
     try {
-      const data = await api.locations.create(location);
+      const response = await api.locations.create(location);
+      const data = response.data;
       set((state) => ({ locations: [...state.locations, data], loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
@@ -68,9 +69,10 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   updateLocation: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      await api.locations.update(id, updates);
+      const response = await api.locations.update(id, updates);
+      const data = response.data;
       set((state) => ({
-        locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+        locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l)),
         loading: false,
       }));
     } catch (error) {

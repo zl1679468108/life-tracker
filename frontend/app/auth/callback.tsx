@@ -41,7 +41,7 @@ export default function AuthCallbackScreen() {
   }, [params]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.white }]}>
+    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Text style={[styles.text, { color: colors.gray[600] }]}>正在完成登录...</Text>
     </View>

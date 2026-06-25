@@ -37,8 +37,8 @@ export const useItemStore = create<ItemState>((set) => ({
     }
     
     try {
-      const data = await api.items.list();
-      const items = data || [];
+      const response = await api.items.list();
+      const items = Array.isArray(response?.data) ? response.data : [];
       set({ items, loading: false });
       
       // 缓存数据
@@ -71,10 +71,11 @@ export const useItemStore = create<ItemState>((set) => ({
       }
       
       // 创建物品
-      const data = await api.items.create({
+      const response = await api.items.create({
         ...item,
         images: uploadedImages,
       });
+      const data = response.data;
       
       set((state) => ({ items: [data, ...state.items], loading: false }));
     } catch (error) {

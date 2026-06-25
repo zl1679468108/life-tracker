@@ -14,12 +14,12 @@ export class LocationsController {
   }
 
   @Post()
-  async create(@Body() body: { name: string; icon?: string; level: number }, @CurrentUser() user: SupabaseUser) {
-    return this.locationsService.create(body.name, body.icon, body.level, user.id);
+  async create(@Body() body: { name: string; icon?: string; level: number; parent_id?: string }, @CurrentUser() user: SupabaseUser) {
+    return this.locationsService.create(body.name, body.icon, body.level, body.parent_id, user.id);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: { name?: string; icon?: string }) {
+  async update(@Param('id') id: string, @Body() body: { name?: string; icon?: string; parent_id?: string }) {
     return this.locationsService.update(id, body);
   }
 

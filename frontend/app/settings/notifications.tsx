@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { useRouter } from 'expo-router';
 
 type FilterTab = 'unread' | 'read';
 
@@ -15,11 +16,13 @@ function SwipeableNotifItem({
   isRead,
   onMarkAsRead,
   onMarkAsUnread,
+  onOpenTodo,
 }: {
   notification: any;
   isRead: boolean;
   onMarkAsRead: () => void;
   onMarkAsUnread: () => void;
+  onOpenTodo: (todoId: string) => void;
 }) {
   const colors = useColors();
   const translateX = useRef(new Animated.Value(0)).current;
@@ -111,7 +114,14 @@ function SwipeableNotifItem({
             !isRead && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
           ]}
           activeOpacity={0.7}
-          onPress={() => !isRead && onMarkAsRead()}
+          onPress={async () => {
+            if (!notification.id.startsWith('todo-')) return;
+            const todoId = notification.id.replace('todo-', '');
+            if (!isRead) {
+              await onMarkAsRead();
+            }
+            onOpenTodo(todoId);
+          }}
         >
           <View style={[styles.notifIcon, { backgroundColor: notification.iconBg + '20' }]}>
             <MaterialCommunityIcons name={notification.icon as any} size={22} color={notification.iconBg} />
@@ -143,6 +153,7 @@ function SwipeableNotifItem({
 
 export default function NotificationsScreen() {
   const colors = useColors();
+  const router = useRouter();
   const {
     notifications,
     markAsRead,
@@ -250,6 +261,7 @@ export default function NotificationsScreen() {
                   isRead={read}
                   onMarkAsRead={() => handleMarkAsRead(n.id)}
                   onMarkAsUnread={() => handleMarkAsUnread(n.id)}
+                  onOpenTodo={(todoId) => router.push(`/todo/${todoId}`)}
                 />
               );
             })

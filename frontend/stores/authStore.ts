@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
+import { resetAuthExpiredState } from '../lib/api';
 import { setAuthToken, getAuthToken } from '../lib/token';
 import { socketService } from '../lib/socket';
 import { useProfileStore } from './profileStore';
+import { authSession } from '../lib/authSession';
 
 interface User {
   id: string;
@@ -30,22 +32,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
   signIn: async (email, password) => {
     const data = await api.auth.signIn(email, password);
-    const token = data.session?.access_token || null;
+    const token = data.data?.token || null;
     await setAuthToken(token);
-    set({ user: data.user, loading: false });
+    resetAuthExpiredState();
+    authSession.resetExpired();
+    set({ user: data.data?.user || null, loading: false });
     // 连接 socket
-    if (data.user) {
-      socketService.connect(data.user.id);
+    if (data.data?.user) {
+      socketService.connect(data.data.user.id);
     }
   },
   signUp: async (email, password) => {
     const data = await api.auth.signUp(email, password);
-    const token = data.session?.access_token || null;
+    const token = data.data?.token || null;
     await setAuthToken(token);
-    set({ user: data.user, loading: false });
+    resetAuthExpiredState();
+    authSession.resetExpired();
+    set({ user: data.data?.user || null, loading: false });
     // 连接 socket
-    if (data.user) {
-      socketService.connect(data.user.id);
+    if (data.data?.user) {
+      socketService.connect(data.data.user.id);
     }
   },
   signInWithOAuth: async (provider, redirectTo) => {
@@ -56,14 +62,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   handleOAuthCallback: async (accessToken, refreshToken) => {
     // 设置 token
     await setAuthToken(accessToken);
+    resetAuthExpiredState();
+    authSession.resetExpired();
     
     // 调用后端 API 获取用户信息
     try {
       const profile = await api.auth.getProfile();
-      if (profile) {
-        set({ user: { id: profile.id, email: profile.email }, loading: false });
+      if (profile?.data) {
+        set({ user: { id: profile.data.id, email: profile.data.email || undefined }, loading: false });
         // 连接 socket
-        socketService.connect(profile.id);
+        socketService.connect(profile.data.id);
       }
     } catch (error) {
       console.error('Failed to get user profile:', error);
@@ -98,9 +106,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         // 用 token 获取用户信息，恢复 user 状态
         const profile = await api.auth.getProfile();
-        if (profile) {
-          set({ user: { id: profile.id, email: profile.email }, loading: false });
-          socketService.connect(profile.id);
+        if (profile?.data) {
+          resetAuthExpiredState();
+          authSession.resetExpired();
+          set({ user: { id: profile.data.id, email: profile.data.email || undefined }, loading: false });
+          socketService.connect(profile.data.id);
         } else {
           set({ loading: false });
         }

@@ -14,12 +14,12 @@ export class CategoriesController {
   }
 
   @Post()
-  async create(@Body() body: { name: string; type: string; icon?: string }, @CurrentUser() user: SupabaseUser) {
-    return this.categoriesService.create(body.name, body.type, body.icon, user.id);
+  async create(@Body() body: { name: string; type: string; icon?: string; color?: string; parent_id?: string }, @CurrentUser() user: SupabaseUser) {
+    return this.categoriesService.create(body.name, body.type, body.icon, body.color, body.parent_id, user.id);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: { name?: string; icon?: string }) {
+  async update(@Param('id') id: string, @Body() body: { name?: string; icon?: string; color?: string; parent_id?: string }) {
     return this.categoriesService.update(id, body);
   }
 

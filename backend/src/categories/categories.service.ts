@@ -23,10 +23,10 @@ export class CategoriesService {
     return (data || []).map(convertTimesToBeijing);
   }
 
-  async create(name: string, type: string, icon: string | undefined, userId: string) {
+  async create(name: string, type: string, icon: string | undefined, color: string | undefined, parentId: string | undefined, userId: string) {
     const { data, error } = await this.supabase
       .from('life_categories')
-      .insert({ name, type, icon, user_id: userId })
+      .insert({ name, type, icon, color, parent_id: parentId, user_id: userId })
       .select()
       .single();
 

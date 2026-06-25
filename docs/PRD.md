@@ -1,7 +1,7 @@
 # LifeTracker 产品需求文档 (PRD)
 
-> **版本**: v1.0.0  
-> **更新日期**: 2026-06-23  
+> **版本**: v1.1.0  
+> **更新日期**: 2026-06-26  
 > **目标平台**: Web (PWA) + Android  
 > **技术栈**: React Native (Expo) + NestJS + Supabase
 
@@ -326,6 +326,7 @@ LifeTracker
 - 分类列表包含系统预设 + 用户自定义
 - 系统预设不可删除，有视觉标识
 - 每个分类显示名称、类型、颜色
+- 分类使用 `color` 字段保存颜色值
 
 #### 4.5.2 创建分类
 - 输入分类名称
@@ -350,6 +351,7 @@ LifeTracker
 - 输入位置名称
 - 可选父位置（实现层级）
 - 自动设置层级
+- 位置列表支持树形展示
 
 #### 4.6.3 删除位置
 - 仅可删除用户自定义位置
@@ -436,6 +438,7 @@ LifeTracker
 - 头像（支持自定义上传）
 - 用户名
 - 邮箱
+- 邮箱保存于 `life_profiles.email`，注册时从认证邮箱初始化
 
 #### 4.9.2 编辑资料
 - 可编辑用户名、邮箱
@@ -468,7 +471,7 @@ LifeTracker
 
 <a id="5-product-roadmap"></a>
 
-### 5.1 当前版本 v1.0 (已完成)
+### 5.1 当前版本 v1.0 (✅ 已完成 - 2026-06-23)
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
@@ -494,7 +497,7 @@ LifeTracker
 | 左滑删除 | ✅ | SwipeableRow 组件 |
 | PWA 配置 | ✅ | manifest.json + service worker |
 
-### 5.2 迭代方向 v1.x (高优先级)
+### 5.2 迭代方向 v1.x (✅ 已完成 - 2026-06-24)
 
 | 功能 | 优先级 | 状态 | 说明 |
 |------|--------|------|------|
@@ -513,22 +516,33 @@ LifeTracker
 | **多语言支持** | P3 | ✅ 已完成 | i18n 国际化（中文/英文切换） |
 | **物品二维码/条形码** | P3 | ✅ 已完成 | 支持扫码/手动输入条形码，物品详情页显示条形码 |
 
-### 5.3 未来方向 v2.x (中远期)
 
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| **协作共享** | 待开发 | 与家人/室友共享物品和待办数据 |
-| **物品借用追踪** | 待开发 | 记录谁借走了什么、归还时间 |
-| **智能提醒** | 待开发 | 基于位置和时间的智能提醒（如离开家提醒带钥匙） |
-| **物品价值追踪** | 待开发 | 记录物品购买价格、折旧 |
-| **AI 物品识别** | 待开发 | 拍照自动识别物品名称和分类 |
-| **数据看板** | 待开发 | 更多维度的数据分析和趋势预测 |
-| **日历视图** | 待开发 | 待办事项日历展示 |
-| **模板功能** | 待开发 | 常用物品/待办模板一键创建 |
-| **备份恢复** | 待开发 | 数据备份到本地/云端，支持恢复 |
-| **桌面小组件** | 待开发 | Android Widget / iOS Widget |
+### 5.3 部署上线阶段 (⏳ 进行中 - 2026-06-26)
 
----
+| 功能 | 优先级 | 状态 | 关联任务 |
+|------|--------|------|----------|
+| **后端 CloudRun 部署** | 高 | ✅ 已完成 | T36 |
+| **前端 CloudBase 部署** | 高 | ✅ 已完成 | T37 |
+| **域名配置** | 高 | ⏳ todo | T38 |
+| **环境变量管理** | 高 | ✅ 已完成 | T39 |
+| **Android APK 部署** | 高 | ⏳ todo | T40 |
+| **iOS Development Build** | 高 | ⏳ todo | T41 |
+
+### 5.4 未来方向 v2.x (⏳ 规划中)
+
+| 功能 | 状态 | 关联任务 |
+|------|------|----------|
+| **协作共享** | ⏳ 规划中 | T44 |
+| **物品借用追踪** | ⏳ 规划中 | T45 |
+| **智能提醒** | ⏳ 规划中 | T46 |
+| **物品价值追踪** | ⏳ 规划中 | T47 |
+| **AI 物品识别** | ⏳ 规划中 | T48 |
+| **数据看板** | ⏳ 规划中 | T49 |
+| **日历视图** | ⏳ 规划中 | T50 |
+| **模板功能** | ⏳ 规划中 | T51 |
+| **备份恢复** | ⏳ 规划中 | T52 |
+| **桌面小组件** | ⏳ 规划中 | T53 |
+
 
 ## 6. 交互规范
 
@@ -683,400 +697,18 @@ LifeTracker
 
 ---
 
-## 9. 任务计划
+## 9. 任务管理
 
 <a id="9-task-plan"></a>
 
-> 所有任务计划和迭代计划统一在此维护。完成的任务标记为 ✅，待开发任务按优先级排列。
+任务状态不在 PRD 中逐条维护，统一查看 [docs/TASKS.md](./TASKS.md)。
 
-### 9.1 P0 - 核心功能
+维护规则：
 
----
-
-#### 任务 T-01: 微信登录
-
-**优先级**: 高 | **状态**: ✅ 已完成  
-**相关文件**: 
-- `frontend/app/auth/login.tsx` (微信登录按钮)
-- `frontend/stores/authStore.ts` (OAuth 回调处理)
-- `frontend/app/auth/callback.tsx` (OAuth 回调页面)
-- `backend/src/auth/auth.controller.ts` (微信回调接口)
-- `backend/src/auth/auth.service.ts` (微信 OAuth 服务)
-
-**已实现功能**:
-- ✅ 后端实现微信 OAuth 回调处理 (`/api/auth/wechat/callback`)
-- ✅ 前端实现微信登录流程（Web 端直接跳转，原生端使用 WebBrowser）
-- ✅ 前端 OAuth 回调处理，自动解析 token 并获取用户信息
-- ✅ 微信用户自动创建 Supabase 账号
-- ✅ 登录成功后自动连接 Socket
-
----
-
-#### 任务 T-02: 数据同步功能
-
-**优先级**: 高 | **状态**: ✅ 已完成  
-**相关文件**: 
-- `frontend/app/(tabs)/settings.tsx` (同步按钮)
-- `frontend/stores/syncStore.ts` (同步状态管理)
-- `frontend/stores/` 各 store
-
-**已实现功能**:
-- ✅ 手动同步按钮，触发所有 store 重新拉取数据
-- ✅ 同步状态提示（成功/失败/进行中）
-- ✅ 显示上次同步时间
-- ✅ 同步时显示加载动画
-
----
-
-#### 任务 T-03: 离线模式
-
-**优先级**: 高 | **状态**: ✅ 已完成  
-**相关文件**: 
-- `frontend/lib/cache.ts` (缓存管理)
-- `frontend/lib/network.ts` (网络状态监听)
-- `frontend/stores/` 各 store
-
-**已实现功能**:
-- ✅ 使用 AsyncStorage 缓存本地数据
-- ✅ 断网时使用缓存数据
-- ✅ 网络状态监听（Web 端使用 navigator.onLine，原生端定期检测）
-- ✅ 所有 store 支持离线缓存（items, todos, categories, locations）
-
----
-
-### 9.2 P1 - 体验优化
-
----
-
-#### 任务 T-04: 导出数据
-
-**优先级**: 中 | **状态**: ✅ 已完成  
-**相关文件**: 
-- `frontend/lib/export.ts` (导出功能)
-- `frontend/app/(tabs)/settings.tsx` (导出按钮)
-
-**已实现功能**:
-- ✅ 导出为 JSON 格式
-- ✅ 导出为 CSV 格式
-- ✅ 包含物品、待办、分类、位置数据
-- ✅ Web 端支持文件下载
-
----
-
-#### 任务 T-05: 修改密码
-
-**优先级**: 中 | **状态**: ✅ 已完成  
-**相关文件**: 
-- `frontend/app/settings/account.tsx` (入口已预留)
-- `frontend/app/settings/change-password.tsx` (修改密码页面)
-- `frontend/stores/authStore.ts`
-- `frontend/lib/api.ts`
-- `backend/src/auth/auth.controller.ts`
-- `backend/src/auth/auth.service.ts`
-
-**已实现功能**:
-- ✅ 输入旧密码 + 新密码 + 确认新密码
-- ✅ 密码显示/隐藏切换
-- ✅ 表单验证（密码长度、两次密码一致性、新旧密码不同）
-- ✅ 调用 Supabase Auth 的密码更新 API
-- ✅ 成功后清除 token，提示重新登录
-- ✅ 1.5 秒后自动跳转到登录页
-
----
-
-#### 任务 T-06: 深色模式完善
-
-**优先级**: 中 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/constants/theme.ts`
-- `frontend/app/_layout.tsx`
-- 所有页面组件
-
-**已实现功能**:
-- ✅ 创建完整的深色主题色板（lightColors/darkColors）
-- ✅ 添加主题切换开关（设置页 → 主题设置）
-- ✅ 使用 AsyncStorage 持久化设置
-- ✅ 支持跟随系统设置
-- ✅ 修复 6 个页面的硬编码颜色（item/create、item/[id]、account、todo/[id]、change-password、index）
-- ✅ 测试所有页面在深色模式下显示正常
-
----
-
-#### 任务 T-07: 待办拖拽排序
-
-**优先级**: 中 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/app/(tabs)/todos.tsx`
-- `frontend/stores/todoStore.ts`
-
-**已实现功能**:
-- ✅ 安装 `react-native-draggable-flatlist`
-- ✅ 实现拖拽排序（长按拖动，ScaleDecorator 动画）
-- ✅ 排序持久化到后端（reorderTodos 方法）
-- ✅ 拖拽模式开关（点击图标切换）
-
----
-
-### 9.3 P2 - 功能增强
-
----
-
-#### 任务 T-08: 分类颜色选择器
-
-**优先级**: 低 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/app/settings/category-manage.tsx`
-- `frontend/components/ui/ColorPicker.tsx`
-
-**已实现功能**:
-- ✅ 创建分类时提供预设颜色面板
-- ✅ 支持自定义颜色输入
-- ✅ 编辑分类时可修改颜色
-- ✅ ColorPicker 组件实现
-
----
-
-#### 任务 T-09: 子位置/子分类
-
-**优先级**: 低 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/app/settings/location-manage.tsx`
-- `frontend/app/settings/category-manage.tsx`
-
-**已实现功能**:
-- ✅ 位置层级管理（支持 parent_id）
-- ✅ 创建子位置（点击 + 按钮）
-- ✅ 树形结构展示（buildLocationTree）
-- ✅ 层级缩进显示（depth 参数）
-- ✅ 分类也支持子分类（category-manage.tsx）
-
----
-
-#### 任务 T-10: 图片管理
-
-**优先级**: 低 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/stores/itemStore.ts`
-- `frontend/lib/upload.ts`
-- `backend/src/items/items.service.ts`
-
-**已实现功能**:
-- ✅ 删除物品时清理 Supabase Storage 中的图片（后端 items.service.ts remove 方法）
-- ✅ 图片压缩（原生平台压缩至 1024px，质量 0.8）
-- ✅ 图片数量限制（最多 5 张）
-- ✅ 从 URL 提取存储路径工具函数（getPathFromUrl）
-
----
-
-#### 任务 T-11: Web 端推送通知
-
-**优先级**: 低 | **状态**: ✅ 已完成  
-**相关文件**:
-- `frontend/lib/notifications.ts`
-
-**已实现功能**:
-- ✅ 使用 Web Notification API 替代 expo-notifications（Web 端）
-- ✅ 支持浏览器推送权限请求
-- ✅ 待办到期时使用 setTimeout 调度 + Web Notification 显示
-- ✅ 取消提醒功能（清除定时器）
-- ✅ Socket 推送时在浏览器显示通知（showWebNotification）
-
----
-
-### 9.4 P3 - 技术优化
-
----
-
-#### 任务 T-12: 单元测试
-
-**优先级**: 中 | **状态**: ⏸️ 暂缓  
-**相关文件**: 所有组件和 store
-
-**备注**: 
-- 环境中缺少 npm 命令，无法安装测试依赖
-- 需要在有完整开发环境的机器上完成
-
-**实现步骤**:
-1. 安装测试依赖: `jest`、`@testing-library/react-native`
-2. 配置 Jest (preset: jest-expo)
-3. 编写核心测试: authStore 登录/注册、itemStore CRUD、UI 组件渲染
-
----
-
-#### 任务 T-13: 性能优化
-
-**优先级**: 中 | **状态**: ✅ 已完成
-
-**已实现功能**:
-- ✅ 虚拟列表优化：待办列表从 ScrollView 改为 FlatList，物品列表 FlatList 添加 removeClippedSubviews、maxToRenderPerBatch、windowSize 等性能属性
-- ✅ 图片懒加载：使用 expo-image 替代原生 Image 组件，添加 cachePolicy="memory-disk" 和 transition 动画
-- ✅ 缓存优化：AsyncStorage 缓存列表数据已在离线模式中实现，待办 toggleComplete 实现乐观更新（先更新 UI，失败时回滚）
-- ✅ 渲染优化：列表 renderItem 使用 useCallback 包裹，避免不必要的重新渲染
-
----
-
-#### 任务 T-14: 错误监控
-
-**优先级**: 中 | **状态**: ⏸️ 暂缓  
-**相关文件**:
-- `frontend/app/_layout.tsx`
-- `backend/src/main.ts`
-- `frontend/lib/api.ts`
-
-**备注**: 
-- 环境中缺少 npm 命令，无法安装 Sentry SDK 依赖
-- 需要在有完整开发环境的机器上完成
-
-**实现步骤**:
-1. 安装 Sentry SDK: `@sentry/react-native` (前端) 和 `@sentry/node` (后端)
-2. 创建自定义 ErrorBoundary 组件，集成 Sentry 错误上报
-3. 配置前端全局错误处理（Sentry 初始化、错误捕获）
-4. 配置后端全局异常过滤器（NestJS Exception Filter）
-5. 配置后端 Sentry 集成
-
----
-
-### 9.5 P4 - 部署上线
-
----
-
-#### 任务 T-15: 后端部署
-
-**优先级**: 高 | **状态**: ⏸️ 暂缓  
-
-**相关文件**:
-- `backend/Dockerfile` - Docker 多阶段构建配置
-- `backend/.dockerignore` - Docker 忽略文件
-- `backend/railway.json` - Railway 部署配置
-- `backend/.env.production` - 生产环境变量模板
-
-**备注**: 
-- 环境中缺少 npm 命令，无法构建和部署
-- 已创建完整的部署配置文件
-- 需要在有完整开发环境的机器上完成部署
-
-**已实现功能**:
-- ✅ Docker 多阶段构建配置（减小镜像体积）
-- ✅ Railway 部署配置文件
-- ✅ .dockerignore 忽略不必要文件
-- ✅ 生产环境变量模板
-
-**部署步骤**（需要在有 npm 的环境执行）:
-1. 安装 Railway CLI: `npm i -g @railway/cli`
-2. 登录 Railway: `railway login`
-3. 创建项目: `railway init`
-4. 配置环境变量（参考 .env.production）
-5. 部署: `railway up`
-6. 获取域名并测试 API
-
----
-
-#### 任务 T-16: 前端 Web (PWA) 部署
-
-**优先级**: 高 | **状态**: ⏸️ 暂缓
-
-**相关文件**:
-- `frontend/vercel.json` - Vercel 部署配置
-- `frontend/eas.json` - EAS Build 配置
-- `docs/frontend-web-deploy.md` - 前端 Web 部署指南
-
-**备注**: 
-- 环境中缺少 npm 命令，无法构建和部署
-- 已创建完整的部署配置文件和文档
-- 需要在有完整开发环境的机器上完成部署
-
-**已实现功能**:
-- ✅ Vercel 部署配置文件（vercel.json）
-- ✅ EAS Build 配置文件（eas.json）
-- ✅ 前端 Web 部署指南文档
-- ✅ PWA 功能验证清单
-- ✅ 环境变量配置说明
-
-**部署步骤**（需要在有 npm 的环境执行）:
-1. 安装依赖: `cd frontend && npm install`
-2. 构建 Web 版本: `npx expo export:web`
-3. 安装 Vercel CLI: `npm i -g vercel`
-4. 部署: `vercel --prod`
-5. 配置自定义域名: `app.lifetracker.com`
-6. 验证 PWA 功能（离线访问、添加到主屏幕）
-
----
-
-#### 任务 T-17: 前端 Android 部署
-
-**优先级**: 高 | **状态**: ✅ 已完成
-
-**相关文件**:
-- `frontend/eas.json` - EAS Build 配置（已包含 development、preview、production 三个构建配置）
-- `frontend/app.json` - Android 自适应图标配置
-- `docs/frontend-android-deploy.md` - Android 部署完整指南
-
-**已实现功能**:
-- ✅ EAS Build 配置文件（支持 APK 和 AAB 格式）
-- ✅ Android 自适应图标配置（foreground、background、monochrome）
-- ✅ 完整的部署指南文档（EAS Build 和本地构建两种方案）
-- ✅ 签名配置说明
-- ✅ Google Play 发布流程
-- ✅ 性能优化建议（Hermes、ProGuard、APK 拆分）
-- ✅ 测试清单和验证步骤
-
-**部署步骤**（需要在有 npm 的环境执行）:
-1. 安装 EAS CLI: `npm install -g eas-cli`
-2. 登录 Expo: `eas login`
-3. 构建 APK（测试）: `eas build --platform android --profile preview`
-4. 构建 AAB（发布）: `eas build --platform android --profile production`
-5. 提交到 Google Play: `eas submit --platform android`
-6. 测试安装和运行
-
----
-
-#### 任务 T-18: 域名配置
-
-**优先级**: 中 | **状态**: ✅ 已完成
-
-**相关文件**:
-- `docs/domain-config.md` - 域名配置完整指南
-
-**已实现功能**:
-- ✅ 创建域名配置指南文档
-- ✅ 提供部署架构方案（app.lifetracker.com + api.lifetracker.com）
-- ✅ DNS 配置说明（Vercel、Railway、Cloudflare）
-- ✅ SSL 自动配置说明（Let's Encrypt）
-- ✅ 环境变量更新指南（前端、后端、Supabase、微信）
-- ✅ 验证配置和常见问题解答
-
-**部署架构**:
-```
-lifetracker.com (主域名)
-├── app.lifetracker.com      → 前端 Web (PWA) - Vercel
-├── api.lifetracker.com      → 后端 API - Railway
-└── www.lifetracker.com      → 重定向到 app.lifetracker.com
-```
-
-**配置步骤**（需要手动执行）:
-1. 购买域名（阿里云/腾讯云/Cloudflare）
-2. 在 Vercel 添加前端域名，获取 CNAME 记录
-3. 在 Railway 添加后端域名，获取 CNAME 记录
-4. 在域名注册商配置 DNS
-5. 更新 Supabase 和微信开放平台的回调 URL
-6. 验证 SSL 和功能
-
----
-
-#### 任务 T-19: 环境变量管理
-
-**优先级**: 高 | **状态**: ✅ 已完成
-
-**已实现功能**:
-- ✅ 创建 .env.example 模板文件（前端和后端）
-- ✅ 更新 .gitignore 规则，忽略所有 .env.* 文件
-- ✅ 提供环境变量配置说明，包含 Supabase、微信、邮件服务等配置项
-- ✅ 分离开发环境和生产环境配置文件
-
-**相关文件**:
-- `frontend/.env.example` - 前端环境变量模板
-- `backend/.env.example` - 后端环境变量模板
-- `.gitignore` - 已添加 `.env.*` 忽略规则
+- 新需求先进入本 PRD 的对应功能章节或路线规划，再拆解到 `TASKS.md`。
+- `TASKS.md` 是任务状态唯一来源，使用 `todo`、`in_progress`、`done`、`blocked`。
+- 已完成任务需要记录完成日期；跨模块任务需要列出主要影响面。
+- PRD 只描述“做什么”和“为什么”，TASKS 只追踪“做到哪一步”。
 
 ---
 
@@ -1120,10 +752,11 @@ lifetracker.com (主域名)
 
 ### D. 相关文档
 - [AGENTS.md](../AGENTS.md) - AI 开发指南
+- [TASKS.md](./TASKS.md) - 任务看板
 - [database-init.sql](./database-init.sql) - 数据库初始化脚本
 
 ---
 
 > **文档维护**: 每次功能迭代后更新本文档，保持与实际产品一致。  
 > **变更审批**: 重大功能变更需更新本文档后再进行开发。  
-> **任务管理**: 所有任务计划统一在此文档维护，不再使用单独的 TASKS.md。
+> **任务管理**: 任务状态统一维护在 [TASKS.md](./TASKS.md)。

@@ -91,7 +91,7 @@ export default function ItemDetailScreen() {
   const images = item.images || [];
 
   return (
-    <ScrollView contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}>
+    <ScrollView style={{ backgroundColor: colors.gray[50] }} contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}>
       <View style={[styles.headerSection, { backgroundColor: colors.white }]}>
         <LinearGradient
           colors={[categoryInfo.color, categoryInfo.color + '80']}

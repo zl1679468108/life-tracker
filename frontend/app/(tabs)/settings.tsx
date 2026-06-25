@@ -12,7 +12,7 @@ import { useProfileStore } from '../../stores/profileStore';
 import { useSyncStore } from '../../stores/syncStore';
 import { Toast } from '../../components/Toast';
 import { exportData } from '../../lib/export';
-import { i18n } from '../../lib/i18n';
+import { i18n, useTranslation } from '../../lib/i18n';
 
 interface SettingsItemProps {
   icon: string;
@@ -50,6 +50,7 @@ function SettingsItem({ icon, iconGradient, title, description, onPress, showArr
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, initCachedAvatar } = useProfileStore();
   const { status, lastSyncTime, syncAll } = useSyncStore();
@@ -80,41 +81,41 @@ export default function SettingsScreen() {
     
     try {
       await syncAll();
-      showToast('同步成功', 'success');
+      showToast(t('settings.syncSuccess'), 'success');
     } catch (error) {
-      showToast('同步失败，请重试', 'error');
+      showToast(t('settings.syncFailed'), 'error');
     }
-  }, [status, syncAll, showToast]);
+  }, [status, syncAll, showToast, t]);
 
   const formatLastSyncTime = (timestamp: number | null) => {
-    if (!timestamp) return '从未同步';
+    if (!timestamp) return t('common.noData');
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     
-    if (diffMins < 1) return '刚刚';
-    if (diffMins < 60) return `${diffMins}分钟前`;
+    if (diffMins < 1) return t('common.refresh');
+    if (diffMins < 60) return `${diffMins}m`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}小时前`;
+    if (diffHours < 24) return `${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}天前`;
+    return `${diffDays}d`;
   };
 
   const handleExport = useCallback(async (format: 'json' | 'csv') => {
     setShowExportModal(false);
     try {
       await exportData(format);
-      showToast(`导出${format.toUpperCase()}成功`, 'success');
+      showToast(t('settings.exportSuccess'), 'success');
     } catch (error) {
-      showToast('导出失败，请重试', 'error');
+      showToast(t('common.requestFailed'), 'error');
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   return (
     <SafeScreen>
       <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.gray[900] }]}>设置</Text>
+      <Text style={[styles.title, { color: colors.gray[900] }]}>{t('settings.title')}</Text>
 
       <TouchableOpacity style={[styles.profileCard, { backgroundColor: colors.white }]} onPress={() => router.push('/settings/account')} activeOpacity={0.8}>
         {cachedAvatarUrl ? (
@@ -136,14 +137,14 @@ export default function SettingsScreen() {
           </LinearGradient>
         )}
         <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, { color: colors.gray[800] }]}>{profile?.display_name || user?.email?.split('@')[0] || '用户'}</Text>
-          <Text style={[styles.profileEmail, { color: colors.gray[500] }]}>{user?.email || '未登录'}</Text>
+          <Text style={[styles.profileName, { color: colors.gray[800] }]}>{profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}</Text>
+          <Text style={[styles.profileEmail, { color: colors.gray[500] }]}>{user?.email || t('auth.login')}</Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
       </TouchableOpacity>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>数据管理</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.dataSync')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           <TouchableOpacity style={styles.settingsItem} onPress={handleSync} activeOpacity={0.7} disabled={status === 'syncing'}>
             <LinearGradient
@@ -159,9 +160,9 @@ export default function SettingsScreen() {
               )}
             </LinearGradient>
             <View style={styles.settingsContent}>
-              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>数据同步</Text>
+              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>{t('settings.dataSync')}</Text>
               <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>
-                {status === 'syncing' ? '同步中...' : `上次同步：${formatLastSyncTime(lastSyncTime)}`}
+                {status === 'syncing' ? t('common.loading') : `${t('settings.lastSync')}: ${formatLastSyncTime(lastSyncTime)}`}
               </Text>
             </View>
             {status === 'syncing' ? (
@@ -181,8 +182,8 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="download" size={20} color={colors.white} />
             </LinearGradient>
             <View style={styles.settingsContent}>
-              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>导出数据</Text>
-              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>导出所有数据为 JSON 或 CSV 格式</Text>
+              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>{t('settings.exportData')}</Text>
+              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>{t('settings.exportData')}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
           </TouchableOpacity>
@@ -190,19 +191,19 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>外观</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.theme')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           <SettingsItem
             icon="palette"
             iconGradient={[colors.danger, colors.dangerLight]}
-            title="主题设置"
-            description="切换浅色/深色模式"
+            title={t('settings.theme')}
+            description={t('settings.themeSystem')}
             onPress={() => router.push('/settings/theme')}
           />
           <SettingsItem
             icon="translate"
             iconGradient={[colors.success, colors.successLight]}
-            title="语言设置"
+            title={t('settings.language')}
             description={i18n.getLanguage() === 'zh-CN' ? '中文' : 'English'}
             onPress={() => router.push('/settings/language')}
           />
@@ -210,40 +211,40 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>分类管理</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('categories.title')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           <SettingsItem
             icon="tag"
             iconGradient={[...colors.primaryGradient]}
-            title="分类管理"
-            description="物品分类、待办分类"
+            title={t('categories.title')}
+            description={`${t('categories.itemCategories')} / ${t('categories.todoCategories')}`}
             onPress={() => router.push('/settings/category-manage')}
           />
           <SettingsItem
             icon="map-marker"
             iconGradient={[colors.secondary, colors.secondaryLight]}
-            title="位置管理"
-            description="管理物品存放位置"
+            title={t('locations.title')}
+            description={t('locations.custom')}
             onPress={() => router.push('/settings/location-manage')}
           />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>关于</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.about')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           <SettingsItem
             icon="information"
             iconGradient={[colors.gray[400], colors.gray[500]]}
-            title="版本"
+            title={t('settings.version')}
             description="v1.0.0"
             showArrow={false}
           />
           <SettingsItem
             icon="message-alert"
             iconGradient={[colors.danger, colors.dangerLight]}
-            title="反馈建议"
-            description="帮助我们改进产品"
+            title={t('settings.feedback')}
+            description={t('feedback.title')}
             onPress={() => router.push('/settings/feedback')}
           />
         </View>
@@ -252,14 +253,14 @@ export default function SettingsScreen() {
     <Modal visible={showExportModal} transparent animationType="fade" onRequestClose={() => setShowExportModal(false)}>
       <TouchableOpacity style={styles.exportModalOverlay} activeOpacity={1} onPress={() => setShowExportModal(false)}>
         <View style={[styles.exportModalContent, { backgroundColor: colors.white }]}>
-          <Text style={[styles.exportModalTitle, { color: colors.gray[800] }]}>选择导出格式</Text>
+          <Text style={[styles.exportModalTitle, { color: colors.gray[800] }]}>{t('settings.exportData')}</Text>
           <TouchableOpacity style={[styles.exportModalOption, { backgroundColor: colors.gray[50] }]} onPress={() => handleExport('json')} activeOpacity={0.7}>
             <View style={[styles.exportModalIcon, { backgroundColor: colors.success }]}>
               <MaterialCommunityIcons name="file-json" size={22} color={colors.white} />
             </View>
             <View style={styles.exportModalOptionText}>
               <Text style={[styles.exportModalOptionTitle, { color: colors.gray[800] }]}>JSON</Text>
-              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>结构化数据，适合备份和迁移</Text>
+              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>{t('settings.exportJSON')}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
           </TouchableOpacity>
@@ -269,7 +270,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.exportModalOptionText}>
               <Text style={[styles.exportModalOptionTitle, { color: colors.gray[800] }]}>CSV</Text>
-              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>表格格式，适合 Excel 打开</Text>
+              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>{t('settings.exportCSV')}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
           </TouchableOpacity>

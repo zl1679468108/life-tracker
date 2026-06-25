@@ -8,6 +8,7 @@ import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../cons
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { LifeLocation } from '../../types';
+import { useTranslation } from '../../lib/i18n';
 
 // 可选图标列表（MaterialCommunityIcons key）
 const iconOptions = [
@@ -51,6 +52,7 @@ const buildLocationTree = (locations: LifeLocation[]): LifeLocation[] => {
 export default function LocationManageScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const { locations, fetchLocations, addLocation, updateLocation, deleteLocation } = useLocationStore();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -74,14 +76,14 @@ export default function LocationManageScreen() {
   const systemLocations = locations.filter((l) => !l.user_id);
   // 自定义：user_id 不为空
   const customLocations = locations.filter((l) => l.user_id);
-  const locationTree = buildLocationTree(customLocations);
+  const locationTree = buildLocationTree(customLocations).filter(Boolean);
 
   const handleAdd = async () => {
     if (!newName.trim()) {
-      showAlert('提示', '请输入位置名称');
+      showAlert(t('common.error'), t('locations.nameRequired'));
       return;
     }
-    await addLocation({ name: newName.trim(), icon: newIcon, parent_id: newParentId, level: newParentId ? 1 : 0 });
+    await addLocation({ name: newName.trim(), icon: newIcon, parent_id: newParentId, level: newParentId ? 1 : 0, user_id: undefined });
     setNewName('');
     setNewIcon('map-marker');
     setNewParentId(undefined);
@@ -103,7 +105,7 @@ export default function LocationManageScreen() {
 
   const handleSaveEdit = async () => {
     if (!editName.trim()) {
-      showAlert('提示', '请输入位置名称');
+      showAlert(t('common.error'), t('locations.nameRequired'));
       return;
     }
     if (!editingId) return;
@@ -115,9 +117,9 @@ export default function LocationManageScreen() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    showAlert('确认删除', `删除位置"${name}"？\n注意：子位置也会被删除`, [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => {
+    showAlert(t('locations.deleteConfirm'), `${name}`, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => {
         deleteLocation(id);
         fetchLocations(true);
       }},
@@ -150,22 +152,22 @@ export default function LocationManageScreen() {
               style={[styles.lmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
               value={editName}
               onChangeText={setEditName}
-              placeholder="输入位置名称"
+              placeholder={t('locations.name')}
               placeholderTextColor={colors.gray[400]}
             />
             <TouchableOpacity style={[styles.lmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('edit')}>
               <View style={[styles.lmIconPreview, { backgroundColor: colors.primary + '20' }]}>
                 <MaterialCommunityIcons name={editIcon as any} size={22} color={colors.primary} />
               </View>
-              <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>点击选择图标</Text>
+              <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
             </TouchableOpacity>
             <View style={styles.lmEditActions}>
               <TouchableOpacity style={[styles.lmCancelBtn, { backgroundColor: colors.gray[100] }]} onPress={handleCancelEdit}>
-                <Text style={[styles.lmCancelBtnText, { color: colors.gray[600] }]}>取消</Text>
+                <Text style={[styles.lmCancelBtnText, { color: colors.gray[600] }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.lmSaveBtn} onPress={handleSaveEdit}>
-                <Text style={styles.lmSaveBtnText}>保存</Text>
+                <Text style={styles.lmSaveBtnText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -199,11 +201,11 @@ export default function LocationManageScreen() {
 
   return (
     <View style={[styles.lmContainer, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={styles.lmContainer} contentContainerStyle={styles.lmContent}>
+      <ScrollView style={[styles.lmContainer, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.lmContent}>
 
         {/* 系统预设 */}
         <View style={styles.lmSection}>
-          <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>系统预设</Text>
+          <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>{t('locations.systemPreset')}</Text>
           {systemLocations.map((loc) => (
             <View key={loc.id} style={[styles.lmItem, { backgroundColor: colors.white }]}>
               <LinearGradient
@@ -215,7 +217,7 @@ export default function LocationManageScreen() {
                 <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={colors.white} />
               </LinearGradient>
               <Text style={[styles.lmItemName, { color: colors.gray[800] }]}>{loc.name}</Text>
-              <Text style={[styles.lmSystemBadge, { color: colors.gray[400], backgroundColor: colors.gray[100] }]}>系统</Text>
+              <Text style={[styles.lmSystemBadge, { color: colors.gray[400], backgroundColor: colors.gray[100] }]}>{t('locations.systemPreset')}</Text>
             </View>
           ))}
         </View>
@@ -223,7 +225,7 @@ export default function LocationManageScreen() {
         {/* 自定义位置 */}
         <View style={styles.lmSection}>
           <View style={styles.lmSectionHeader}>
-            <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>自定义位置</Text>
+            <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>{t('locations.custom')}</Text>
             <TouchableOpacity style={[styles.lmAddBtn, { backgroundColor: colors.primaryLight }]} onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}>
               <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={20} color={colors.primary} />
             </TouchableOpacity>
@@ -235,32 +237,32 @@ export default function LocationManageScreen() {
                 style={[styles.lmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
                 value={newName}
                 onChangeText={setNewName}
-                placeholder={newParentId ? "输入子位置名称" : "输入位置名称"}
+                placeholder={newParentId ? `${t('locations.name')} (${t('locations.parent')})` : t('locations.name')}
                 placeholderTextColor={colors.gray[400]}
               />
               <TouchableOpacity style={[styles.lmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('add')}>
                 <View style={[styles.lmIconPreview, { backgroundColor: colors.primary + '20' }]}>
                   <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.primary} />
                 </View>
-                <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>点击选择图标</Text>
+                <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
               </TouchableOpacity>
               {newParentId && (
                 <View style={[styles.lmParentInfo, { backgroundColor: colors.gray[50] }]}>
                   <MaterialCommunityIcons name="information-outline" size={16} color={colors.gray[500]} />
-                  <Text style={[styles.lmParentInfoText, { color: colors.gray[600] }]}>
-                    将创建为 "{locations.find(l => l.id === newParentId)?.name}" 的子位置
+                  <Text style={[styles.lmParentInfoText, { color: colors.gray[600] }]}> 
+                    {`${t('locations.parent')}: ${locations.find(l => l.id === newParentId)?.name || ''}`}
                   </Text>
                 </View>
               )}
               <TouchableOpacity style={styles.lmSaveBtn} onPress={handleAdd} activeOpacity={0.8}>
-                <Text style={styles.lmSaveBtnText}>保存</Text>
+                <Text style={styles.lmSaveBtnText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {locationTree.length === 0 && !showAdd ? (
-            <Text style={[styles.lmEmptyText, { color: colors.gray[400] }]}>暂无自定义位置</Text>
+            <Text style={[styles.lmEmptyText, { color: colors.gray[400] }]}>{t('locations.empty')}</Text>
           ) : (
             locationTree.map((loc) => renderLocationItem(loc as LifeLocation & { children?: LifeLocation[] }))
           )}
@@ -272,7 +274,7 @@ export default function LocationManageScreen() {
         <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
           <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
             <View style={[styles.pickerHandle, { backgroundColor: colors.gray[200] }]} />
-            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>选择图标</Text>
+            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>{t('common.add')}</Text>
             <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
               {iconOptions.map((icon) => (
                 <TouchableOpacity

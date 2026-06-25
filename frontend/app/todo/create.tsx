@@ -170,6 +170,7 @@ export default function CreateTodoScreen() {
         keyboardVerticalOffset={0}
       >
         <ScrollView
+          style={{ backgroundColor: colors.gray[50] }}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

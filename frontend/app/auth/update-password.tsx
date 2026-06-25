@@ -14,6 +14,7 @@ export default function UpdatePasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ token?: string; type?: string }>();
   const { updatePassword } = useAuthStore();
+  const colors = useColors();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,12 +59,13 @@ export default function UpdatePasswordScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={colors.white}>
+    <SafeScreen backgroundColor={colors.gray[50]}>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.white }]}
+        style={[styles.container, { backgroundColor: colors.gray[50] }]}
         behavior="height"
       >
         <ScrollView
+          style={{ backgroundColor: colors.gray[50] }}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

@@ -75,12 +75,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={colors.white}>
+    <SafeScreen backgroundColor={colors.gray[50]}>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.white }]}
+        style={[styles.container, { backgroundColor: colors.gray[50] }]}
         behavior="height"
       >
         <ScrollView
+          style={{ backgroundColor: colors.gray[50] }}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

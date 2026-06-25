@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/monitoring/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,7 @@ async function bootstrap() {
     forbidNonWhitelisted: false,
     transform: true,
   }));
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // 健康检查端点
   const httpAdapter = app.getHttpAdapter();
@@ -22,7 +24,9 @@ async function bootstrap() {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  const port = parseInt(process.env.PORT || '80', 10);
+  const port = process.env.NODE_ENV === 'production'
+    ? 80
+    : parseInt(process.env.PORT || '3020', 10);
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 LifeTracker API running on 0.0.0.0:${port}`);
   console.log(`📦 process.env.PORT = ${process.env.PORT}`);

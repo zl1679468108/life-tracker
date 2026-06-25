@@ -58,10 +58,10 @@ export default function FeedbackScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.gray[50] }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView style={{ backgroundColor: colors.gray[50] }} contentContainerStyle={styles.content}>
           <FormSection label="反馈类型" required>
             <View style={styles.typeGrid}>
               {feedbackTypes.map((ft) => {

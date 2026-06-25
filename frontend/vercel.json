@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx expo export:web",
+  "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
   "installCommand": "npm ci",
-  "framework": "create-react-app",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",

@@ -33,6 +33,7 @@ export default function TabLayout() {
         tabBarStyle: [styles.tabBar, { borderTopColor: colors.gray[100], backgroundColor: colors.white }],
         tabBarLabelStyle: styles.tabLabel,
         tabBarIconStyle: styles.tabIcon,
+        sceneStyle: { backgroundColor: colors.gray[50] },
       }}
     >
       <Tabs.Screen

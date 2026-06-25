@@ -92,7 +92,7 @@ export default function TodoDetailScreen() {
   const isOverdue = todo.due_date && !todo.completed && new Date(todo.due_date) < new Date();
 
   return (
-    <ScrollView contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}>
+    <ScrollView style={{ backgroundColor: colors.gray[50] }} contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}>
       {/* Status + Title Hero */}
       <View style={styles.heroCard}>
         <LinearGradient

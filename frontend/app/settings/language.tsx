@@ -4,16 +4,17 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { i18n, Language } from '../../lib/i18n';
+import { i18n, Language, useTranslation } from '../../lib/i18n';
 
 export default function LanguageScreen() {
   const router = useRouter();
   const colors = useColors();
+  const { t } = useTranslation();
   const currentLanguage = i18n.getLanguage();
 
   const languages: { code: Language; name: string; nativeName: string }[] = [
-    { code: 'zh-CN', name: 'Chinese', nativeName: '中文' },
-    { code: 'en', name: 'English', nativeName: 'English' },
+        { code: 'zh-CN', name: 'Chinese', nativeName: t('settings.languageZh') },
+        { code: 'en', name: 'English', nativeName: t('settings.languageEn') },
   ];
 
   const handleLanguageChange = async (language: Language) => {
@@ -24,7 +25,7 @@ export default function LanguageScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>选择语言</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.language')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           {languages.map((lang) => (
             <TouchableOpacity

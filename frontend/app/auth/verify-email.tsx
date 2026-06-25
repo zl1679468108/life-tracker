@@ -45,8 +45,8 @@ export default function VerifyEmailScreen() {
   }, [params]);
 
   return (
-    <SafeScreen backgroundColor={colors.white}>
-      <View style={[styles.container, { backgroundColor: colors.white }]}>
+    <SafeScreen backgroundColor={colors.gray[50]}>
+      <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
         {loading ? (
           <View style={styles.content}>
             <ActivityIndicator size="large" color={colors.primary} />
