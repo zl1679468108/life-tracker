@@ -19,3 +19,8 @@ export { CachedImage } from './CachedImage';
 export { PageLoadable } from './PageLoadable';
 export { DatePicker } from './DatePicker';
 export { ColorPicker } from './ColorPicker';
+export { ReminderToggle } from './ReminderToggle';
+export { ExpiryWarning } from './ExpiryWarning';
+export { BorrowingCard } from './BorrowingCard';
+export { ShareDialog } from './ShareDialog';
+export { TemplateCard } from './TemplateCard';

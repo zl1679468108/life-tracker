@@ -99,4 +99,114 @@ export class ItemsService {
     if (existing) this.eventsGateway.emitItemDeleted(existing.user_id, id);
     return { success: true };
   }
+
+  /**
+   * 查询即将过期的物品
+   * @param userId 用户 ID
+   * @param days 提前天数（默认 7 天）
+   */
+  async findExpiring(userId: string, days: number = 7) {
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    const { data, error } = await this.supabase
+      .from('life_items')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('reminder_enabled', true)
+      .not('expiry_date', 'is', null)
+      .lte('expiry_date', futureDate.toISOString())
+      .order('expiry_date', { ascending: true });
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return (data || []).map(convertTimesToBeijing);
+  }
+
+  // T47: 价值追踪
+  async updateValue(id: string, userId: string, valueData: any) {
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (valueData.current_value !== undefined) updates.current_value = valueData.current_value;
+    if (valueData.purchase_price !== undefined) updates.purchase_price = valueData.purchase_price;
+    if (valueData.purchase_date !== undefined) updates.purchase_date = new Date(valueData.purchase_date).toISOString();
+    if (valueData.depreciation_rate !== undefined) updates.depreciation_rate = valueData.depreciation_rate;
+
+    const { data, error } = await this.supabase
+      .from('life_items')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return convertTimesToBeijing(data);
+  }
+
+  async getValueHistory(itemId: string, userId: string) {
+    const { data, error } = await this.supabase
+      .from('life_value_history')
+      .select('*')
+      .eq('item_id', itemId)
+      .eq('user_id', userId)
+      .order('recorded_at', { ascending: false });
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return (data || []).map(convertTimesToBeijing);
+  }
+
+  async recordValueHistory(itemId: string, userId: string, record: { value: number; reason?: string }) {
+    const { data, error } = await this.supabase
+      .from('life_value_history')
+      .insert({ item_id: itemId, user_id: userId, value: record.value, reason: record.reason })
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return convertTimesToBeijing(data);
+  }
+
+  async getTotalValue(userId: string) {
+    const { data: items, error } = await this.supabase
+      .from('life_items')
+      .select('purchase_price, current_value, category_id')
+      .eq('user_id', userId);
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    let totalPurchase = 0;
+    let totalCurrent = 0;
+    const categoryMap: Record<string, number> = {};
+
+    for (const item of (items || [])) {
+      const pp = Number(item.purchase_price) || 0;
+      const cv = Number(item.current_value) || pp;
+      totalPurchase += pp;
+      totalCurrent += cv;
+      if (item.category_id) {
+        categoryMap[item.category_id] = (categoryMap[item.category_id] || 0) + cv;
+      }
+    }
+
+    // 获取分类名称
+    const categoryIds = Object.keys(categoryMap);
+    let categoryNames: Record<string, string> = {};
+    if (categoryIds.length > 0) {
+      const { data: cats } = await this.supabase
+        .from('life_categories')
+        .select('id, name')
+        .in('id', categoryIds);
+      (cats || []).forEach((c: any) => { categoryNames[c.id] = c.name; });
+    }
+
+    return {
+      total_purchase_price: totalPurchase,
+      total_current_value: totalCurrent,
+      total_depreciation: totalPurchase - totalCurrent,
+      by_category: Object.entries(categoryMap).map(([id, value]) => ({
+        category_id: id,
+        category_name: categoryNames[id] || '未分类',
+        total_value: value,
+      })),
+    };
+  }
 }

@@ -9,7 +9,9 @@ import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../cons
 import { useColors } from '../../stores/themeStore';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { ExpiryWarning } from '../../components/ui';
 import { useTranslation } from '../../lib/i18n';
+import { api } from '../../lib/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function HomeScreen() {
   const { getUnreadCount, loadReadIds, loaded, pushTrigger } = useNotificationStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
+  const [expiringItems, setExpiringItems] = useState<import('../../types').LifeItem[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -31,6 +34,10 @@ export default function HomeScreen() {
     fetchItems();
     fetchTodos();
     loadReadIds();
+    // 获取即将过期物品
+    api.items.getExpiring(30).then((res) => {
+      if (res.data) setExpiringItems(res.data);
+    });
   }, []);
 
   // 铃铛抖动动画：有未读时持续抖动，每轮之间间隔 5 秒
@@ -69,6 +76,9 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([fetchItems(), fetchTodos()]);
+    // 刷新即将过期物品
+    const res = await api.items.getExpiring(30);
+    if (res.data) setExpiringItems(res.data);
     setRefreshing(false);
   };
 
@@ -246,6 +256,15 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+      )}
+
+      {expiringItems.length > 0 && (
+        <View style={styles.section}>
+          <ExpiryWarning
+            items={expiringItems}
+            onPressItem={(item) => router.push(`/item/${item.id}`)}
+          />
         </View>
       )}
     </ScrollView>

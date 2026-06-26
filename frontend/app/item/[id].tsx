@@ -7,14 +7,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
+import { useShareStore } from '../../stores/shareStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useTemplateStore } from '../../stores/templateStore';
 import { LifeItem } from '../../types';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Button, Loading } from '../../components/ui';
+import { Button, Loading, ShareDialog } from '../../components/ui';
 import { DeleteButton } from '../../components/DeleteButton';
 import { ImagePreview } from '../../components/ui/ImagePreview';
 import { showAlert } from '../../lib/alert';
 import { shareItem } from '../../lib/share';
+
+function getDaysUntilExpiry(expiryDate?: string): number {
+  if (!expiryDate) return 999;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const diffTime = expiry.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
 
 export default function ItemDetailScreen() {
   const router = useRouter();
@@ -23,10 +34,14 @@ export default function ItemDetailScreen() {
   const { items, fetchItems, deleteItem, loading } = useItemStore();
   const { categories: customCategories, fetchCategories } = useCategoryStore();
   const { locations: customLocations, fetchLocations } = useLocationStore();
+  const { resourceShares, fetchResourceShares, createShare, updateShare, deleteShare } = useShareStore();
+  const { createTemplate } = useTemplateStore();
+  const { user } = useAuthStore();
   const colors = useColors();
   const [item, setItem] = useState<LifeItem | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [shareDialogVisible, setShareDialogVisible] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -37,6 +52,7 @@ export default function ItemDetailScreen() {
   useEffect(() => {
     if (items.length > 0 && id) {
       setItem(items.find((i) => i.id === id) || null);
+      fetchResourceShares('item', id);
     }
   }, [items, id]);
 
@@ -72,12 +88,76 @@ export default function ItemDetailScreen() {
     });
   };
 
+  const handleOpenShareDialog = () => {
+    if (!item || !id) return;
+    fetchResourceShares('item', id);
+    setShareDialogVisible(true);
+  };
+
+  const handleCreateShare = async (email: string, permission: 'view' | 'edit') => {
+    if (!id || !user) return;
+    await createShare({
+      shared_with_email: email,
+      resource_type: 'item',
+      resource_id: id,
+      permission,
+    });
+    await fetchResourceShares('item', id);
+  };
+
+  const handleUpdateSharePermission = async (shareId: string, permission: 'view' | 'edit') => {
+    await updateShare(shareId, { permission });
+    if (id) await fetchResourceShares('item', id);
+  };
+
+  const handleDeleteShare = async (shareId: string) => {
+    await deleteShare(shareId);
+    if (id) await fetchResourceShares('item', id);
+  };
+
+  const handleSaveAsTemplate = () => {
+    if (!item) return;
+    showAlert('保存为模板', `将「${item.name}」保存为模板？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '保存',
+        onPress: async () => {
+          try {
+            await createTemplate({
+              name: item.name,
+              description: item.description,
+              template_type: 'item',
+              data: {
+                name: item.name,
+                description: item.description,
+                category_id: item.category_id,
+                location_id: item.location_id,
+                barcode: item.barcode,
+                expiry_date: item.expiry_date,
+                reminder_enabled: item.reminder_enabled,
+                reminder_days_before: item.reminder_days_before,
+              },
+              icon: categoryInfo.icon,
+              color: categoryInfo.color,
+            });
+            showAlert('成功', '模板已保存');
+          } catch (e) {
+            showAlert('失败', '保存模板失败');
+          }
+        },
+      },
+    ]);
+  };
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={handleShare} style={[styles.headerBtn, { backgroundColor: colors.gray[100] }]}>
             <MaterialCommunityIcons name="share-variant" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleOpenShareDialog} style={[styles.headerBtn, { backgroundColor: colors.secondaryLight }]}>
+            <MaterialCommunityIcons name="account-multiple-plus" size={20} color={colors.secondary} />
           </TouchableOpacity>
           <Button title="编辑" onPress={() => router.push({ pathname: '/item/create', params: { id } })} variant="secondary" size="sm" />
         </View>
@@ -110,6 +190,22 @@ export default function ItemDetailScreen() {
           )}
         </View>
       </View>
+
+      {item.is_borrowed && (
+        <View style={[styles.infoCard, { backgroundColor: colors.warningLight, borderLeftWidth: 3, borderLeftColor: colors.warning }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <MaterialCommunityIcons name="arrow-right-bold-circle" size={20} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.semiBold, color: colors.gray[800] }]}>
+                已借给 {item.borrowed_by || '他人'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push(`/settings/borrowings?itemId=${id}`)}>
+              <Text style={[{ fontSize: fontSize.sm, color: colors.primary }]}>查看记录</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <View style={[styles.infoCard, { backgroundColor: colors.white }]}>
         <View style={styles.mainInfoRow}>
@@ -166,6 +262,83 @@ export default function ItemDetailScreen() {
         </View>
       )}
 
+      {item.expiry_date && (
+        <View style={[styles.infoCard, { backgroundColor: colors.white }]}>
+          <View style={styles.barcodeRow}>
+            <MaterialCommunityIcons
+              name="calendar-clock"
+              size={20}
+              color={getDaysUntilExpiry(item.expiry_date) < 0 ? colors.danger : getDaysUntilExpiry(item.expiry_date) <= 7 ? colors.warning : colors.success}
+            />
+            <View style={styles.barcodeText}>
+              <Text style={[styles.barcodeLabel, { color: colors.gray[400] }]}>保质期</Text>
+              <Text style={[
+                styles.barcodeValue,
+                { color: getDaysUntilExpiry(item.expiry_date) < 0 ? colors.danger : getDaysUntilExpiry(item.expiry_date) <= 7 ? colors.warning : colors.success }
+              ]}>
+                {new Date(item.expiry_date).toLocaleDateString('zh-CN')}
+                {' · '}
+                {getDaysUntilExpiry(item.expiry_date) < 0
+                  ? `已过期${Math.abs(getDaysUntilExpiry(item.expiry_date))}天`
+                  : `剩余${getDaysUntilExpiry(item.expiry_date)}天`}
+              </Text>
+            </View>
+          </View>
+          {item.reminder_enabled && (
+            <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <MaterialCommunityIcons name="bell-ring" size={14} color={colors.primary} />
+              <Text style={[{ fontSize: fontSize.sm, color: colors.gray[500] }]}>
+                提前 {item.reminder_days_before || 7} 天提醒
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* T47: 价值信息 */}
+      {(item.purchase_price || item.current_value) && (
+        <View style={[styles.infoCard, { backgroundColor: colors.white }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+            <MaterialCommunityIcons name="cash-multiple" size={20} color={colors.success} />
+            <Text style={[{ fontSize: fontSize.lg, fontWeight: fontWeight.semiBold, color: colors.gray[900] }]}>价值信息</Text>
+          </View>
+          <View style={styles.mainInfoRow}>
+            <View style={styles.mainInfoItem}>
+              <View style={styles.mainInfoText}>
+                <Text style={[styles.mainInfoLabel, { color: colors.gray[400] }]}>购买价格</Text>
+                <Text style={[styles.mainInfoValue, { color: colors.success }]}>
+                  {item.purchase_price ? `¥${Number(item.purchase_price).toLocaleString()}` : '-'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.mainInfoItem}>
+              <View style={styles.mainInfoText}>
+                <Text style={[styles.mainInfoLabel, { color: colors.gray[400] }]}>当前估值</Text>
+                <Text style={[styles.mainInfoValue, { color: colors.primary }]}>
+                  {item.current_value ? `¥${Number(item.current_value).toLocaleString()}` : '-'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          {item.purchase_date && (
+            <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <MaterialCommunityIcons name="calendar" size={14} color={colors.gray[400]} />
+              <Text style={[{ fontSize: fontSize.sm, color: colors.gray[500] }]}>
+                购买于 {new Date(item.purchase_date).toLocaleDateString('zh-CN')}
+              </Text>
+            </View>
+          )}
+          {item.depreciation_rate && Number(item.depreciation_rate) > 0 && (
+            <View style={{ marginTop: spacing.xs, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              <MaterialCommunityIcons name="percent" size={14} color={colors.warning} />
+              <Text style={[{ fontSize: fontSize.sm, color: colors.gray[500] }]}>
+                年折旧率 {item.depreciation_rate}%
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <View style={[styles.infoCard, { backgroundColor: colors.white }]}>
         <View style={styles.timeRow}>
           <View style={styles.timeItem}>
@@ -180,7 +353,58 @@ export default function ItemDetailScreen() {
         </View>
       </View>
 
+      {/* 保存为模板 */}
+      <TouchableOpacity
+        style={[styles.infoCard, { backgroundColor: colors.primaryLight, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }]}
+        onPress={handleSaveAsTemplate}
+      >
+        <MaterialCommunityIcons name="file-document-plus" size={20} color={colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.primary }]}>
+            保存为模板
+          </Text>
+          <Text style={[{ fontSize: fontSize.xs, color: colors.gray[500], marginTop: 2 }]}>
+            快速复用此物品配置
+          </Text>
+        </View>
+      </TouchableOpacity>
+
       <DeleteButton label="删除物品" onPress={handleDelete} />
+
+      {/* 共享状态提示 */}
+      {resourceShares.length > 0 && (
+        <TouchableOpacity
+          style={[styles.infoCard, { backgroundColor: colors.secondaryLight, borderLeftWidth: 3, borderLeftColor: colors.secondary }]}
+          onPress={handleOpenShareDialog}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <MaterialCommunityIcons name="account-multiple-check" size={20} color={colors.secondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.semiBold, color: colors.gray[800] }]}>
+                已共享给 {resourceShares.length} 人
+              </Text>
+              <Text style={[{ fontSize: fontSize.sm, color: colors.gray[500], marginTop: 2 }]}>
+                {resourceShares.map(s => s.shared_with_name).join('、')}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[400]} />
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {id && (
+        <ShareDialog
+          visible={shareDialogVisible}
+          onClose={() => setShareDialogVisible(false)}
+          resourceType="item"
+          resourceId={id}
+          shares={resourceShares}
+          loading={loading}
+          onShare={handleCreateShare}
+          onUpdatePermission={handleUpdateSharePermission}
+          onDeleteShare={handleDeleteShare}
+        />
+      )}
     </ScrollView>
   );
 }

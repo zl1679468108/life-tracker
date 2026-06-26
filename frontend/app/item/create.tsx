@@ -6,9 +6,10 @@ import { useItemStore } from '../../stores/itemStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useTemplateStore } from '../../stores/templateStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input, Button, ImagePicker, FormSection } from '../../components/ui';
+import { Input, Button, ImagePicker, FormSection, DatePicker, ReminderToggle } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { scanBarcode, validateBarcode } from '../../lib/barcode';
@@ -20,13 +21,23 @@ export default function CreateItemScreen() {
   const { items, addItem, updateItem, loading } = useItemStore();
   const { categories: customCategories, fetchCategories } = useCategoryStore();
   const { locations: customLocations, fetchLocations } = useLocationStore();
+  const { templates: itemTemplates, fetchTemplates: fetchItemTemplates } = useTemplateStore();
   const colors = useColors();
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [barcode, setBarcode] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(7);
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [currentValue, setCurrentValue] = useState('');
+  const [depreciationRate, setDepreciationRate] = useState('0');
+  const [showValueSection, setShowValueSection] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -36,6 +47,7 @@ export default function CreateItemScreen() {
   useEffect(() => {
     fetchCategories('item');
     fetchLocations();
+    fetchItemTemplates('item');
   }, []);
 
   useEffect(() => {
@@ -48,6 +60,14 @@ export default function CreateItemScreen() {
         setLocation(item.location_id || '');
         setImages(item.images || []);
         setBarcode(item.barcode || '');
+        setExpiryDate(item.expiry_date || '');
+        setReminderEnabled(item.reminder_enabled || false);
+        setReminderDaysBefore(item.reminder_days_before || 7);
+        if (item.purchase_price) setPurchasePrice(String(item.purchase_price));
+        if (item.purchase_date) setPurchaseDate(item.purchase_date);
+        if (item.current_value) setCurrentValue(String(item.current_value));
+        if (item.depreciation_rate) setDepreciationRate(String(item.depreciation_rate));
+        if (item.purchase_price || item.current_value) setShowValueSection(true);
       }
     }
   }, [isEdit, params.id, items]);
@@ -86,6 +106,15 @@ export default function CreateItemScreen() {
       if (description.trim()) itemData.description = description.trim();
       if (images.length > 0) itemData.images = images;
       if (barcode.trim()) itemData.barcode = barcode.trim();
+      if (expiryDate) {
+        itemData.expiry_date = new Date(expiryDate).toISOString();
+        itemData.reminder_enabled = reminderEnabled;
+        itemData.reminder_days_before = reminderEnabled ? reminderDaysBefore : null;
+      }
+      if (purchasePrice) itemData.purchase_price = parseFloat(purchasePrice);
+      if (purchaseDate) itemData.purchase_date = new Date(purchaseDate).toISOString();
+      if (currentValue) itemData.current_value = parseFloat(currentValue);
+      if (depreciationRate && parseFloat(depreciationRate) > 0) itemData.depreciation_rate = parseFloat(depreciationRate);
 
       if (isEdit && params.id) {
         await updateItem(params.id, itemData);
@@ -101,7 +130,7 @@ export default function CreateItemScreen() {
       console.error('Submit error:', error);
       showAlert('错误', isEdit ? '编辑物品失败，请重试' : '添加物品失败，请重试');
     }
-  }, [name, description, category, location, images, addItem, updateItem, isEdit, params.id, router]);
+  }, [name, description, category, location, images, barcode, expiryDate, reminderEnabled, reminderDaysBefore, purchasePrice, purchaseDate, currentValue, depreciationRate, addItem, updateItem, isEdit, params.id, router]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -120,6 +149,19 @@ export default function CreateItemScreen() {
     });
   }, [navigation, name, loading, handleSubmit, router, isEdit]);
 
+  const handleUseTemplate = (template: any) => {
+    const data = template.data;
+    if (data.name) setName(data.name);
+    if (data.description) setDescription(data.description);
+    if (data.category_id) setCategory(data.category_id);
+    if (data.location_id) setLocation(data.location_id);
+    if (data.barcode) setBarcode(data.barcode);
+    if (data.expiry_date) setExpiryDate(data.expiry_date);
+    if (data.reminder_enabled !== undefined) setReminderEnabled(data.reminder_enabled);
+    if (data.reminder_days_before) setReminderDaysBefore(data.reminder_days_before);
+    setShowTemplatePicker(false);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
       <KeyboardAvoidingView
@@ -133,6 +175,41 @@ export default function CreateItemScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
+          {/* 从模板创建 */}
+          {!isEdit && itemTemplates.length > 0 && (
+            <TouchableOpacity
+              style={[styles.templateBtn, { backgroundColor: colors.secondaryLight }]}
+              onPress={() => setShowTemplatePicker(true)}
+            >
+              <MaterialCommunityIcons name="file-document-outline" size={20} color={colors.secondary} />
+              <Text style={[styles.templateBtnText, { color: colors.secondary }]}>从模板创建</Text>
+              <MaterialCommunityIcons name="chevron-down" size={20} color={colors.secondary} />
+            </TouchableOpacity>
+          )}
+
+          {showTemplatePicker && (
+            <View style={[styles.templatePicker, { backgroundColor: colors.white }]}>
+              {itemTemplates.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.templateItem, { borderBottomColor: colors.gray[100] }]}
+                  onPress={() => handleUseTemplate(t)}
+                >
+                  <MaterialCommunityIcons name={(t.icon || 'package-variant') as any} size={20} color={t.color || colors.primary} />
+                  <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                    <Text style={[{ fontSize: fontSize.base, color: colors.gray[800] }]}>{t.name}</Text>
+                    <Text style={[{ fontSize: fontSize.xs, color: colors.gray[400] }]}>使用 {t.usage_count} 次</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.templateItem, { justifyContent: 'center' }]}
+                onPress={() => setShowTemplatePicker(false)}
+              >
+                <Text style={[{ fontSize: fontSize.base, color: colors.gray[400] }]}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <Input
             label="物品名称"
             value={name}
@@ -235,6 +312,23 @@ export default function CreateItemScreen() {
             }}
           />
 
+          <DatePicker
+            label="保质期/过期时间"
+            value={expiryDate}
+            onChange={setExpiryDate}
+            icon="calendar-clock"
+            placeholder="选择过期日期"
+          />
+
+          {expiryDate ? (
+            <ReminderToggle
+              enabled={reminderEnabled}
+              daysBefore={reminderDaysBefore}
+              onToggle={setReminderEnabled}
+              onDaysChange={setReminderDaysBefore}
+            />
+          ) : null}
+
           <Input
             label="描述"
             value={description}
@@ -243,6 +337,52 @@ export default function CreateItemScreen() {
             multiline
             numberOfLines={3}
           />
+
+          {/* T47: 价值信息 */}
+          <TouchableOpacity
+            style={[styles.valueToggle, { backgroundColor: colors.white }]}
+            onPress={() => setShowValueSection(!showValueSection)}
+          >
+            <MaterialCommunityIcons name="cash-multiple" size={20} color={colors.success} />
+            <Text style={[styles.valueToggleText, { color: colors.gray[800] }]}>价值信息</Text>
+            <MaterialCommunityIcons name={showValueSection ? 'chevron-up' : 'chevron-down'} size={20} color={colors.gray[400]} />
+          </TouchableOpacity>
+
+          {showValueSection && (
+            <View style={[styles.valueSection, { backgroundColor: colors.white }]}>
+              <Input
+                label="购买价格"
+                value={purchasePrice}
+                onChangeText={setPurchasePrice}
+                placeholder="0.00"
+                leftIcon="cash"
+                keyboardType="numeric"
+              />
+              <DatePicker
+                label="购买日期"
+                value={purchaseDate}
+                onChange={setPurchaseDate}
+                icon="calendar"
+                placeholder="选择购买日期"
+              />
+              <Input
+                label="当前估值"
+                value={currentValue}
+                onChangeText={setCurrentValue}
+                placeholder="0.00"
+                leftIcon="cash-marker"
+                keyboardType="numeric"
+              />
+              <Input
+                label="年折旧率 (%)"
+                value={depreciationRate}
+                onChangeText={setDepreciationRate}
+                placeholder="0"
+                leftIcon="percent"
+                keyboardType="numeric"
+              />
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />
@@ -286,5 +426,49 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     fontWeight: fontWeight.medium,
+  },
+  templateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+  },
+  templateBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  templatePicker: {
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  templateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+  },
+  valueToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.md,
+    ...shadows.sm,
+  },
+  valueToggleText: {
+    flex: 1,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  valueSection: {
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    ...shadows.sm,
   },
 });

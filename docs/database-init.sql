@@ -190,6 +190,98 @@ CREATE INDEX IF NOT EXISTS idx_items_user_id ON life_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_items_category_id ON life_items(category_id);
 CREATE INDEX IF NOT EXISTS idx_items_location_id ON life_items(location_id);
 
+-- 为已有表添加 expiry_date 列（如果不存在）
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'expiry_date'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN expiry_date TIMESTAMPTZ;
+  END IF;
+END $$;
+
+-- 为已有表添加 reminder_enabled 列（如果不存在）
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'reminder_enabled'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN reminder_enabled BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
+-- 为已有表添加 reminder_days_before 列（如果不存在）
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'reminder_days_before'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN reminder_days_before INTEGER DEFAULT 7;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_items_expiry_date ON life_items(expiry_date) WHERE expiry_date IS NOT NULL;
+
+-- T47: 物品价值追踪字段
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'purchase_price' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN purchase_price DECIMAL(10, 2);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'purchase_date' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN purchase_date TIMESTAMPTZ;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'current_value' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN current_value DECIMAL(10, 2);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'currency' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN currency TEXT DEFAULT 'CNY';
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'depreciation_rate' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN depreciation_rate DECIMAL(5, 2) DEFAULT 0;
+  END IF;
+END $$;
+
+-- T48: AI 识别字段
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'ai_suggestions' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN ai_suggestions JSONB;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'ai_confidence' AND NOT attisdropped) THEN
+    ALTER TABLE life_items ADD COLUMN ai_confidence DECIMAL(5, 2);
+  END IF;
+END $$;
+
+-- ============================================================
+-- 6.8 价值历史记录表 (life_value_history)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_value_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID NOT NULL REFERENCES life_items(id) ON DELETE CASCADE,
+  value DECIMAL(10, 2) NOT NULL,
+  reason TEXT,
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_value_history_item ON life_value_history(item_id);
+CREATE INDEX IF NOT EXISTS idx_value_history_user ON life_value_history(user_id);
+
 -- ============================================================
 -- 5. 待办表 (life_todos)
 -- ============================================================
@@ -227,7 +319,112 @@ CREATE INDEX IF NOT EXISTS idx_todos_category_id ON life_todos(category_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON life_todos(completed);
 
 -- ============================================================
--- 6. 反馈表 (life_feedback)
+-- 6. 提醒日志表 (life_reminder_logs)
+-- 用于追踪已发送的提醒，避免重复推送
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_reminder_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  resource_type TEXT NOT NULL CHECK (resource_type IN ('item', 'todo')),
+  resource_id UUID NOT NULL,
+  reminder_type TEXT NOT NULL CHECK (reminder_type IN ('expiry', 'due_date', 'custom')),
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminder_logs_resource ON life_reminder_logs(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_reminder_logs_user ON life_reminder_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON life_reminder_logs(sent_at);
+
+-- ============================================================
+-- 6.5 借用记录表 (life_borrowings)
+-- 记录物品的借出/归还情况
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_borrowings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID NOT NULL REFERENCES life_items(id) ON DELETE CASCADE,
+  borrower_name TEXT NOT NULL,
+  borrower_contact TEXT,
+  borrow_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expected_return_date TIMESTAMPTZ,
+  actual_return_date TIMESTAMPTZ,
+  status TEXT NOT NULL CHECK (status IN ('borrowed', 'returned', 'overdue')) DEFAULT 'borrowed',
+  notes TEXT,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_borrowings_item ON life_borrowings(item_id);
+CREATE INDEX IF NOT EXISTS idx_borrowings_user ON life_borrowings(user_id);
+CREATE INDEX IF NOT EXISTS idx_borrowings_status ON life_borrowings(status);
+CREATE INDEX IF NOT EXISTS idx_borrowings_expected_return ON life_borrowings(expected_return_date);
+
+-- 为 life_items 添加借用状态字段
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'is_borrowed'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN is_borrowed BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'borrowed_by'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN borrowed_by TEXT;
+  END IF;
+END $$;
+
+-- ============================================================
+-- 6.6 共享关系表 (life_shares)
+-- 记录用户之间的资源共享关系
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  shared_with_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  resource_type TEXT NOT NULL CHECK (resource_type IN ('item', 'todo')),
+  resource_id UUID NOT NULL,
+  permission TEXT NOT NULL CHECK (permission IN ('view', 'edit')) DEFAULT 'view',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(owner_id, shared_with_id, resource_type, resource_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_shares_owner ON life_shares(owner_id);
+CREATE INDEX IF NOT EXISTS idx_shares_shared_with ON life_shares(shared_with_id);
+CREATE INDEX IF NOT EXISTS idx_shares_resource ON life_shares(resource_type, resource_id);
+
+-- ============================================================
+-- 6.7 模板表 (life_templates)
+-- 用户自定义的物品/待办模板
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  template_type TEXT NOT NULL CHECK (template_type IN ('item', 'todo')),
+  data JSONB NOT NULL,
+  icon TEXT,
+  color TEXT,
+  usage_count INTEGER DEFAULT 0,
+  is_public BOOLEAN DEFAULT FALSE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_templates_user ON life_templates(user_id);
+CREATE INDEX IF NOT EXISTS idx_templates_type ON life_templates(template_type);
+
+-- ============================================================
+-- 7. 反馈表 (life_feedback)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_feedback (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -238,7 +435,7 @@ CREATE TABLE IF NOT EXISTS life_feedback (
 );
 
 -- ============================================================
--- 7. 系统预设数据
+-- 8. 系统预设数据
 -- ============================================================
 
 -- 7.1 预设物品分类（5 个，user_id 为 NULL）
@@ -260,7 +457,7 @@ INSERT INTO life_locations (id, name, icon, level, user_id) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- 8. Storage Bucket（图片上传）
+-- 9. Storage Bucket（图片上传）
 -- ============================================================
 INSERT INTO storage.buckets (id, name, public) VALUES ('items-images', 'items-images', TRUE)
 ON CONFLICT (id) DO NOTHING;

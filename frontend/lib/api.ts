@@ -7,6 +7,8 @@ import type {
   LifeCategory, 
   LifeLocation, 
   LifeProfile,
+  LifeBorrowing,
+  LifeShare,
   AuthResponse,
   UploadData,
   CreateItemRequest,
@@ -23,6 +25,24 @@ import type {
   UpdatePasswordRequest,
   ChangePasswordRequest,
   CreateFeedbackRequest,
+  CreateBorrowingRequest,
+  UpdateBorrowingRequest,
+  CreateShareRequest,
+  UpdateShareRequest,
+  LifeTemplate,
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+  ValueHistory,
+  UpdateItemValueRequest,
+  RecordValueHistoryRequest,
+  TotalValueResponse,
+  AIRecognitionResult,
+  AdvancedStats,
+  TrendData,
+  HeatmapData,
+  CalendarMonthData,
+  WidgetTodoData,
+  WidgetStatsData,
 } from '../types';
 import { withRetry } from './retry';
 
@@ -156,6 +176,11 @@ export const api = {
       return request<string>(`/api/items/${id}`, { 
         method: 'DELETE' 
       });
+    },
+
+    getExpiring: async (days?: number): Promise<ApiResponse<LifeItem[]>> => {
+      const query = days ? `?days=${days}` : '';
+      return request<LifeItem[]>(`/api/items/expiring${query}`);
     },
   },
   
@@ -349,6 +374,170 @@ export const api = {
         method: 'POST', 
         body: formData 
       });
+    },
+  },
+
+  borrowings: {
+    list: async (): Promise<ApiResponse<LifeBorrowing[]>> => {
+      return request<LifeBorrowing[]>('/api/borrowings');
+    },
+
+    active: async (): Promise<ApiResponse<LifeBorrowing[]>> => {
+      return request<LifeBorrowing[]>('/api/borrowings/active');
+    },
+
+    get: async (id: string): Promise<ApiResponse<LifeBorrowing>> => {
+      return request<LifeBorrowing>(`/api/borrowings/${id}`);
+    },
+
+    getByItem: async (itemId: string): Promise<ApiResponse<LifeBorrowing[]>> => {
+      return request<LifeBorrowing[]>(`/api/items/${itemId}/borrowings`);
+    },
+
+    create: async (data: CreateBorrowingRequest): Promise<ApiResponse<LifeBorrowing>> => {
+      return request<LifeBorrowing>('/api/borrowings', {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    update: async (id: string, data: UpdateBorrowingRequest): Promise<ApiResponse<LifeBorrowing>> => {
+      return request<LifeBorrowing>(`/api/borrowings/${id}`, {
+        method: 'PUT',
+        body: data,
+      });
+    },
+
+    delete: async (id: string): Promise<ApiResponse<string>> => {
+      return request<string>(`/api/borrowings/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  shares: {
+    outgoing: async (): Promise<ApiResponse<LifeShare[]>> => {
+      return request<LifeShare[]>('/api/shares/outgoing');
+    },
+
+    incoming: async (): Promise<ApiResponse<LifeShare[]>> => {
+      return request<LifeShare[]>('/api/shares/incoming');
+    },
+
+    byResource: async (type: 'item' | 'todo', id: string): Promise<ApiResponse<LifeShare[]>> => {
+      return request<LifeShare[]>(`/api/shares/resource/${type}/${id}`);
+    },
+
+    create: async (data: CreateShareRequest): Promise<ApiResponse<LifeShare>> => {
+      return request<LifeShare>('/api/shares', {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    update: async (id: string, data: UpdateShareRequest): Promise<ApiResponse<LifeShare>> => {
+      return request<LifeShare>(`/api/shares/${id}`, {
+        method: 'PUT',
+        body: data,
+      });
+    },
+
+    delete: async (id: string): Promise<ApiResponse<string>> => {
+      return request<string>(`/api/shares/${id}`, {
+        method: 'DELETE',
+      });
+    },
+  },
+
+  templates: {
+    list: async (type?: 'item' | 'todo'): Promise<ApiResponse<LifeTemplate[]>> => {
+      const query = type ? `?type=${type}` : '';
+      return request<LifeTemplate[]>(`/api/templates${query}`);
+    },
+
+    get: async (id: string): Promise<ApiResponse<LifeTemplate>> => {
+      return request<LifeTemplate>(`/api/templates/${id}`);
+    },
+
+    create: async (data: CreateTemplateRequest): Promise<ApiResponse<LifeTemplate>> => {
+      return request<LifeTemplate>('/api/templates', {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    update: async (id: string, data: UpdateTemplateRequest): Promise<ApiResponse<LifeTemplate>> => {
+      return request<LifeTemplate>(`/api/templates/${id}`, {
+        method: 'PUT',
+        body: data,
+      });
+    },
+
+    delete: async (id: string): Promise<ApiResponse<string>> => {
+      return request<string>(`/api/templates/${id}`, {
+        method: 'DELETE',
+      });
+    },
+
+    use: async (id: string, overrides?: Record<string, any>): Promise<ApiResponse<any>> => {
+      return request<any>(`/api/templates/${id}/use`, {
+        method: 'POST',
+        body: { overrides },
+      });
+    },
+  },
+
+  // T47: 价值追踪
+  itemsValue: {
+    update: async (id: string, data: UpdateItemValueRequest): Promise<ApiResponse<LifeItem>> => {
+      return request<LifeItem>(`/api/items/${id}/value`, { method: 'PUT', body: data });
+    },
+    history: async (itemId: string): Promise<ApiResponse<ValueHistory[]>> => {
+      return request<ValueHistory[]>(`/api/items/${itemId}/value-history`);
+    },
+    recordHistory: async (itemId: string, data: RecordValueHistoryRequest): Promise<ApiResponse<ValueHistory>> => {
+      return request<ValueHistory>(`/api/items/${itemId}/value-history`, { method: 'POST', body: data });
+    },
+    total: async (): Promise<ApiResponse<TotalValueResponse>> => {
+      return request<TotalValueResponse>('/api/items/total-value');
+    },
+  },
+
+  // T48: AI 识别
+  ai: {
+    recognize: async (formData: FormData): Promise<ApiResponse<AIRecognitionResult>> => {
+      return request<AIRecognitionResult>('/api/ai/recognize', { method: 'POST', body: formData });
+    },
+  },
+
+  // T49: 数据看板
+  stats: {
+    advanced: async (period: string = 'month'): Promise<ApiResponse<AdvancedStats>> => {
+      return request<AdvancedStats>(`/api/stats/advanced?period=${period}`);
+    },
+    trends: async (metric: string = 'items', period: string = 'month'): Promise<ApiResponse<TrendData>> => {
+      return request<TrendData>(`/api/stats/trends?metric=${metric}&period=${period}`);
+    },
+    heatmap: async (year?: number): Promise<ApiResponse<HeatmapData>> => {
+      const query = year ? `?year=${year}` : '';
+      return request<HeatmapData>(`/api/stats/heatmap${query}`);
+    },
+  },
+
+  // T50: 日历视图
+  calendar: {
+    getMonth: async (year: number, month: number): Promise<ApiResponse<CalendarMonthData>> => {
+      return request<CalendarMonthData>(`/api/calendar?year=${year}&month=${month}`);
+    },
+  },
+
+  // T53: 桌面小组件
+  widgets: {
+    todos: async (limit: number = 5): Promise<ApiResponse<{ todos: WidgetTodoData[] }>> => {
+      return request<{ todos: WidgetTodoData[] }>(`/api/widgets/todos?limit=${limit}`);
+    },
+    stats: async (): Promise<ApiResponse<WidgetStatsData>> => {
+      return request<WidgetStatsData>('/api/widgets/stats');
     },
   },
 };

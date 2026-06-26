@@ -30,6 +30,9 @@ export interface UpdateItemRequest {
   category_id?: string;
   images?: string[];
   barcode?: string;
+  expiry_date?: string;
+  reminder_enabled?: boolean;
+  reminder_days_before?: number;
 }
 
 export interface CreateTodoRequest {
@@ -173,4 +176,27 @@ export interface SocketItemUpdated {
 
 export interface SocketItemDeleted {
   id: string;
+}
+
+// -- Reminder types --
+
+export interface UpdateItemReminderRequest {
+  enabled: boolean;
+  reminder_days_before?: number;
+}
+
+// -- Borrowing types --
+
+export interface CreateBorrowingRequest {
+  item_id: string;
+  borrower_name: string;
+  borrower_contact?: string;
+  expected_return_date?: string;
+  notes?: string;
+}
+
+export interface UpdateBorrowingRequest {
+  actual_return_date?: string;
+  status?: 'borrowed' | 'returned' | 'overdue';
+  notes?: string;
 }

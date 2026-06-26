@@ -47,16 +47,16 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | PRD |
 |---|---|---|---|---|---|
-| T44 | P2 | 协作共享 | collaboration | todo | §5.4 |
-| T45 | P2 | 物品借用追踪 | borrowing | todo | §5.4 |
-| T46 | P2 | 智能提醒 | reminders | todo | §5.4 |
-| T47 | P3 | 物品价值追踪 | value | todo | §5.4 |
-| T48 | P3 | AI 物品识别 | ai | todo | §5.4 |
-| T49 | P3 | 数据看板 | analytics | todo | §5.4 |
-| T50 | P3 | 日历视图 | calendar | todo | §5.4 |
-| T51 | P3 | 模板功能 | templates | todo | §5.4 |
-| T52 | P3 | 备份恢复 | backup | todo | §5.4 |
-| T53 | P3 | 桌面小组件 | widgets | todo | §5.4 |
+| T44 | P2 | 协作共享 | collaboration | done | §5.4 - 已完成，含共享管理、权限控制、共享总览页 |
+| T45 | P2 | 物品借用追踪 | borrowing | done | §5.4 - 已完成，含借用记录、归还、逾期状态 |
+| T46 | P2 | 智能提醒 | reminders | done | §5.4 - 已完成，含保质期提醒、过期警告 |
+| T47 | P3 | 物品价值追踪 | value | done | §5.4 - 已完成，含购买价格/估值/折旧/资产总览 |
+| T48 | P3 | AI 物品识别 | ai | done | §5.4 - 已完成，含模拟识别 API |
+| T49 | P3 | 数据看板 | analytics | done | §5.4 - 已完成，含高级统计/趋势/热力图 API |
+| T50 | P3 | 日历视图 | calendar | done | §5.4 - 已完成，含日历网格/待办/事件 |
+| T51 | P3 | 模板功能 | templates | done | §5.4 - 已完成，含模板管理、从模板创建、保存为模板 |
+| T52 | P3 | 备份恢复 | backup | done | §5.4 - 已完成，含数据导出JSON/CSV、导入恢复、数据统计 |
+| T53 | P3 | 桌面小组件 | widgets | done | §5.4 - 已完成，含 PWA 安装/统计小组件/待办列表 |
 
 ## 已完成里程碑
 
@@ -114,8 +114,8 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 48 |
-| todo | 13 |
+| done | 53 |
+| todo | 8 |
 | in_progress | 0 |
 | blocked | 0 |
 

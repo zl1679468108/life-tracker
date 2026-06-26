@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, ActivityIndicator, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useProfileStore } from '../../stores/profileStore';
 import { useSyncStore } from '../../stores/syncStore';
 import { Toast } from '../../components/Toast';
-import { exportData } from '../../lib/export';
 import { i18n, useTranslation } from '../../lib/i18n';
 
 interface SettingsItemProps {
@@ -57,7 +56,6 @@ export default function SettingsScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
-  const [showExportModal, setShowExportModal] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
@@ -93,7 +91,7 @@ export default function SettingsScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return t('common.refresh');
     if (diffMins < 60) return `${diffMins}m`;
     const diffHours = Math.floor(diffMins / 60);
@@ -101,16 +99,6 @@ export default function SettingsScreen() {
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d`;
   };
-
-  const handleExport = useCallback(async (format: 'json' | 'csv') => {
-    setShowExportModal(false);
-    try {
-      await exportData(format);
-      showToast(t('settings.exportSuccess'), 'success');
-    } catch (error) {
-      showToast(t('common.requestFailed'), 'error');
-    }
-  }, [showToast, t]);
 
   return (
     <SafeScreen>
@@ -171,19 +159,18 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
             )}
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.settingsItem} onPress={() => setShowExportModal(true)} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.settingsItem} onPress={() => router.push('/settings/data')} activeOpacity={0.7}>
             <LinearGradient
-              colors={[colors.success, colors.successLight]}
+              colors={[colors.warning, colors.warningLight]}
               style={styles.settingsIcon}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <MaterialCommunityIcons name="download" size={20} color={colors.white} />
+              <MaterialCommunityIcons name="database" size={20} color={colors.white} />
             </LinearGradient>
             <View style={styles.settingsContent}>
-              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>{t('settings.exportData')}</Text>
-              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>{t('settings.exportData')}</Text>
+              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>数据管理</Text>
+              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>备份/恢复/导入导出</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
           </TouchableOpacity>
@@ -227,6 +214,48 @@ export default function SettingsScreen() {
             description={t('locations.custom')}
             onPress={() => router.push('/settings/location-manage')}
           />
+          <SettingsItem
+            icon="arrow-right-bold-circle"
+            iconGradient={[colors.warning, colors.warningLight]}
+            title="借用管理"
+            description="物品借出/归还记录"
+            onPress={() => router.push('/settings/borrowings')}
+          />
+          <SettingsItem
+            icon="account-multiple-plus"
+            iconGradient={[colors.secondary, '#9B7FFC']}
+            title="共享管理"
+            description="与他人共享物品和待办"
+            onPress={() => router.push('/settings/shares')}
+          />
+          <SettingsItem
+            icon="file-document-outline"
+            iconGradient={[colors.primary, colors.primaryHover]}
+            title="模板管理"
+            description="快速复用常用配置"
+            onPress={() => router.push('/settings/templates')}
+          />
+          <SettingsItem
+            icon="cash-multiple"
+            iconGradient={[colors.success, '#059669']}
+            title="资产总览"
+            description="物品价值追踪与统计"
+            onPress={() => router.push('/settings/assets')}
+          />
+          <SettingsItem
+            icon="calendar-month"
+            iconGradient={[colors.secondary, '#6D4AFF']}
+            title="日历视图"
+            description="待办和事件日历"
+            onPress={() => router.push('/settings/calendar')}
+          />
+          <SettingsItem
+            icon="cellphone-text"
+            iconGradient={['#8B5CF6', '#A78BFA']}
+            title="桌面小组件"
+            description="PWA 安装与小组件"
+            onPress={() => router.push('/settings/widgets')}
+          />
         </View>
       </View>
 
@@ -250,33 +279,6 @@ export default function SettingsScreen() {
         </View>
       </View>
     </ScrollView>
-    <Modal visible={showExportModal} transparent animationType="fade" onRequestClose={() => setShowExportModal(false)}>
-      <TouchableOpacity style={styles.exportModalOverlay} activeOpacity={1} onPress={() => setShowExportModal(false)}>
-        <View style={[styles.exportModalContent, { backgroundColor: colors.white }]}>
-          <Text style={[styles.exportModalTitle, { color: colors.gray[800] }]}>{t('settings.exportData')}</Text>
-          <TouchableOpacity style={[styles.exportModalOption, { backgroundColor: colors.gray[50] }]} onPress={() => handleExport('json')} activeOpacity={0.7}>
-            <View style={[styles.exportModalIcon, { backgroundColor: colors.success }]}>
-              <MaterialCommunityIcons name="code-json" size={22} color={colors.white} />
-            </View>
-            <View style={styles.exportModalOptionText}>
-              <Text style={[styles.exportModalOptionTitle, { color: colors.gray[800] }]}>JSON</Text>
-              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>{t('settings.exportJSON')}</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.exportModalOption, { backgroundColor: colors.gray[50] }]} onPress={() => handleExport('csv')} activeOpacity={0.7}>
-            <View style={[styles.exportModalIcon, { backgroundColor: '#8B5CF6' }]}>
-              <MaterialCommunityIcons name="file-delimited" size={22} color={colors.white} />
-            </View>
-            <View style={styles.exportModalOptionText}>
-              <Text style={[styles.exportModalOptionTitle, { color: colors.gray[800] }]}>CSV</Text>
-              <Text style={[styles.exportModalOptionDesc, { color: colors.gray[500] }]}>{t('settings.exportCSV')}</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
     <Toast visible={toastVisible} message={toastMsg} type="info" />
     </SafeScreen>
   );
@@ -374,48 +376,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   settingsDesc: {
-    fontSize: fontSize.sm,
-    marginTop: 2,
-  },
-  exportModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  exportModalContent: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: spacing.xl,
-    paddingBottom: 40,
-  },
-  exportModalTitle: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.lg,
-  },
-  exportModalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  exportModalIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  exportModalOptionText: {
-    flex: 1,
-  },
-  exportModalOptionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
-  },
-  exportModalOptionDesc: {
     fontSize: fontSize.sm,
     marginTop: 2,
   },

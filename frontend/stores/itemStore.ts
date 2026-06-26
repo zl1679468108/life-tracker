@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { api } from '../lib/api';
 import { uploadImages } from '../lib/upload';
 import { useAuthStore } from './authStore';
-import { LifeItem } from '../types';
+import { LifeItem, UpdateItemReminderRequest } from '../types';
 import { cache } from '../lib/cache';
 import { networkMonitor } from '../lib/network';
 import { socketService } from '../lib/socket';
@@ -17,6 +17,7 @@ interface ItemState {
   addItem: (item: Omit<LifeItem, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateItem: (id: string, updates: Partial<LifeItem>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
+  updateItemReminder: (id: string, data: UpdateItemReminderRequest) => Promise<void>;
   clearError: () => void;
 }
 
@@ -122,6 +123,24 @@ export const useItemStore = create<ItemState>((set) => ({
       set((state) => ({ items: state.items.filter((item) => item.id !== id), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+    }
+  },
+  updateItemReminder: async (id, data) => {
+    set({ loading: true, error: null });
+    try {
+      await api.items.update(id, {
+        reminder_enabled: data.enabled,
+        reminder_days_before: data.reminder_days_before,
+      });
+      set((state) => ({ 
+        items: state.items.map((item) => 
+          item.id === id ? { ...item, reminder_enabled: data.enabled, reminder_days_before: data.reminder_days_before } : item
+        ), 
+        loading: false 
+      }));
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
 }));

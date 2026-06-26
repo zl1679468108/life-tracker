@@ -138,6 +138,14 @@ export default function RootLayout() {
             <Stack.Screen name="settings/change-password" options={{ ...subPageOptions, headerTitle: '修改密码' }} />
             <Stack.Screen name="settings/theme" options={{ ...subPageOptions, headerTitle: '主题设置' }} />
             <Stack.Screen name="settings/language" options={{ ...subPageOptions, headerTitle: '语言' }} />
+            <Stack.Screen name="settings/borrowings" options={{ ...subPageOptions, headerTitle: '借用管理' }} />
+            <Stack.Screen name="settings/borrowing-create" options={{ ...subPageOptions, headerTitle: '新增借用' }} />
+            <Stack.Screen name="settings/shares" options={{ ...subPageOptions, headerTitle: '共享管理' }} />
+            <Stack.Screen name="settings/templates" options={{ ...subPageOptions, headerTitle: '模板管理' }} />
+            <Stack.Screen name="settings/data" options={{ ...subPageOptions, headerTitle: '数据管理' }} />
+            <Stack.Screen name="settings/assets" options={{ ...subPageOptions, headerTitle: '资产总览' }} />
+            <Stack.Screen name="settings/calendar" options={{ ...subPageOptions, headerTitle: '日历视图' }} />
+            <Stack.Screen name="settings/widgets" options={{ ...subPageOptions, headerTitle: '桌面小组件' }} />
             </Stack>
           </PaperProvider>
         </ThemeProvider>

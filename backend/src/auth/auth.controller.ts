@@ -13,12 +13,14 @@ export class AuthController {
 
   @Post('signin')
   async signIn(@Body() body: { email: string; password: string }) {
-    return this.authService.signIn(body.email, body.password);
+    const data = await this.authService.signIn(body.email, body.password);
+    return { code: 200, data, message: '登录成功' };
   }
 
   @Post('signup')
   async signUp(@Body() body: { email: string; password: string }) {
-    return this.authService.signUp(body.email, body.password);
+    const data = await this.authService.signUp(body.email, body.password);
+    return { code: 200, data, message: '注册成功' };
   }
 
   @Post('verify-email')
