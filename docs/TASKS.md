@@ -33,14 +33,15 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T54 | P0 | API 响应类型收敛 | frontend | todo | `frontend/lib/api.ts` 当前类型错误较多 |
-| T55 | P0 | TypeScript 类型安全清理 | frontend | todo | 修复 `npx tsc --noEmit` 失败项 |
-| T56 | P1 | 统一错误处理 | frontend/backend | todo | API、store、Toast/Alert |
-| T57 | P1 | 加载状态统一 | frontend | todo | 页面 loading/skeleton |
-| T58 | P1 | 网络重试机制 | frontend | todo | 失败重试和退避 |
-| T59 | P2 | Zustand 渲染优化 | frontend | todo | selector、memo、回调稳定性 |
-| T60 | P2 | 图片加载优化 | frontend | todo | 懒加载、缓存、失败占位 |
+| T54 | P0 | API 响应类型收敛 | frontend | done | 统一为 ApiResponse<T>，删除重复类型定义，消除 tsc 65个错误 |
+| T55 | P0 | TypeScript 类型安全清理 | frontend | done | 前后端 tsc 全部通过，0 错误 |
+| T56 | P1 | 统一错误处理 | frontend/backend | done | ErrorSnackbar + useErrorHandler + SafeScreen 集成 |
+| T57 | P1 | 加载状态统一 | frontend | done | PageLoadable 组件 + items/todos 接入 |
+| T58 | P1 | 网络重试机制 | frontend | done | withRetry + 指数退避 + 网络恢复等待 |
+| T59 | P2 | Zustand 渲染优化 | frontend | done | useColors 分离订阅, selectors.ts, tab 订阅优化 |
+| T60 | P2 | 图片加载优化 | frontend | done | CachedImage 组件 + 列表缩略图 + 上传进度 |
 | T61 | P2 | CI/CD 优化 | deployment | todo | 自动构建与部署检查 |
+| T62 | P1 | 功能测试覆盖 | testing | done | 49 个测试，覆盖 API/store/auth/retry/upload/barcode |
 
 ## 未来功能
 
@@ -97,17 +98,24 @@
 | T34 | 二维码/条形码 | items | 2026-06-24 |
 | T35 | 性能优化 | optimization | 2026-06-24 |
 | T42 | 单元测试框架 | testing | 2026-06-24 |
+| T62 | 功能测试覆盖 | testing | 2026-06-26 |
 | T43 | 错误监控框架 | monitoring | 2026-06-24 |
 | T36 | 后端 CloudRun 部署 | deployment | 2026-06-26 |
 | T37 | 前端 CloudBase 部署 | deployment | 2026-06-26 |
+| T57 | 加载状态统一 | frontend | 2026-06-26 |
+| T59 | Zustand 渲染优化 | frontend | 2026-06-26 |
+| T60 | 图片加载优化 | frontend | 2026-06-26 |
+| T54 | API 响应类型收敛 | frontend | 2026-06-26 |
+| T55 | TypeScript 类型安全清理 | frontend | 2026-06-26 |
+| T56 | 统一错误处理 | frontend | 2026-06-26 |
 | T39 | 环境变量管理 | deployment | 2026-06-26 |
 
 ## 统计
 
 | 状态 | 数量 |
 |---|---:|
-| done | 40 |
-| todo | 21 |
+| done | 48 |
+| todo | 13 |
 | in_progress | 0 |
 | blocked | 0 |
 

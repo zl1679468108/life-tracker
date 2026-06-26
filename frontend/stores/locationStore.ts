@@ -15,12 +15,14 @@ interface LocationState {
   addLocation: (location: Omit<LifeLocation, 'id'>) => Promise<void>;
   updateLocation: (id: string, updates: Partial<LifeLocation>) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useLocationStore = create<LocationState>((set, get) => ({
   locations: [],
   loading: false,
   error: null,
+  clearError: () => set({ error: null }),
   fetchLocations: async (force = false) => {
     // 防止重复请求：已有数据且非强制刷新时跳过
     if (!force && get().locations.length > 0 && !get().error) return;

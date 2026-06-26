@@ -18,7 +18,7 @@ type SortType = 'time' | 'priority' | 'title';
 export default function TodosScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { todos, loading, fetchTodos, toggleComplete, deleteTodo, reorderTodos } = useTodoStore();
+  const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos, clearError: clearTodosError } = useTodoStore();
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('time');
   const [showSortModal, setShowSortModal] = useState(false);
@@ -175,7 +175,7 @@ export default function TodosScreen() {
   );
 
   return (
-    <SafeScreen>
+    <SafeScreen error={todosError} onDismissError={clearTodosError}>
       <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
       <View style={[styles.header, { backgroundColor: colors.white }]}>
         <View style={styles.headerTop}>

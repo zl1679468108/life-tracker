@@ -29,6 +29,7 @@ export default function CreateItemScreen() {
   const [barcode, setBarcode] = useState('');
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const isEdit = !!params.id;
 
@@ -221,20 +222,17 @@ export default function CreateItemScreen() {
             onChangeText={setBarcode}
             placeholder="扫码或手动输入"
             leftIcon="barcode-scan"
-            rightIcon={
-              <TouchableOpacity onPress={async () => {
-                const code = await scanBarcode();
-                if (code) {
-                  if (validateBarcode(code)) {
-                    setBarcode(code);
-                  } else {
-                    showAlert('提示', '条形码格式无效');
-                  }
+            rightIcon="barcode-scan"
+            onRightIconPress={async () => {
+              const code = await scanBarcode();
+              if (code) {
+                if (validateBarcode(code)) {
+                  setBarcode(code);
+                } else {
+                  showAlert('提示', '条形码格式无效');
                 }
-              }}>
-                <MaterialCommunityIcons name="barcode-scan" size={24} color={colors.primary} />
-              </TouchableOpacity>
-            }
+              }
+            }}
           />
 
           <Input

@@ -41,7 +41,7 @@ export default function FeedbackScreen() {
     try {
       await api.feedback.create({
         content: content.trim(),
-        contact: contact.trim(),
+        contact_info: contact.trim(),
       });
       setToastVisible(true);
       setTimeout(() => {

@@ -10,7 +10,7 @@ export function AuthExpiredHandler() {
   const handlingRef = useRef(false);
 
   useEffect(() => {
-    return authSession.onExpired(async () => {
+    const unsubscribe = authSession.onExpired(async () => {
       if (handlingRef.current) return;
       handlingRef.current = true;
 
@@ -29,6 +29,7 @@ export function AuthExpiredHandler() {
         },
       ]);
     });
+    return () => { unsubscribe(); };
   }, [router]);
 
   return null;

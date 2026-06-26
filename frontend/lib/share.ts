@@ -89,8 +89,8 @@ async function copyToClipboard(text: string): Promise<void> {
   } else {
     // 原生端
     // 使用 expo-clipboard 复制到剪贴板
-    const { Clipboard } = await import('expo-clipboard');
-    await Clipboard.setStringAsync(text);
+    const clipboardModule = await import('expo-clipboard');
+    await clipboardModule.setStringAsync(text);
   }
 }
 

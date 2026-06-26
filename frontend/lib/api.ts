@@ -7,6 +7,8 @@ import type {
   LifeCategory, 
   LifeLocation, 
   LifeProfile,
+  AuthResponse,
+  UploadData,
   CreateItemRequest,
   UpdateItemRequest,
   CreateTodoRequest,
@@ -21,9 +23,8 @@ import type {
   UpdatePasswordRequest,
   ChangePasswordRequest,
   CreateFeedbackRequest,
-  UploadResponse,
-  ReorderResponse
 } from '../types';
+import { withRetry } from './retry';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3020';
 let authExpiredEmitted = false;
@@ -70,50 +71,51 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        if (!authExpiredEmitted) {
-          authExpiredEmitted = true;
-          authSession.emitExpired();
-        }
-      }
+    return await withRetry(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
       
-      return {
-        code: response.status,
-        data: null as T,
-        message: payload?.message || response.statusText || '请求失败',
-      };
-    }
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+        signal: controller.signal,
+      });
 
-    return {
-      code: payload?.code ?? response.status,
-      data: payload?.data ?? payload,
-      message: payload?.message,
-    };
-    
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+      clearTimeout(timeoutId);
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          if (!authExpiredEmitted) {
+            authExpiredEmitted = true;
+            authSession.emitExpired();
+          }
+        }
+        
+        // 服务器错误（>=500）抛异常触发重试
+        if (response.status >= 500) {
+          throw { code: response.status, message: payload?.message || response.statusText || '服务器错误' };
+        }
+        
+        return {
+          code: response.status,
+          data: null as T,
+          message: payload?.message || response.statusText || '请求失败',
+        };
+      }
+
       return {
-        code: 'TIMEOUT',
-        data: null as T,
-        message: '请求超时',
+        code: payload?.code ?? response.status,
+        data: payload?.data ?? payload,
+        message: payload?.message,
       };
+    }, method);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error) {
+      return error as ApiResponse<T>;
     }
-    
     return {
       code: 'NETWORK_ERROR',
       data: null as T,
@@ -126,166 +128,147 @@ export const resetAuthExpiredState = () => {
   authExpiredEmitted = false;
 };
 
-// 创建标准化的错误处理函数
-function handleApiError(response: ApiResponse<any>): never {
-  if (response.code !== 200 && response.code !== 201) {
-    throw new Error(response.message || '请求失败');
-  }
-}
-
 export const api = {
   items: {
-    list: async (): Promise<ItemListResponse> => {
-      const response = await request<LifeItem[]>('/api/items');
-      return response as ItemListResponse;
+    list: async (): Promise<ApiResponse<LifeItem[]>> => {
+      return request<LifeItem[]>('/api/items');
     },
     
-    get: async (id: string): Promise<ItemResponse> => {
-      const response = await request<LifeItem>(`/api/items/${id}`);
-      return response as ItemResponse;
+    get: async (id: string): Promise<ApiResponse<LifeItem>> => {
+      return request<LifeItem>(`/api/items/${id}`);
     },
     
-    create: async (data: CreateItemRequest): Promise<ItemResponse> => {
-      const response = await request<LifeItem>('/api/items', { 
+    create: async (data: CreateItemRequest): Promise<ApiResponse<LifeItem>> => {
+      return request<LifeItem>('/api/items', { 
         method: 'POST', 
         body: data 
       });
-      return response as ItemResponse;
     },
     
-    update: async (id: string, data: UpdateItemRequest): Promise<ItemResponse> => {
-      const response = await request<LifeItem>(`/api/items/${id}`, { 
+    update: async (id: string, data: UpdateItemRequest): Promise<ApiResponse<LifeItem>> => {
+      return request<LifeItem>(`/api/items/${id}`, { 
         method: 'PUT', 
         body: data 
       });
-      return response as ItemResponse;
     },
     
     delete: async (id: string): Promise<ApiResponse<string>> => {
-      const response = await request<string>(`/api/items/${id}`, { 
+      return request<string>(`/api/items/${id}`, { 
         method: 'DELETE' 
       });
-      return response;
     },
   },
   
   todos: {
-    list: async (): Promise<TodoListResponse> => {
-      const response = await request<LifeTodo[]>('/api/todos');
-      return response as TodoListResponse;
+    list: async (): Promise<ApiResponse<LifeTodo[]>> => {
+      return request<LifeTodo[]>('/api/todos');
     },
     
-    get: async (id: string): Promise<TodoResponse> => {
-      const response = await request<LifeTodo>(`/api/todos/${id}`);
-      return response as TodoResponse;
+    get: async (id: string): Promise<ApiResponse<LifeTodo>> => {
+      return request<LifeTodo>(`/api/todos/${id}`);
     },
     
-    create: async (data: CreateTodoRequest): Promise<TodoResponse> => {
-      const response = await request<LifeTodo>('/api/todos', { 
+    create: async (data: CreateTodoRequest): Promise<ApiResponse<LifeTodo>> => {
+      return request<LifeTodo>('/api/todos', { 
         method: 'POST', 
         body: data 
       });
-      return response as TodoResponse;
     },
     
-    update: async (id: string, data: UpdateTodoRequest): Promise<TodoResponse> => {
-      const response = await request<LifeTodo>(`/api/todos/${id}`, { 
+    update: async (id: string, data: UpdateTodoRequest): Promise<ApiResponse<LifeTodo>> => {
+      return request<LifeTodo>(`/api/todos/${id}`, { 
         method: 'PUT', 
         body: data 
       });
-      return response as TodoResponse;
     },
     
     delete: async (id: string): Promise<ApiResponse<string>> => {
-      const response = await request<string>(`/api/todos/${id}`, { 
+      return request<string>(`/api/todos/${id}`, { 
         method: 'DELETE' 
       });
-      return response;
     },
     
-    reorder: async (data: ReorderTodosRequest[]): Promise<ReorderResponse> => {
-      const response = await request<string[]>('/api/todos/reorder', { 
+    reorder: async (data: ReorderTodosRequest[]): Promise<ApiResponse<string[]>> => {
+      return request<string[]>('/api/todos/reorder', { 
         method: 'POST', 
         body: data 
       });
-      return response as ReorderResponse;
     },
   },
   
   categories: {
-    list: async (type?: string): Promise<CategoryListResponse> => {
+    list: async (type?: 'item' | 'todo'): Promise<ApiResponse<LifeCategory[]>> => {
       const path = type ? `/api/categories?type=${type}` : '/api/categories';
-      const response = await request<LifeCategory[]>(path);
-      return response as CategoryListResponse;
+      return request<LifeCategory[]>(path);
     },
     
-    create: async (data: CreateCategoryRequest): Promise<CategoryResponse> => {
-      const response = await request<LifeCategory>('/api/categories', { 
+    get: async (id: string): Promise<ApiResponse<LifeCategory>> => {
+      return request<LifeCategory>(`/api/categories/${id}`);
+    },
+    
+    create: async (data: CreateCategoryRequest): Promise<ApiResponse<LifeCategory>> => {
+      return request<LifeCategory>('/api/categories', { 
         method: 'POST', 
         body: data 
       });
-      return response as CategoryResponse;
     },
     
-    update: async (id: string, data: UpdateCategoryRequest): Promise<CategoryResponse> => {
-      const response = await request<LifeCategory>(`/api/categories/${id}`, { 
+    update: async (id: string, data: UpdateCategoryRequest): Promise<ApiResponse<LifeCategory>> => {
+      return request<LifeCategory>(`/api/categories/${id}`, { 
         method: 'PUT', 
         body: data 
       });
-      return response as CategoryResponse;
     },
     
     delete: async (id: string): Promise<ApiResponse<string>> => {
-      const response = await request<string>(`/api/categories/${id}`, { 
+      return request<string>(`/api/categories/${id}`, { 
         method: 'DELETE' 
       });
-      return response;
     },
   },
   
   locations: {
-    list: async (): Promise<LocationListResponse> => {
-      const response = await request<LifeLocation[]>('/api/locations');
-      return response as LocationListResponse;
+    list: async (): Promise<ApiResponse<LifeLocation[]>> => {
+      return request<LifeLocation[]>('/api/locations');
     },
     
-    create: async (data: CreateLocationRequest): Promise<LocationResponse> => {
-      const response = await request<LifeLocation>('/api/locations', { 
+    get: async (id: string): Promise<ApiResponse<LifeLocation>> => {
+      return request<LifeLocation>(`/api/locations/${id}`);
+    },
+    
+    create: async (data: CreateLocationRequest): Promise<ApiResponse<LifeLocation>> => {
+      return request<LifeLocation>('/api/locations', { 
         method: 'POST', 
         body: data 
       });
-      return response as LocationResponse;
     },
     
-    update: async (id: string, data: UpdateLocationRequest): Promise<LocationResponse> => {
-      const response = await request<LifeLocation>(`/api/locations/${id}`, { 
+    update: async (id: string, data: UpdateLocationRequest): Promise<ApiResponse<LifeLocation>> => {
+      return request<LifeLocation>(`/api/locations/${id}`, { 
         method: 'PUT', 
         body: data 
       });
-      return response as LocationResponse;
     },
     
     delete: async (id: string): Promise<ApiResponse<string>> => {
-      const response = await request<string>(`/api/locations/${id}`, { 
+      return request<string>(`/api/locations/${id}`, { 
         method: 'DELETE' 
       });
-      return response;
     },
   },
   
   feedback: {
     create: async (data: CreateFeedbackRequest): Promise<ApiResponse<{ id: string }>> => {
-      const response = await request<{ id: string }>('/api/feedback', { 
+      return request<{ id: string }>('/api/feedback', { 
         method: 'POST', 
         body: data 
       });
-      return response;
     },
   },
   
   auth: {
     signIn: async (email: string, password: string): Promise<AuthResponse> => {
-      const response = await request<AuthResponse>('/api/auth/signin', { 
+      const response = await request<any>('/api/auth/signin', { 
         method: 'POST', 
         body: { email, password }, 
         skipAuth: true 
@@ -294,7 +277,7 @@ export const api = {
     },
     
     signUp: async (email: string, password: string): Promise<AuthResponse> => {
-      const response = await request<AuthResponse>('/api/auth/signup', { 
+      const response = await request<any>('/api/auth/signup', { 
         method: 'POST', 
         body: { email, password }, 
         skipAuth: true 
@@ -303,81 +286,69 @@ export const api = {
     },
     
     verifyEmail: async (token: string): Promise<ApiResponse<{ success: boolean }>> => {
-      const response = await request<{ success: boolean }>('/api/auth/verify-email', { 
+      return request<{ success: boolean }>('/api/auth/verify-email', { 
         method: 'POST', 
         body: { token }, 
         skipAuth: true 
       });
-      return response;
     },
     
     resetPassword: async (email: string): Promise<ApiResponse<{ success: boolean }>> => {
-      const response = await request<{ success: boolean }>('/api/auth/reset-password', { 
+      return request<{ success: boolean }>('/api/auth/reset-password', { 
         method: 'POST', 
         body: { email }, 
         skipAuth: true 
       });
-      return response;
     },
     
     updatePassword: async (password: string, token: string): Promise<ApiResponse<{ success: boolean }>> => {
-      const response = await request<{ success: boolean }>('/api/auth/update-password', { 
+      return request<{ success: boolean }>('/api/auth/update-password', { 
         method: 'POST', 
         body: { password, token }, 
         skipAuth: true 
       });
-      return response;
     },
     
     changePassword: async (currentPassword: string, newPassword: string): Promise<ApiResponse<{ success: boolean }>> => {
-      const response = await request<{ success: boolean }>('/api/auth/change-password', { 
+      return request<{ success: boolean }>('/api/auth/change-password', { 
         method: 'POST', 
         body: { currentPassword, newPassword } 
       });
-      return response;
     },
     
     getProfile: async (): Promise<ApiResponse<LifeProfile>> => {
-      const response = await request<LifeProfile>('/api/auth/profile');
-      return response;
+      return request<LifeProfile>('/api/auth/profile');
     },
     
     updateProfile: async (data: Partial<LifeProfile>): Promise<ApiResponse<LifeProfile>> => {
-      const response = await request<LifeProfile>('/api/auth/profile', { 
+      return request<LifeProfile>('/api/auth/profile', { 
         method: 'PUT', 
         body: data 
       });
-      return response;
     },
     
     signInWithOAuth: async (provider: string, redirectTo: string): Promise<ApiResponse<{ url: string }>> => {
-      const response = await request<{ url: string }>('/api/auth/oauth', { 
+      return request<{ url: string }>('/api/auth/oauth', { 
         method: 'POST', 
         body: { provider, redirectTo }, 
         skipAuth: true 
       });
-      return response;
     },
   },
   
   upload: {
-    single: async (formData: FormData): Promise<UploadResponse> => {
-      const response = await request<UploadResponse>('/api/upload/single', { 
+    single: async (formData: FormData): Promise<ApiResponse<UploadData>> => {
+      return request<UploadData>('/api/upload/single', { 
         method: 'POST', 
         body: formData 
       });
-      return response;
     },
     
-    batch: async (formData: FormData): Promise<UploadResponse> => {
-      const response = await request<UploadResponse>('/api/upload/batch', { 
+    batch: async (formData: FormData): Promise<ApiResponse<UploadData>> => {
+      return request<UploadData>('/api/upload/batch', { 
         method: 'POST', 
         body: formData 
       });
-      return response;
     },
   },
 };
-
-// 导出错误处理工具函数
-export { handleApiError };

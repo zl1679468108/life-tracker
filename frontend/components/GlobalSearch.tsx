@@ -89,7 +89,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
           <ScrollView style={styles.resultsList} contentContainerStyle={styles.resultsContent}>
             {searchText.trim() && results.length === 0 ? (
               <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="search-off" size={48} color={colors.gray[300]} />
+                <MaterialCommunityIcons name="text-search" size={48} color={colors.gray[300]} />
                 <Text style={[styles.emptyText, { color: colors.gray[400] }]}>未找到相关结果</Text>
               </View>
             ) : (

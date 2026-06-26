@@ -17,12 +17,14 @@ interface ItemState {
   addItem: (item: Omit<LifeItem, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateItem: (id: string, updates: Partial<LifeItem>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useItemStore = create<ItemState>((set) => ({
   items: [],
   loading: false,
   error: null,
+  clearError: () => set({ error: null }),
   fetchItems: async () => {
     const currentItems = useItemStore.getState().items;
     set({ loading: currentItems.length === 0, error: null });

@@ -172,11 +172,11 @@ export default function StatsScreen() {
       <View style={[styles.chartCard, { backgroundColor: colors.white }]}>
         <Text style={[styles.chartTitle, { color: colors.gray[900] }]}>待办完成趋势</Text>
         <View style={styles.chartContainer}>
-          {trendData.data.some((v) => v > 0) ? (
+          {getTrendData.data.some((v) => v > 0) ? (
             <LineChart
               data={{
-                labels: trendData.labels,
-                datasets: [{ data: trendData.data }],
+                labels: getTrendData.labels,
+                datasets: [{ data: getTrendData.data }],
               }}
               width={SCREEN_WIDTH - 64}
               height={200}

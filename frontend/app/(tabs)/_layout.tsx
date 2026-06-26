@@ -20,9 +20,8 @@ function TabIcon({ name, color, badge, colors }: { name: string; color: string; 
 }
 
 export default function TabLayout() {
-  const { todos } = useTodoStore();
+  const pendingCount = useTodoStore((s) => s.todos.filter((t) => !t.completed).length);
   const colors = useColors();
-  const pendingCount = todos.filter((t) => !t.completed).length;
 
   return (
     <Tabs

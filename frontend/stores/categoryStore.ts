@@ -15,12 +15,14 @@ interface CategoryState {
   addCategory: (category: Omit<LifeCategory, 'id' | 'created_at'>) => Promise<void>;
   updateCategory: (id: string, updates: Partial<LifeCategory>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useCategoryStore = create<CategoryState>((set, get) => ({
   categories: [],
   loading: false,
   error: null,
+  clearError: () => set({ error: null }),
   fetchCategories: async (type, force = false) => {
     // 防止重复请求：已有数据且非强制刷新时跳过
     if (!force && get().categories.length > 0 && !get().error) return;

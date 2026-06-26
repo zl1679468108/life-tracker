@@ -1,3 +1,4 @@
+import type { LifeProfile } from "./index";
 export interface ApiResponse<T> {
   code: number | string;
   data: T;
@@ -11,18 +12,7 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
-// Items API 类型
-export interface ItemListResponse {
-  code: number | string;
-  data: LifeItem[];
-  message?: string;
-}
-
-export interface ItemResponse {
-  code: number | string;
-  data: LifeItem;
-  message?: string;
-}
+// -- Request types --
 
 export interface CreateItemRequest {
   name: string;
@@ -40,19 +30,6 @@ export interface UpdateItemRequest {
   category_id?: string;
   images?: string[];
   barcode?: string;
-}
-
-// Todos API 类型
-export interface TodoListResponse {
-  code: number | string;
-  data: LifeTodo[];
-  message?: string;
-}
-
-export interface TodoResponse {
-  code: number | string;
-  data: LifeTodo;
-  message?: string;
 }
 
 export interface CreateTodoRequest {
@@ -74,24 +51,12 @@ export interface UpdateTodoRequest {
   category_id?: string;
   images?: string[];
   completed?: boolean;
+  notification_id?: string;
 }
 
 export interface ReorderTodosRequest {
   id: string;
   sort_order: number;
-}
-
-// Categories API 类型
-export interface CategoryListResponse {
-  code: number | string;
-  data: LifeCategory[];
-  message?: string;
-}
-
-export interface CategoryResponse {
-  code: number | string;
-  data: LifeCategory;
-  message?: string;
 }
 
 export interface CreateCategoryRequest {
@@ -109,19 +74,6 @@ export interface UpdateCategoryRequest {
   parent_id?: string;
 }
 
-// Locations API 类型
-export interface LocationListResponse {
-  code: number | string;
-  data: LifeLocation[];
-  message?: string;
-}
-
-export interface LocationResponse {
-  code: number | string;
-  data: LifeLocation;
-  message?: string;
-}
-
 export interface CreateLocationRequest {
   name: string;
   icon?: string;
@@ -132,16 +84,6 @@ export interface UpdateLocationRequest {
   name?: string;
   icon?: string;
   parent_id?: string;
-}
-
-// Auth API 类型
-export interface AuthResponse {
-  code: number | string;
-  data: {
-    token: string;
-    user: LifeProfile;
-  };
-  message?: string;
 }
 
 export interface LoginRequest {
@@ -170,41 +112,39 @@ export interface OAuthRequest {
   redirectTo: string;
 }
 
-// Feedback API 类型
-export interface FeedbackResponse {
-  code: number | string;
-  data: {
-    id: string;
-    content: string;
-    contact_info?: string;
-    created_at: string;
-  };
-  message?: string;
-}
-
 export interface CreateFeedbackRequest {
   content: string;
   contact_info?: string;
 }
 
-// Upload API 类型
-export interface UploadResponse {
+// -- Response types --
+
+// Auth returns nested token+user
+export interface AuthResponse {
   code: number | string;
   data: {
-    url: string;
-    path: string;
-    size: number;
+    token: string;
+    user: LifeProfile;
   };
   message?: string;
 }
 
-export interface ReorderResponse {
-  code: number | string;
-  data: string[];
-  message?: string;
+// Upload returns parsed server response
+export interface UploadData {
+  url: string;
+  path: string;
+  size: number;
 }
 
-// Socket Events 类型
+export interface FeedbackData {
+  id: string;
+  content: string;
+  contact_info?: string;
+  created_at: string;
+}
+
+// -- Socket event types --
+
 export interface SocketItemCreated {
   id: string;
   name: string;
@@ -233,21 +173,4 @@ export interface SocketItemUpdated {
 
 export interface SocketItemDeleted {
   id: string;
-}
-
-// 错误响应类型
-export interface ErrorResponse {
-  success: false;
-  error: string;
-  code?: string;
-  details?: any;
-}
-
-// 响应联合类型
-export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
-
-interface SuccessResponse<T> {
-  success: true;
-  data: T;
-  message?: string;
 }

@@ -8,7 +8,7 @@ import { authSession } from '../lib/authSession';
 
 interface User {
   id: string;
-  email?: string;
+  email?: string | null;
 }
 
 interface AuthState {
@@ -32,11 +32,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: true,
   signIn: async (email, password) => {
     const data = await api.auth.signIn(email, password);
-    const token = data.data?.token || null;
+    if (data.code !== 200) {
+      set({ loading: false });
+      throw new Error(data.message || '登录失败');
+    }
+    const token = data.data?.token;
     await setAuthToken(token);
     resetAuthExpiredState();
     authSession.resetExpired();
-    set({ user: data.data?.user || null, loading: false });
+    set({ user: data.data?.user, loading: false });
     // 连接 socket
     if (data.data?.user) {
       socketService.connect(data.data.user.id);
@@ -44,11 +48,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   signUp: async (email, password) => {
     const data = await api.auth.signUp(email, password);
-    const token = data.data?.token || null;
+    if (data.code !== 200) {
+      set({ loading: false });
+      throw new Error(data.message || '注册失败');
+    }
+    const token = data.data?.token;
     await setAuthToken(token);
     resetAuthExpiredState();
     authSession.resetExpired();
-    set({ user: data.data?.user || null, loading: false });
+    set({ user: data.data?.user, loading: false });
     // 连接 socket
     if (data.data?.user) {
       socketService.connect(data.data.user.id);
@@ -57,7 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithOAuth: async (provider, redirectTo) => {
     // 调用后端 API 获取 OAuth URL
     const data = await api.auth.signInWithOAuth(provider, redirectTo);
-    return { url: data.url };
+    return { url: data.data?.url ?? '' };
   },
   handleOAuthCallback: async (accessToken, refreshToken) => {
     // 设置 token

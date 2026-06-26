@@ -8,7 +8,7 @@ import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, EmptyState, Chip, Skeleton } from '../../components/ui';
+import { FAB, EmptyState, Chip, PageLoadable, CachedImage } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { SafeScreen } from '../../components/SafeScreen';
 import { showAlert } from '../../lib/alert';
@@ -36,7 +36,7 @@ export default function ItemsScreen() {
     { id: 'clothes', label: '衣物' },
     { id: 'other', label: '其他' }
   ];
-  const { items, loading, fetchItems, deleteItem } = useItemStore();
+  const { items, loading, error: itemsError, fetchItems, deleteItem, clearError: clearItemsError } = useItemStore();
   const { categories: customCategories, fetchCategories } = useCategoryStore();
   const { locations: customLocations, fetchLocations } = useLocationStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,9 +160,13 @@ export default function ItemsScreen() {
               {isSelected && <MaterialCommunityIcons name="check" size={14} color={colors.white} />}
             </View>
           )}
-          <View style={[styles.itemIcon, { backgroundColor: colors.primaryLight }]}>
-            <MaterialCommunityIcons name={icon as any} size={24} color={colors.primary} />
-          </View>
+          {item.images && item.images.length > 0 ? (
+            <CachedImage uri={item.images[0]} size={52} borderRadius={14} />
+          ) : (
+            <View style={[styles.itemIcon, { backgroundColor: colors.primaryLight }]}>
+              <MaterialCommunityIcons name={icon as any} size={24} color={colors.primary} />
+            </View>
+          )}
           <View style={styles.itemDetails}>
             <Text style={[styles.itemName, { color: colors.gray[800] }]}>{item.name}</Text>
             {item.description && (
@@ -242,30 +246,21 @@ export default function ItemsScreen() {
     </View>
   );
 
-  const renderSkeleton = () => (
-    <View style={styles.skeletonList}>
-      {[1, 2, 3].map((i) => (
-        <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.white }]}>
-          <Skeleton width={52} height={52} borderRadius={14} />
-          <View style={styles.skeletonContent}>
-            <Skeleton width="60%" height={15} />
-            <Skeleton width="80%" height={12} style={{ marginTop: 8 }} />
-            <View style={styles.skeletonTags}>
-              <Skeleton width={60} height={20} borderRadius={6} />
-              <Skeleton width={70} height={20} borderRadius={6} />
-            </View>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
 
   return (
-    <SafeScreen>
+    <SafeScreen error={itemsError} onDismissError={clearItemsError}>
       <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-        {loading ? (
-          renderSkeleton()
-        ) : (
+        <PageLoadable
+          loading={loading}
+          error={itemsError}
+          empty={!loading && filtered.length === 0}
+          emptyIcon="package-variant"
+          emptyTitle="暂无物品"
+          emptyMessage="点击下方按钮添加第一个物品"
+          onEmptyAction={() => router.push('/item/create')}
+          emptyActionLabel="添加物品"
+          onRetry={fetchItems}
+        >
           <FlatList
             data={filtered}
             keyExtractor={(item) => item.id}
@@ -279,17 +274,8 @@ export default function ItemsScreen() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
             }
-            ListEmptyComponent={
-              <EmptyState
-                icon="package-variant"
-                title="暂无物品"
-                description="点击下方按钮添加第一个物品"
-                actionLabel="添加物品"
-                onAction={() => router.push('/item/create')}
-              />
-            }
           />
-        )}
+        </PageLoadable>
         {batchMode && (
           <View style={[styles.batchBar, { backgroundColor: colors.white }]}>
             <TouchableOpacity onPress={() => {

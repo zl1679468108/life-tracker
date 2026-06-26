@@ -2,14 +2,21 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../stores/themeStore';
+import { ErrorSnackbar } from './ui/ErrorSnackbar';
 
 interface SafeScreenProps {
   children: React.ReactNode;
   style?: ViewStyle;
   backgroundColor?: string;
+  error?: string | null;
+  onDismissError?: () => void;
+  errorAction?: {
+    label: string;
+    onPress: () => void;
+  };
 }
 
-export function SafeScreen({ children, style, backgroundColor }: SafeScreenProps) {
+export function SafeScreen({ children, style, backgroundColor, error, onDismissError, errorAction }: SafeScreenProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -26,6 +33,12 @@ export function SafeScreen({ children, style, backgroundColor }: SafeScreenProps
       ]}
     >
       {children}
+      <ErrorSnackbar
+        message={error ?? null}
+        visible={!!error}
+        onDismiss={onDismissError}
+        action={errorAction}
+      />
     </View>
   );
 }

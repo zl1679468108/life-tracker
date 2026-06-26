@@ -256,7 +256,7 @@ export default function SettingsScreen() {
           <Text style={[styles.exportModalTitle, { color: colors.gray[800] }]}>{t('settings.exportData')}</Text>
           <TouchableOpacity style={[styles.exportModalOption, { backgroundColor: colors.gray[50] }]} onPress={() => handleExport('json')} activeOpacity={0.7}>
             <View style={[styles.exportModalIcon, { backgroundColor: colors.success }]}>
-              <MaterialCommunityIcons name="file-json" size={22} color={colors.white} />
+              <MaterialCommunityIcons name="code-json" size={22} color={colors.white} />
             </View>
             <View style={styles.exportModalOptionText}>
               <Text style={[styles.exportModalOptionTitle, { color: colors.gray[800] }]}>JSON</Text>

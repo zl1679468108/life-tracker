@@ -17,6 +17,7 @@ interface TodoState {
   addTodo: (todo: Omit<LifeTodo, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateTodo: (id: string, updates: Partial<LifeTodo>) => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
+  clearError: () => void;
   toggleComplete: (id: string) => Promise<void>;
   reorderTodos: (todos: LifeTodo[]) => Promise<void>;
 }
@@ -25,6 +26,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   todos: [],
   loading: false,
   error: null,
+  clearError: () => set({ error: null }),
   fetchTodos: async () => {
     const currentTodos = useTodoStore.getState().todos;
     set({ loading: currentTodos.length === 0, error: null });

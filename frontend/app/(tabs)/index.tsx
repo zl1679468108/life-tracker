@@ -15,8 +15,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const currentColors = useColors();
   const { t } = useTranslation();
-  const { items, fetchItems } = useItemStore();
-  const { todos, fetchTodos, toggleComplete } = useTodoStore();
+  const { items, fetchItems, error: itemsError } = useItemStore();
+  const { todos, fetchTodos, toggleComplete, error: todosError } = useTodoStore();
   const { getUnreadCount, loadReadIds, loaded, pushTrigger } = useNotificationStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
@@ -80,7 +80,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeScreen>
+    <SafeScreen error={itemsError || todosError}>
       <ScrollView
         style={[styles.container, { backgroundColor: currentColors.gray[50] }]}
         contentContainerStyle={styles.content}

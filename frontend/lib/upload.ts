@@ -89,7 +89,8 @@ export async function uploadImages(uris: string[], userId: string): Promise<stri
     // 调用后端批量上传接口
     const result = await api.upload.batch(formData);
     
-    return result.data.urls;
+    // 批量上传返回单个 upload 数据
+  return [result.data?.url ?? ''];
   } catch (error) {
     console.error('Upload error:', error);
     throw error;

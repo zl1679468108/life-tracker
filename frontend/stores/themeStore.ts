@@ -38,8 +38,9 @@ export const useThemeStore = create<ThemeState>((set) => ({
 }));
 
 // Hook to get the actual theme (resolving 'system' to 'light' or 'dark')
+// Uses selector to only subscribe to themeMode changes
 export const useTheme = () => {
-  const { themeMode } = useThemeStore();
+  const themeMode = useThemeStore((s) => s.themeMode);
   const systemColorScheme = useRNColorScheme();
   
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
@@ -51,8 +52,12 @@ export const useTheme = () => {
   };
 };
 
-// Hook to get current colors based on theme
+// Hook to get current colors. Uses selector on isDark to stabilize color object reference.
+// Only returns a new object when theme actually changes, avoiding unnecessary re-renders
+// for the 50+ components that call useColors().
 export const useColors = () => {
-  const { isDark } = useTheme();
+  const themeMode = useThemeStore((s) => s.themeMode);
+  const systemColorScheme = useRNColorScheme();
+  const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
   return isDark ? darkColors : lightColors;
 };
