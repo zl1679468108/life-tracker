@@ -1,11 +1,11 @@
 import { getAuthToken } from './token';
 import { authSession } from './authSession';
-import type { 
-  ApiResponse, 
-  LifeItem, 
-  LifeTodo, 
-  LifeCategory, 
-  LifeLocation, 
+import type {
+  ApiResponse,
+  LifeItem,
+  LifeTodo,
+  LifeCategory,
+  LifeLocation,
   LifeProfile,
   LifeBorrowing,
   LifeShare,
@@ -43,6 +43,10 @@ import type {
   CalendarMonthData,
   WidgetTodoData,
   WidgetStatsData,
+  Message,
+  Conversation,
+  CreateMessageRequest,
+  CreateConversationRequest,
 } from '../types';
 import { withRetry } from './retry';
 
@@ -538,6 +542,54 @@ export const api = {
     },
     stats: async (): Promise<ApiResponse<WidgetStatsData>> => {
       return request<WidgetStatsData>('/api/widgets/stats');
+    },
+  },
+
+  // v1.1.0: 消息模块
+  messages: {
+    conversations: async (): Promise<ApiResponse<Conversation[]>> => {
+      return request<Conversation[]>('/api/messages/conversations');
+    },
+
+    getMessages: async (conversationId: string, limit?: number, before?: string): Promise<ApiResponse<Message[]>> => {
+      const params = new URLSearchParams();
+      if (limit) params.set('limit', String(limit));
+      if (before) params.set('before', before);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      return request<Message[]>(`/api/messages/conversations/${conversationId}${query}`);
+    },
+
+    createConversation: async (data: CreateConversationRequest): Promise<ApiResponse<Conversation>> => {
+      return request<Conversation>('/api/messages/conversations', {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    createMessage: async (conversationId: string, data: CreateMessageRequest): Promise<ApiResponse<Message>> => {
+      return request<Message>(`/api/messages/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    markAsRead: async (conversationId: string): Promise<ApiResponse<{ success: boolean }>> => {
+      return request<{ success: boolean }>(`/api/messages/conversations/${conversationId}/read`, {
+        method: 'PATCH',
+      });
+    },
+
+    // v1.2.0: 搜索用户
+    searchUsers: async (q: string): Promise<ApiResponse<{ id: string; email: string; display_name: string; avatar_url: string | null }[]>> => {
+      return request<{ id: string; email: string; display_name: string; avatar_url: string | null }[]>(`/api/messages/users/search?q=${encodeURIComponent(q)}`);
+    },
+
+    // v1.2.0: 手动创建对话
+    createManualConversation: async (data: { participant_ids: string[]; initial_message?: { type: string; content?: string; card_data?: any } }): Promise<ApiResponse<{ conversation: Conversation; message: Message | null }>> => {
+      return request<{ conversation: Conversation; message: Message | null }>('/api/messages/conversations/manual', {
+        method: 'POST',
+        body: data,
+      });
     },
   },
 };

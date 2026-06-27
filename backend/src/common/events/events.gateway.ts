@@ -113,4 +113,16 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitReminderFired(userId: string, todo: any) {
     this.server.to(`user:${userId}`).emit('reminders:fired', todo);
   }
+
+  // ========== Messages 事件 (v1.1.0) ==========
+
+  emitMessageCreated(conversationId: string, message: any) {
+    // 对话中双方都收到新消息通知
+    this.server.to(`conversation:${conversationId}`).emit('messages:new', message);
+  }
+
+  emitConversationUpdated(userId: string, conversation: any) {
+    // 更新对话列表（用于前端刷新列表）
+    this.server.to(`user:${userId}`).emit('conversations:updated', conversation);
+  }
 }

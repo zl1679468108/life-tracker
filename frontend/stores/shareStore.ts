@@ -76,6 +76,7 @@ export const useShareStore = create<ShareState>((set) => ({
           resourceShares: [res.data!, ...state.resourceShares],
           loading: false,
         }));
+        return res.data;
       } else {
         set({ error: res.message || '创建共享失败', loading: false });
       }

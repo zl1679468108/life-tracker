@@ -116,6 +116,16 @@ class SocketService {
     this.on('reminders:fired', callback);
   }
 
+  // 监听新消息（v1.1.0）
+  onMessageCreated(callback: (message: any) => void) {
+    this.on('messages:new', callback);
+  }
+
+  // 监听对话更新（v1.1.0）
+  onConversationUpdated(callback: (conversation: any) => void) {
+    this.on('conversations:updated', callback);
+  }
+
   // 移除所有监听器
   removeAllListeners() {
     this.socket?.removeAllListeners();

@@ -24,7 +24,7 @@ interface SettingsItemProps {
 
 function SettingsItem({ icon, iconGradient, title, description, onPress, showArrow = true }: SettingsItemProps) {
   const colors = useColors();
-  
+
   return (
     <TouchableOpacity style={styles.settingsItem} onPress={onPress} activeOpacity={0.7}>
       <LinearGradient
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
 
   const handleSync = useCallback(async () => {
     if (status === 'syncing') return;
-    
+
     try {
       await syncAll();
       showToast(t('settings.syncSuccess'), 'success');
@@ -198,63 +198,14 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('categories.title')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.preferences')}</Text>
         <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
           <SettingsItem
-            icon="tag"
-            iconGradient={[...colors.primaryGradient]}
-            title={t('categories.title')}
-            description={`${t('categories.itemCategories')} / ${t('categories.todoCategories')}`}
-            onPress={() => router.push('/settings/category-manage')}
-          />
-          <SettingsItem
-            icon="map-marker"
-            iconGradient={[colors.secondary, colors.secondaryLight]}
-            title={t('locations.title')}
-            description={t('locations.custom')}
-            onPress={() => router.push('/settings/location-manage')}
-          />
-          <SettingsItem
-            icon="arrow-right-bold-circle"
-            iconGradient={[colors.warning, colors.warningLight]}
-            title="借用管理"
-            description="物品借出/归还记录"
-            onPress={() => router.push('/settings/borrowings')}
-          />
-          <SettingsItem
-            icon="account-multiple-plus"
-            iconGradient={[colors.secondary, '#9B7FFC']}
-            title="共享管理"
-            description="与他人共享物品和待办"
-            onPress={() => router.push('/settings/shares')}
-          />
-          <SettingsItem
-            icon="file-document-outline"
-            iconGradient={[colors.primary, colors.primaryHover]}
-            title="模板管理"
-            description="快速复用常用配置"
-            onPress={() => router.push('/settings/templates')}
-          />
-          <SettingsItem
-            icon="cash-multiple"
-            iconGradient={[colors.success, '#059669']}
-            title="资产总览"
-            description="物品价值追踪与统计"
-            onPress={() => router.push('/settings/assets')}
-          />
-          <SettingsItem
-            icon="calendar-month"
-            iconGradient={[colors.secondary, '#6D4AFF']}
-            title="日历视图"
-            description="待办和事件日历"
-            onPress={() => router.push('/settings/calendar')}
-          />
-          <SettingsItem
-            icon="cellphone-text"
-            iconGradient={['#8B5CF6', '#A78BFA']}
-            title="桌面小组件"
-            description="PWA 安装与小组件"
-            onPress={() => router.push('/settings/widgets')}
+            icon="lock"
+            iconGradient={[colors.primary, colors.primaryLight]}
+            title={t('settings.changePassword')}
+            description={t('settings.changePasswordDesc')}
+            onPress={() => router.push('/settings/change-password')}
           />
         </View>
       </View>
@@ -266,7 +217,7 @@ export default function SettingsScreen() {
             icon="information"
             iconGradient={[colors.gray[400], colors.gray[500]]}
             title={t('settings.version')}
-            description="v1.0.0"
+            description="v1.2.0"
             showArrow={false}
           />
           <SettingsItem

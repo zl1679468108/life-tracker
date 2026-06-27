@@ -1,0 +1,66 @@
+import { create } from 'zustand';
+import { api } from '../lib/api';
+import type { Conversation, CreateConversationRequest } from '../types';
+
+interface ConversationState {
+  conversations: Conversation[];
+  loading: boolean;
+  error: string | null;
+  fetchConversations: () => Promise<void>;
+  createConversation: (data: CreateConversationRequest) => Promise<Conversation | null>;
+  // Socket 回调：对话更新时替换到列表头部
+  updateRemoteConversation: (conversation: Conversation) => void;
+}
+
+export const useConversationStore = create<ConversationState>((set, get) => ({
+  conversations: [],
+  loading: false,
+  error: null,
+
+  fetchConversations: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await api.messages.conversations();
+      if (res.data) {
+        set({ conversations: res.data, loading: false });
+      } else {
+        set({ error: res.message || '获取对话列表失败', loading: false });
+      }
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+
+  createConversation: async (data: CreateConversationRequest) => {
+    try {
+      const res = await api.messages.createConversation(data);
+      if (res.data) {
+        set((state) => ({
+          conversations: [res.data as Conversation, ...state.conversations],
+        }));
+        return res.data as Conversation;
+      }
+      return null;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      return null;
+    }
+  },
+
+  // 收到远程对话更新时，将对话移到列表头部并更新最后消息
+  updateRemoteConversation: (conversation: Conversation) => {
+    set((state) => {
+      const existing = state.conversations.findIndex((c) => c.id === conversation.id);
+      if (existing === -1) {
+        // 新对话，前置插入
+        return { conversations: [conversation, ...state.conversations] };
+      }
+      // 更新现有对话
+      const updated = [...state.conversations];
+      updated[existing] = conversation;
+      // 移到最前面
+      const sorted = [conversation, ...updated.filter((_, i) => i !== existing)];
+      return { conversations: sorted };
+    });
+  },
+}));

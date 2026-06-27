@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useLayoutEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTodoStore } from '../../stores/todoStore';
+import { useShareStore } from '../../stores/shareStore';
+import { useAuthStore } from '../../stores/authStore';
 import { LifeTodo } from '../../types';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Button, Checkbox, Loading } from '../../components/ui';
+import { Button, Checkbox, Loading, ShareDialog } from '../../components/ui';
 import { DeleteButton } from '../../components/DeleteButton';
 import { ImagePreview } from '../../components/ui/ImagePreview';
 import { showAlert } from '../../lib/alert';
@@ -18,10 +20,13 @@ export default function TodoDetailScreen() {
   const navigation = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { todos, fetchTodos, toggleComplete, deleteTodo, loading } = useTodoStore();
+  const { resourceShares, fetchResourceShares, createShare, updateShare, deleteShare } = useShareStore();
+  const { user } = useAuthStore();
   const colors = useColors();
   const [todo, setTodo] = useState<LifeTodo | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [shareDialogVisible, setShareDialogVisible] = useState(false);
 
   useEffect(() => {
     fetchTodos();
@@ -30,6 +35,7 @@ export default function TodoDetailScreen() {
   useEffect(() => {
     if (todos.length > 0 && id) {
       setTodo(todos.find((t) => t.id === id) || null);
+      fetchResourceShares('todo', id);
     }
   }, [todos, id]);
 
@@ -55,12 +61,49 @@ export default function TodoDetailScreen() {
     });
   };
 
+  const handleOpenShareDialog = () => {
+    if (!todo || !id) return;
+    fetchResourceShares('todo', id);
+    setShareDialogVisible(true);
+  };
+
+  const handleCreateShare = async (email: string, permission: 'view' | 'edit') => {
+    if (!id || !user) return;
+    try {
+      const res = await createShare({
+        shared_with_email: email,
+        resource_type: 'todo',
+        resource_id: id,
+        permission,
+      });
+      if (res?.conversation_id) {
+        router.push(`/message/${res.conversation_id}`);
+      }
+      await fetchResourceShares('todo', id);
+    } catch (e) {
+      // error handled in store
+    }
+  };
+
+  const handleUpdateSharePermission = async (shareId: string, permission: 'view' | 'edit') => {
+    await updateShare(shareId, { permission });
+    if (id) await fetchResourceShares('todo', id);
+  };
+
+  const handleDeleteShare = async (shareId: string) => {
+    await deleteShare(shareId);
+    if (id) await fetchResourceShares('todo', id);
+  };
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TouchableOpacity onPress={handleShare} style={{ padding: 8 }}>
             <MaterialCommunityIcons name="share-variant" size={22} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleOpenShareDialog} style={[styles.headerBtn, { backgroundColor: colors.secondaryLight }]}>
+            <MaterialCommunityIcons name="account-multiple-plus" size={20} color={colors.secondary} />
           </TouchableOpacity>
           <Button
             title="编辑"
@@ -190,6 +233,42 @@ export default function TodoDetailScreen() {
 
       {/* Actions */}
       <DeleteButton label="删除待办" onPress={handleDelete} />
+
+      {/* 共享状态提示 */}
+      {resourceShares.length > 0 && (
+        <TouchableOpacity
+          style={[styles.infoCard, { backgroundColor: colors.secondaryLight, borderLeftWidth: 3, borderLeftColor: colors.secondary }]}
+          onPress={handleOpenShareDialog}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <MaterialCommunityIcons name="account-multiple-check" size={20} color={colors.secondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.semiBold, color: colors.gray[800] }]}>
+                已共享给 {resourceShares.length} 人
+              </Text>
+              <Text style={[{ fontSize: fontSize.sm, color: colors.gray[500], marginTop: 2 }]}>
+                {resourceShares.map(s => s.shared_with_name).join('、')}
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[400]} />
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {id && (
+        <ShareDialog
+          visible={shareDialogVisible}
+          onClose={() => setShareDialogVisible(false)}
+          resourceType="todo"
+          resourceId={id}
+          shares={resourceShares}
+          loading={loading}
+          onShare={handleCreateShare}
+          onUpdatePermission={handleUpdateSharePermission}
+          onDeleteShare={handleDeleteShare}
+          onShareSuccess={() => setShareDialogVisible(false)}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -340,5 +419,12 @@ const styles = StyleSheet.create({
   timeDivider: {
     width: 1,
     height: 24,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

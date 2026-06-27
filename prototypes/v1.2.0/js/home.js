@@ -1,4 +1,4 @@
-// home.js — 首页交互逻辑
+// home.js — v1.2.1 Premium
 
 const HomePage = {
   init() {
@@ -17,15 +17,16 @@ const HomePage = {
   renderQuickActions() {
     const actions = document.getElementById('quick-actions');
     const items = [
-      { icon: '📦', cls: 'orange', label: '添加物品' },
-      { icon: '✅', cls: 'purple', label: '添加待办' },
-      { icon: '📊', cls: 'green', label: '数据统计' },
-      { icon: '🔔', cls: 'blue', label: '通知中心' },
+      { icon: '📦', title: '添加物品', desc: '记录你的物品', cls: 'primary', action: 'addItem' },
+      { icon: '✅', title: '添加待办', desc: '管理你的任务', cls: 'success', action: 'addTodo' },
     ];
     actions.innerHTML = items.map(a => `
-      <div class="action-item" data-action="${a.label}">
+      <div class="action-item" data-action="${a.action}">
         <div class="action-icon ${a.cls}">${a.icon}</div>
-        <span>${a.label}</span>
+        <div class="action-text">
+          <div class="action-title">${a.title}</div>
+          <div class="action-desc">${a.desc}</div>
+        </div>
       </div>
     `).join('');
   },
@@ -54,23 +55,15 @@ const HomePage = {
   },
 
   bindEvents() {
-    // 快捷操作点击
     document.getElementById('quick-actions').addEventListener('click', (e) => {
       const actionItem = e.target.closest('.action-item');
       if (!actionItem) return;
       const action = actionItem.dataset.action;
-      if (action === '添加物品' || action === '添加待办') {
+      if (action === 'addItem' || action === 'addTodo') {
         App.switchTab('workbench');
-        App.showToast(`已切换到工作台 — ${action}`);
-      } else if (action === '数据统计') {
-        App.showToast('数据统计页面开发中');
-      } else if (action === '通知中心') {
-        App.switchTab('settings');
-        App.showToast('通知中心在设置页');
       }
     });
 
-    // 最近待办勾选
     document.getElementById('recent-todos').addEventListener('click', (e) => {
       const check = e.target.closest('[data-check]');
       if (check) {
@@ -80,15 +73,10 @@ const HomePage = {
           todo.completed = !todo.completed;
           this.renderRecentTodos();
           App.showToast(todo.completed ? '已标记完成 ✓' : '已取消完成');
-          if (todo.completed) {
-            check.classList.add('shake');
-            setTimeout(() => check.classList.remove('shake'), 800);
-          }
         }
       }
     });
 
-    // 铃铛抖动
     document.getElementById('bell-btn').addEventListener('click', () => {
       App.shakeBell();
       App.showToast(`你有 ${this.getUnreadCount()} 条未读通知`);

@@ -2,11 +2,13 @@ import { Injectable, Inject, InternalServerErrorException, NotFoundException, Ba
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { MessagesService } from '../messages/messages.service';
 
 @Injectable()
 export class SharesService {
   constructor(
     @Inject(SUPABASE_CLIENT) private supabase: SupabaseClient,
+    private readonly messagesService: MessagesService,
   ) {}
 
   /**
@@ -153,7 +155,7 @@ export class SharesService {
   }
 
   /**
-   * 创建共享关系
+   * 创建共享关系，同时自动创建对话
    */
   async create(data: {
     owner_id: string;
@@ -166,7 +168,7 @@ export class SharesService {
     const table = data.resource_type === 'item' ? 'life_items' : 'life_todos';
     const { data: resource } = await this.supabase
       .from(table)
-      .select('user_id')
+      .select('user_id, name, title')
       .eq('id', data.resource_id)
       .single();
 
@@ -179,9 +181,21 @@ export class SharesService {
       throw new BadRequestException('不能共享给自己');
     }
 
+    // 获取资源名称
+    const resourceName = data.resource_type === 'item'
+      ? (resource as any).name || '未知物品'
+      : (resource as any).title || '未知待办';
+
+    // 1. 创建 share 记录
     const { data: share, error } = await this.supabase
       .from('life_shares')
-      .insert(data)
+      .insert({
+        owner_id: data.owner_id,
+        shared_with_id: data.shared_with_id,
+        resource_type: data.resource_type,
+        resource_id: data.resource_id,
+        permission: data.permission || 'view',
+      })
       .select()
       .single();
 
@@ -192,7 +206,33 @@ export class SharesService {
       throw new InternalServerErrorException(error.message);
     }
 
-    return convertTimesToBeijing(share);
+    // 2. 自动创建对话 + 卡片消息
+    let conversation = null;
+    try {
+      const result = await this.messagesService.createFromShare(
+        data.owner_id,
+        data.shared_with_id,
+        data.resource_type,
+        data.resource_id,
+        resourceName,
+      );
+      conversation = result.conversation;
+
+      // 3. 将 conversation_id 写入 share 记录
+      await this.supabase
+        .from('life_shares')
+        .update({ conversation_id: conversation.id })
+        .eq('id', share.id);
+    } catch (err) {
+      // 对话创建失败不影响 share 创建，记录日志即可
+      console.error('Failed to create conversation for share:', err);
+    }
+
+    const enrichedShare = convertTimesToBeijing(share);
+    return {
+      ...enrichedShare,
+      conversation_id: conversation?.id || null,
+    };
   }
 
   /**

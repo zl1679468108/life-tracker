@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#FF6B35">
-  <title>LifeTracker v1.2.0</title>
+  <title>LifeTracker v1.2.1 Premium</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/tabs.css">
   <link rel="stylesheet" href="css/home.css">
@@ -14,19 +14,18 @@
 </head>
 <body>
   <div class="app-shell">
-    <!-- 页面容器 -->
     <div class="page-container" id="page-container">
 
       <!-- ==================== 首页 ==================== -->
       <div class="page active" id="page-home">
-        <!-- 问候语 + 通知 -->
+        <!-- 问候语 -->
         <div class="greeting-section">
           <div class="greeting-text">
             <h1 id="greeting-text">早上好</h1>
             <p>今天也要加油哦</p>
           </div>
           <button class="notification-btn" id="bell-btn" aria-label="通知">
-            🔔
+            <span style="font-size:18px">🔔</span>
             <span class="dot" id="notif-badge" style="display:none"></span>
           </button>
         </div>
@@ -40,20 +39,17 @@
           </div>
         </div>
 
-        <!-- 统计卡片 -->
+        <!-- 统计卡片 — 精致化 -->
         <div class="stats-row">
-          <div class="stat-card primary">
-            <div class="stat-icon">📦</div>
+          <div class="stat-card primary" onclick="App.switchTab('workbench'); setTimeout(()=>{const c=document.querySelector('[data-sheet=item-list]');if(c)c.click()},100)">
             <div class="stat-number" id="stat-items">0</div>
             <div class="stat-label">物品</div>
           </div>
-          <div class="stat-card secondary">
-            <div class="stat-icon">📋</div>
+          <div class="stat-card secondary" onclick="App.switchTab('workbench'); setTimeout(()=>{const c=document.querySelector('[data-sheet=todo-list]');if(c)c.click()},100)">
             <div class="stat-number" id="stat-todos">0</div>
             <div class="stat-label">待完成</div>
           </div>
           <div class="stat-card success">
-            <div class="stat-icon">✅</div>
             <div class="stat-number" id="stat-completed">0</div>
             <div class="stat-label">已完成</div>
           </div>
@@ -78,51 +74,24 @@
         <div class="page-header">
           <h2>工作台</h2>
         </div>
-        <div style="padding: 0 var(--space-xl)">
-          <!-- 分段控制器 -->
-          <div class="segment-control" id="seg-controls">
-            <button class="segment-item active" data-view="items">物品</button>
-            <button class="segment-item" data-view="todos">待办</button>
-          </div>
-
-          <!-- 物品视图 -->
-          <div class="item-view active" id="item-view">
-            <!-- 搜索 + 排序 -->
-            <div class="toolbar">
-              <div class="search-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="wb-search" placeholder="搜索物品..." style="padding-left:36px">
-              </div>
-              <button class="sort-btn" id="sort-btn" aria-label="排序">⇅</button>
-            </div>
-            <!-- 分类 Chips -->
-            <div class="chips-row" id="category-chips"></div>
-            <!-- 物品列表 -->
-            <div id="item-list"></div>
-          </div>
-
-          <!-- 待办视图 -->
-          <div class="todo-view" id="todo-view">
-            <!-- 筛选 Tabs -->
-            <div class="segment-control" id="todo-tabs" style="margin-bottom:var(--space-md)"></div>
-            <!-- 待办列表 -->
-            <div id="todo-list"></div>
-          </div>
-        </div>
-
-        <!-- 功能卡片矩阵 -->
-        <div class="section-label">功能入口</div>
-        <div class="cards-grid" id="feature-cards"></div>
-
-        <!-- FAB -->
-        <button class="fab" id="fab" aria-label="添加">+</button>
+        <div id="workbench-content"></div>
       </div>
+
+      <!-- 二级页面容器 -->
+      <div class="sheet-page" id="sheet-page"></div>
 
       <!-- ==================== 消息 ==================== -->
       <div class="page" id="page-messages">
         <div class="page-header">
           <h2>消息</h2>
         </div>
+
+        <!-- 常联系好友 -->
+        <div class="frequent-row">
+          <div class="frequent-label">常联系</div>
+          <div class="frequent-scroll" id="frequent-friends"></div>
+        </div>
+
         <div class="conv-list" id="conv-list"></div>
 
         <!-- FAB -->
@@ -133,6 +102,7 @@
       <div class="detail-page" id="detail-page">
         <div class="detail-header">
           <button class="back-btn" id="back-btn" aria-label="返回">←</button>
+          <div class="conv-avatar-inner" id="detail-avatar" style="background:var(--primary-gradient);color:white;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;"></div>
           <div class="detail-header-info">
             <div class="detail-header-name" id="detail-name"></div>
             <div class="detail-header-status" id="detail-status">在线</div>
@@ -154,7 +124,7 @@
 
         <!-- 个人信息卡片 -->
         <div class="settings-profile">
-          <div class="avatar avatar-lg">👤</div>
+          <div class="avatar avatar-lg" id="profile-avatar">👤</div>
           <div class="settings-profile-info">
             <div class="settings-profile-name" id="profile-name">赵龙</div>
             <div class="settings-profile-email" id="profile-email">zhaolong@example.com</div>
@@ -172,7 +142,7 @@
         <!-- 版本 -->
         <div class="version-info">
           <div class="app-name">LifeTracker</div>
-          <div id="version-num">v1.2.0-draft</div>
+          <div id="version-num">v1.2.1-premium</div>
         </div>
       </div>
     </div>
@@ -180,25 +150,33 @@
     <!-- ==================== 底部 Tab 导航 ==================== -->
     <nav class="tab-bar">
       <button class="tab-item active" data-page="home">
-        <span class="tab-icon">🏠</span>
+        <span class="tab-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </span>
         <span class="tab-label">首页</span>
       </button>
       <button class="tab-item" data-page="workbench">
-        <span class="tab-icon">🛠️</span>
+        <span class="tab-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </span>
         <span class="tab-label">工作台</span>
       </button>
       <button class="tab-item" data-page="messages">
-        <span class="tab-icon">💬</span>
+        <span class="tab-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
         <span class="tab-label">消息</span>
         <span class="tab-badge" id="msg-badge" style="display:none"></span>
       </button>
       <button class="tab-item" data-page="settings">
-        <span class="tab-icon">👤</span>
+        <span class="tab-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
         <span class="tab-label">我的</span>
       </button>
     </nav>
 
-    <!-- ==================== 排序弹窗 ==================== -->
+    <!-- 排序弹窗 -->
     <div class="modal-overlay" id="sort-modal">
       <div class="modal-sheet">
         <h3 style="font-size:var(--font-xl);font-weight:700;margin-bottom:var(--space-lg)">排序方式</h3>
@@ -209,32 +187,20 @@
       </div>
     </div>
 
-    <!-- ==================== 创建表单弹窗 ==================== -->
-    <div class="modal-overlay" id="create-modal">
-      <div class="modal-sheet">
-        <h3 style="font-size:var(--font-xl);font-weight:700;margin-bottom:var(--space-lg)" id="create-title">新建物品</h3>
-        <form id="create-form"></form>
-      </div>
-    </div>
-
-    <!-- ==================== 新建对话弹窗 ==================== -->
+    <!-- 新建对话弹窗 -->
     <div class="modal-overlay" id="new-conv-modal">
-      <div class="modal-sheet">
+      <div class="modal-sheet" style="max-height:85vh">
         <div class="new-conv-panel" id="new-conv-body"></div>
       </div>
     </div>
   </div>
 
-  <!-- Mock Data (全局变量, 不用 ES module) -->
   <script src="data/mock.js"></script>
-  <!-- App Core -->
   <script src="js/app.js"></script>
-  <!-- Page Modules -->
   <script src="js/home.js"></script>
   <script src="js/workbench.js"></script>
   <script src="js/messages.js"></script>
   <script src="js/settings.js"></script>
-  <!-- Init -->
   <script>
     document.addEventListener('DOMContentLoaded', () => App.init());
   </script>

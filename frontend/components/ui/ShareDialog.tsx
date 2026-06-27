@@ -16,6 +16,7 @@ interface ShareDialogProps {
   onShare: (email: string, permission: 'view' | 'edit') => Promise<void>;
   onUpdatePermission: (shareId: string, permission: 'view' | 'edit') => Promise<void>;
   onDeleteShare: (shareId: string) => Promise<void>;
+  onShareSuccess?: () => void; // 分享成功回调（可选，用于关闭对话框等）
 }
 
 export function ShareDialog({
@@ -28,6 +29,7 @@ export function ShareDialog({
   onShare,
   onUpdatePermission,
   onDeleteShare,
+  onShareSuccess,
 }: ShareDialogProps) {
   const colors = useColors();
   const [email, setEmail] = useState('');
@@ -41,6 +43,7 @@ export function ShareDialog({
       await onShare(email.trim(), permission);
       setEmail('');
       setPermission('view');
+      onShareSuccess?.();
     } catch (e) {
       // error handled in store
     }

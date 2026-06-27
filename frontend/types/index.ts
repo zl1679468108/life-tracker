@@ -417,3 +417,57 @@ export interface WidgetStatsData {
   todos_pending: number;
   todos_completed: number;
 }
+
+// v1.1.0: 消息模块类型
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  type: 'item' | 'todo' | 'text' | 'system';
+  resource_type?: 'item' | 'todo';
+  resource_id?: string;
+  content?: string;
+  card_data?: Record<string, any>;
+  created_at: string;
+  sender?: {
+    display_name: string;
+    avatar_url: string | null;
+  };
+}
+
+export interface Conversation {
+  id: string;
+  participant_ids: string[];
+  last_message_type?: string;
+  last_message_content?: string;
+  last_message_at?: string;
+  created_at: string;
+  updated_at: string;
+  other_user?: {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+  last_message?: {
+    type: string;
+    content?: string;
+    card_data?: Record<string, any>;
+    created_at: string;
+  };
+  unread_count?: number;
+}
+
+export interface CreateMessageRequest {
+  type: string;
+  resource_type?: string;
+  resource_id?: string;
+  content?: string;
+  card_data?: Record<string, any>;
+}
+
+export interface CreateConversationRequest {
+  participant_ids: string[];
+  last_message_type?: string;
+  last_message_content?: string;
+  last_message_at?: string;
+}

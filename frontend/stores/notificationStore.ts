@@ -15,6 +15,8 @@ export interface Notification {
   title: string;
   desc: string;
   time: string;
+  link?: string; // 深度链接路径（v1.1.0）
+  conversation_id?: string; // 关联的对话 ID（v1.1.0）
 }
 
 interface NotificationState {
@@ -144,6 +146,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       pushTrigger: get().pushTrigger + 1,
     });
   },
+
+  /** 处理通知点击，导航到深度链接 */
+  handleNotificationTap: (notification: Notification) => {
+    if (notification.link) {
+      // 返回路由函数供外部调用
+      return notification.link;
+    }
+    return null;
+  },
 }));
 
 // 监听 todos 和 items 的变化，自动刷新通知列表
@@ -190,4 +201,20 @@ socketService.onReminderFired((todo) => {
   useNotificationStore.getState().addPushNotification(notification);
   // Web 端显示浏览器通知
   showWebNotification('待办提醒', todo.title);
+});
+
+// 监听 socket 新消息事件，自动添加通知（v1.1.0）
+socketService.onMessageCreated((message: any) => {
+  const store = useNotificationStore.getState();
+  const notification: Notification = {
+    id: `msg-${message.id || Date.now()}`,
+    icon: message.type === 'item' ? 'package-variant' : message.type === 'todo' ? 'check-circle' : 'message-text',
+    iconBg: '#7C5CFC',
+    title: '新消息',
+    desc: message.content || (message.type === 'item' ? '分享了一件物品' : message.type === 'todo' ? '分享了一条待办' : '新消息'),
+    time: '刚刚',
+    // 深度链接：点击后跳转到对话页
+    link: `/message/${message.conversation_id}`,
+  };
+  store.addPushNotification(notification);
 });

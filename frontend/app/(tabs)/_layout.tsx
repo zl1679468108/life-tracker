@@ -4,24 +4,20 @@ import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { layout, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { useTodoStore } from '../../stores/todoStore';
+import { useConversationStore } from '../../stores/conversationStore';
 
-function TabIcon({ name, color, badge, colors }: { name: string; color: string; badge?: number; colors: any }) {
+function TabIcon({ name, color }: { name: string; color: string }) {
   return (
-    <View>
-      <MaterialCommunityIcons name={name as any} size={24} color={color} />
-      {badge !== undefined && badge > 0 && (
-        <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-          <Text style={[styles.badgeText, { color: colors.white }]}>{badge > 99 ? '99+' : badge}</Text>
-        </View>
-      )}
-    </View>
+    <MaterialCommunityIcons name={name as any} size={24} color={color} />
   );
 }
 
 export default function TabLayout() {
-  const pendingCount = useTodoStore((s) => s.todos.filter((t) => !t.completed).length);
   const colors = useColors();
+  const conversations = useConversationStore((s) => s.conversations);
+
+  // 计算总未读数
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
   return (
     <Tabs
@@ -39,36 +35,39 @@ export default function TabLayout() {
         name="index"
         options={{
           title: '首页',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="home" color={color} colors={colors} />
-          ),
+          tabBarIcon: ({ color }) => <TabIcon name="home" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="items"
+        name="workbench"
         options={{
-          title: '物品',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="package-variant" color={color} colors={colors} />
-          ),
+          title: '工作台',
+          tabBarIcon: ({ color }) => <TabIcon name="grid" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="todos"
+        name="messages"
         options={{
-          title: '待办',
+          title: '消息',
           tabBarIcon: ({ color }) => (
-            <TabIcon name="check-circle" color={color} badge={pendingCount} colors={colors} />
+            <View>
+              <TabIcon name="message-text-outline" color={color} />
+              {totalUnread > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                  <Text style={[styles.badgeText, { color: colors.white }]}>
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: '设置',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="cog" color={color} colors={colors} />
-          ),
+          title: '我的',
+          tabBarIcon: ({ color }) => <TabIcon name="account" color={color} />,
         }}
       />
     </Tabs>

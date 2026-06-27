@@ -472,3 +472,110 @@ CREATE POLICY "Users can upload images" ON storage.objects
 DROP POLICY IF EXISTS "Public read images" ON storage.objects;
 CREATE POLICY "Public read images" ON storage.objects
   FOR SELECT USING (bucket_id = 'items-images');
+
+-- ============================================================
+-- 10. 对话表 (life_conversations) — v1.1.0 新增
+-- 双人对话，参与者为两个用户
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  participant_ids UUID[] NOT NULL,
+  last_message_type VARCHAR(20),
+  last_message_content TEXT,
+  last_message_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (array_length(participant_ids, 1) = 2)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_participant ON life_conversations(participant_ids);
+
+-- ============================================================
+-- 11. 消息表 (life_messages) — v1.1.0 新增
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES life_conversations(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES auth.users(id),
+  type VARCHAR(20) NOT NULL CHECK (type IN ('item', 'todo', 'text', 'system')),
+  resource_type VARCHAR(20) CHECK (resource_type IN ('item', 'todo')),
+  resource_id UUID,
+  content TEXT,
+  card_data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON life_messages(conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON life_messages(sender_id);
+
+-- ============================================================
+-- 12. shares 表新增 conversation_id 关联 — v1.1.0
+-- ============================================================
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_shares'::regclass
+    AND attname = 'conversation_id'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_shares ADD COLUMN conversation_id UUID REFERENCES life_conversations(id);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_shares_conversation ON life_shares(conversation_id);
+
+-- ============================================================
+-- 13. RLS 策略 — conversations + messages
+-- ============================================================
+
+-- conversations: 参与者可以读写
+DROP POLICY IF EXISTS "Participants can view conversations" ON life_conversations;
+CREATE POLICY "Participants can view conversations" ON life_conversations
+  FOR SELECT USING (
+    auth.uid() = ANY(participant_ids)
+  );
+
+DROP POLICY IF EXISTS "Participants can update conversations" ON life_conversations;
+CREATE POLICY "Participants can update conversations" ON life_conversations
+  FOR UPDATE USING (
+    auth.uid() = ANY(participant_ids)
+  );
+
+DROP POLICY IF EXISTS "Participants can create conversations" ON life_conversations;
+CREATE POLICY "Participants can create conversations" ON life_conversations
+  FOR INSERT WITH CHECK (
+    auth.uid() = ANY(participant_ids)
+  );
+
+-- messages: 参与者可以读写
+DROP POLICY IF EXISTS "Participants can view messages" ON life_messages;
+CREATE POLICY "Participants can view messages" ON life_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM life_conversations
+      WHERE id = life_messages.conversation_id
+        AND auth.uid() = ANY(participant_ids)
+    )
+  );
+
+DROP POLICY IF EXISTS "Participants can create messages" ON life_messages;
+CREATE POLICY "Participants can create messages" ON life_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = sender_id
+  );
+
+-- ============================================================
+-- 14. 自动更新 updated_at 触发器
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON life_conversations;
+CREATE TRIGGER update_conversations_updated_at
+  BEFORE UPDATE ON life_conversations
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();

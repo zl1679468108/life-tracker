@@ -1,46 +1,142 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  Animated,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useItemStore } from '../../stores/itemStore';
-import { useTodoStore } from '../../stores/todoStore';
-import { useNotificationStore } from '../../stores/notificationStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { ExpiryWarning } from '../../components/ui';
-import { useTranslation } from '../../lib/i18n';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
+import { useTranslation } from '../../lib/i18n';
+import { useItemStore } from '../../stores/itemStore';
+import { useNotificationStore } from '../../stores/notificationStore';
+import { useTodoStore } from '../../stores/todoStore';
+
+const screen = {
+  background: '#0F1724',
+  header: '#000000',
+  panel: '#000000',
+  text: '#FFFFFF',
+  muted: '#9CA3AF',
+  orange: '#FF8754',
+  purple: '#8B68F5',
+  green: '#32D296',
+  amber: '#FBB329',
+  iconButton: '#1F2937',
+  todoBorder: '#546277',
+  danger: '#FF6B7A',
+  dangerBg: '#461B20',
+};
+
+type Tone = 'orange' | 'purple' | 'green';
+
+const toneMap: Record<Tone, { accent: string; surface: string }> = {
+  orange: { accent: screen.orange, surface: '#351F18' },
+  purple: { accent: screen.purple, surface: '#211B3D' },
+  green: { accent: screen.green, surface: '#0D351F' },
+};
+
+function StatCard({
+  icon,
+  value,
+  label,
+  tone,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  value: number;
+  label: string;
+  tone: Tone;
+  onPress?: () => void;
+}) {
+  const colors = toneMap[tone];
+  const content = (
+    <>
+      <View style={[styles.statIcon, { backgroundColor: colors.accent }]}>
+        <MaterialCommunityIcons name={icon} size={24} color="#000000" />
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={[styles.statCard, { backgroundColor: colors.surface }]}>{content}</View>;
+  }
+
+  return (
+    <TouchableOpacity
+      style={[styles.statCard, { backgroundColor: colors.surface }]}
+      onPress={onPress}
+      activeOpacity={0.82}
+    >
+      {content}
+    </TouchableOpacity>
+  );
+}
+
+function QuickAction({
+  icon,
+  title,
+  description,
+  tone,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  title: string;
+  description: string;
+  tone: 'orange' | 'green' | 'purple';
+  onPress: () => void;
+}) {
+  const accent = toneMap[tone].accent;
+
+  return (
+    <TouchableOpacity style={styles.actionCard} onPress={onPress} activeOpacity={0.82}>
+      <View style={[styles.actionIcon, { backgroundColor: accent }]}>
+        <MaterialCommunityIcons name={icon} size={28} color="#000000" />
+      </View>
+      <Text style={styles.actionTitle}>{title}</Text>
+      <Text style={styles.actionDesc}>{description}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
-  const currentColors = useColors();
   const { t } = useTranslation();
   const { items, fetchItems, error: itemsError } = useItemStore();
   const { todos, fetchTodos, toggleComplete, error: todosError } = useTodoStore();
   const { getUnreadCount, loadReadIds, loaded, pushTrigger } = useNotificationStore();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [expiringItems, setExpiringItems] = useState<import('../../types').LifeItem[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  const pendingTodos = todos.filter((t) => !t.completed).length;
-  const completedTodos = todos.filter((t) => t.completed).length;
+  const pendingTodos = todos.filter((todo) => !todo.completed).length;
+  const completedTodos = todos.filter((todo) => todo.completed).length;
   const unreadCount = loaded ? getUnreadCount() : 0;
+  const recentTodos = [...todos]
+    .sort((a, b) => Number(a.completed) - Number(b.completed))
+    .slice(0, 3);
 
   useEffect(() => {
     fetchItems();
     fetchTodos();
     loadReadIds();
-    // 获取即将过期物品
     api.items.getExpiring(30).then((res) => {
       if (res.data) setExpiringItems(res.data);
     });
   }, []);
 
-  // 铃铛抖动动画：有未读时持续抖动，每轮之间间隔 5 秒
   useEffect(() => {
     if (loaded && unreadCount > 0) {
       shakeAnimRef.current?.stop();
@@ -54,13 +150,7 @@ export default function HomeScreen() {
         Animated.timing(shakeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
       ]);
 
-      // 抖动一轮(750ms) + 等待5秒(5000ms) = 5750ms 一个周期
-      const loopWithDelay = Animated.sequence([
-        shake,
-        Animated.delay(5000),
-      ]);
-
-      shakeAnimRef.current = Animated.loop(loopWithDelay);
+      shakeAnimRef.current = Animated.loop(Animated.sequence([shake, Animated.delay(5000)]));
       shakeAnimRef.current.start();
     } else {
       shakeAnimRef.current?.stop();
@@ -76,7 +166,6 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([fetchItems(), fetchTodos()]);
-    // 刷新即将过期物品
     const res = await api.items.getExpiring(30);
     if (res.data) setExpiringItems(res.data);
     setRefreshing(false);
@@ -89,186 +178,151 @@ export default function HomeScreen() {
     return t('home.greeting.evening');
   };
 
+  const getPriorityLabel = (priority: number) => {
+    if (priority >= 3) return t('todos.priorityHigh');
+    if (priority === 2) return t('todos.priorityNormal');
+    return t('todos.priorityLow');
+  };
+
   return (
-    <SafeScreen error={itemsError || todosError}>
+    <SafeScreen backgroundColor={screen.background} error={itemsError || todosError}>
       <ScrollView
-        style={[styles.container, { backgroundColor: currentColors.gray[50] }]}
+        style={styles.container}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[currentColors.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={screen.orange} />
         }
       >
-      <View style={[styles.header, { backgroundColor: currentColors.white }]}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.greeting, { color: currentColors.gray[800] }]}>{getGreeting()}</Text>
-          <Text style={[styles.subtitle, { color: currentColors.gray[500] }]}>{t('home.subtitle')}</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={[styles.iconBtn, { backgroundColor: currentColors.gray[100] }]} 
-            activeOpacity={0.7} 
-            onPress={() => setSearchVisible(true)}
-          >
-            <MaterialCommunityIcons name="magnify" size={22} color={currentColors.gray[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconBtn, { backgroundColor: currentColors.gray[100] }]} activeOpacity={0.7} onPress={() => router.push('/settings/notifications')}>
-            <Animated.View style={{ transform: [{ rotate }] }}>
-              <MaterialCommunityIcons name="bell-outline" size={22} color={currentColors.gray[600]} />
-            </Animated.View>
-            {unreadCount > 0 && <View style={[styles.badge, { borderColor: currentColors.white }]} />}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.statsSection}>
-        <View style={[styles.statsCard, { backgroundColor: currentColors.white }]}>
-          <View style={styles.statsRow}>
-            <TouchableOpacity
-              style={[styles.statItem, { backgroundColor: currentColors.primaryLight }]}
-              onPress={() => router.push('/(tabs)/items')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.statIconWrap, { backgroundColor: currentColors.primary }]}>
-                <MaterialCommunityIcons name="package-variant" size={22} color={currentColors.white} />
-              </View>
-              <Text style={[styles.statNumber, { color: currentColors.gray[800] }]}>{items.length}</Text>
-              <Text style={[styles.statLabel, { color: currentColors.gray[500] }]}>{t('home.stats.items')}</Text>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.iconBtn} activeOpacity={0.78} onPress={() => setSearchVisible(true)}>
+              <MaterialCommunityIcons name="magnify" size={31} color="#D5DCE7" />
             </TouchableOpacity>
-
             <TouchableOpacity
-              style={[styles.statItem, { backgroundColor: currentColors.secondaryLight }]}
-              onPress={() => router.push('/(tabs)/todos')}
-              activeOpacity={0.7}
+              style={styles.iconBtn}
+              activeOpacity={0.78}
+              onPress={() => router.push('/settings/notifications')}
             >
-              <View style={[styles.statIconWrap, { backgroundColor: currentColors.secondary }]}>
-                <MaterialCommunityIcons name="clock-outline" size={22} color={currentColors.white} />
-              </View>
-              <Text style={[styles.statNumber, { color: currentColors.gray[800] }]}>{pendingTodos}</Text>
-              <Text style={[styles.statLabel, { color: currentColors.gray[500] }]}>{t('home.stats.todos')}</Text>
+              <Animated.View style={{ transform: [{ rotate }] }}>
+                <MaterialCommunityIcons name="bell-outline" size={31} color="#D5DCE7" />
+              </Animated.View>
+              {unreadCount > 0 && <View style={styles.badge} />}
             </TouchableOpacity>
-
-            <View style={[styles.statItem, { backgroundColor: currentColors.successLight }]}>
-              <View style={[styles.statIconWrap, { backgroundColor: currentColors.success }]}>
-                <MaterialCommunityIcons name="check-circle" size={22} color={currentColors.white} />
-              </View>
-              <Text style={[styles.statNumber, { color: currentColors.gray[800] }]}>{completedTodos}</Text>
-              <Text style={[styles.statLabel, { color: currentColors.gray[500] }]}>{t('home.stats.completed')}</Text>
-            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: currentColors.gray[800] }]}>{t('home.quickActions.title')}</Text>
-        </View>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: currentColors.white }]} onPress={() => router.push('/item/create')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: currentColors.primary }]}>
-              <MaterialCommunityIcons name="plus" size={24} color={currentColors.white} />
+        <View style={styles.main}>
+          <View style={styles.statsShell}>
+            <View style={styles.statsRow}>
+              <StatCard
+                icon="package-variant"
+                value={items.length}
+                label={t('home.stats.items')}
+                tone="orange"
+                onPress={() => router.push('/item/list')}
+              />
+              <StatCard
+                icon="clock-outline"
+                value={pendingTodos}
+                label={t('home.stats.todos')}
+                tone="purple"
+                onPress={() => router.push('/todo/list')}
+              />
+              <StatCard
+                icon="check-circle"
+                value={completedTodos}
+                label={t('home.stats.completed')}
+                tone="green"
+              />
             </View>
-            <View style={styles.actionText}>
-              <Text style={[styles.actionTitle, { color: currentColors.gray[800] }]}>{t('home.quickActions.addItem')}</Text>
-              <Text style={[styles.actionDesc, { color: currentColors.gray[500] }]}>{t('home.quickActions.addItemDesc')}</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: currentColors.white }]} onPress={() => router.push('/todo/create')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: currentColors.success }]}>
-              <MaterialCommunityIcons name="plus-circle" size={24} color={currentColors.white} />
-            </View>
-            <View style={styles.actionText}>
-              <Text style={[styles.actionTitle, { color: currentColors.gray[800] }]}>{t('home.quickActions.addTodo')}</Text>
-              <Text style={[styles.actionDesc, { color: currentColors.gray[500] }]}>{t('home.quickActions.addTodoDesc')}</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: currentColors.white }]} onPress={() => router.push('/settings/stats')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: currentColors.secondary }]}>
-              <MaterialCommunityIcons name="chart-bar" size={24} color={currentColors.white} />
-            </View>
-            <View style={styles.actionText}>
-              <Text style={[styles.actionTitle, { color: currentColors.gray[800] }]}>{t('home.quickActions.stats')}</Text>
-              <Text style={[styles.actionDesc, { color: currentColors.gray[500] }]}>{t('home.quickActions.statsDesc')}</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionCard, { backgroundColor: currentColors.white }]} onPress={() => router.push('/settings/notifications')} activeOpacity={0.7}>
-            <View style={[styles.actionIcon, { backgroundColor: currentColors.secondary }]}>
-              <MaterialCommunityIcons name="bell-outline" size={24} color={currentColors.white} />
-            </View>
-            <View style={styles.actionText}>
-              <Text style={[styles.actionTitle, { color: currentColors.gray[800] }]}>{t('home.quickActions.notifications')}</Text>
-              <Text style={[styles.actionDesc, { color: currentColors.gray[500] }]}>{t('home.quickActions.notificationsDesc')}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {todos.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: currentColors.gray[800] }]}>{t('home.recentTodos')}</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/todos')}>
-              <Text style={[styles.sectionLink, { color: currentColors.primary }]}>{t('home.viewAll')}</Text>
-            </TouchableOpacity>
           </View>
-          <View style={styles.todoList}>
-            {todos.slice(0, 3).map((todo) => (
-              <TouchableOpacity
-                key={todo.id}
-                style={[styles.todoItem, { backgroundColor: currentColors.white }]}
-                onPress={() => router.push(`/todo/${todo.id}`)}
-                activeOpacity={0.7}
-              >
-                <TouchableOpacity onPress={() => toggleComplete(todo.id)}>
-                  <View style={[styles.checkbox, { borderColor: currentColors.gray[300] }, todo.completed && { backgroundColor: currentColors.success, borderColor: currentColors.success }]}>
-                    {todo.completed && (
-                      <MaterialCommunityIcons name="check" size={14} color={currentColors.white} />
-                    )}
-                  </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('home.quickActions.title')}</Text>
+            <View style={styles.actionsGrid}>
+              <QuickAction
+                icon="plus"
+                title={t('home.quickActions.addItem')}
+                description={t('home.quickActions.addItemDesc')}
+                tone="orange"
+                onPress={() => router.push('/item/create')}
+              />
+              <QuickAction
+                icon="plus-circle-outline"
+                title={t('home.quickActions.addTodo')}
+                description={t('home.quickActions.addTodoDesc')}
+                tone="green"
+                onPress={() => router.push('/todo/create')}
+              />
+              <QuickAction
+                icon="chart-bar"
+                title={t('home.quickActions.stats')}
+                description={t('home.quickActions.statsDesc')}
+                tone="purple"
+                onPress={() => router.push('/settings/stats')}
+              />
+              <QuickAction
+                icon="bell-outline"
+                title={t('home.quickActions.notifications')}
+                description={t('home.quickActions.notificationsDesc')}
+                tone="purple"
+                onPress={() => router.push('/settings/notifications')}
+              />
+            </View>
+          </View>
+
+          {recentTodos.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t('home.recentTodos')}</Text>
+                <TouchableOpacity onPress={() => router.push('/todo/list')} activeOpacity={0.75}>
+                  <Text style={styles.sectionLink}>{t('home.viewAll')}</Text>
                 </TouchableOpacity>
-                <View style={styles.todoInfo}>
-                  <Text style={[styles.todoTitle, { color: currentColors.gray[800] }, todo.completed && { color: currentColors.gray[400], textDecorationLine: 'line-through' }]}>
-                    {todo.title}
-                  </Text>
-                  {todo.description && (
-                    <Text style={[styles.todoDesc, { color: currentColors.gray[500] }]} numberOfLines={1}>
-                      {todo.description}
-                    </Text>
-                  )}
-                </View>
-                <View style={[
-                  styles.priorityBadge,
-                  todo.priority === 3 && { backgroundColor: currentColors.dangerLight },
-                  todo.priority === 2 && { backgroundColor: currentColors.warningLight },
-                  todo.priority === 1 && { backgroundColor: currentColors.successLight },
-                ]}>
-                  <Text style={[
-                    styles.priorityText,
-                    todo.priority === 3 && { color: currentColors.danger },
-                    todo.priority === 2 && { color: currentColors.warning },
-                    todo.priority === 1 && { color: currentColors.success },
-                  ]}>
-                    {todo.priority === 3 ? t('todos.priorityHigh') : todo.priority === 2 ? t('todos.priorityNormal') : t('todos.priorityLow')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
+              </View>
+              <View style={styles.todoList}>
+                {recentTodos.map((todo) => (
+                  <TouchableOpacity
+                    key={todo.id}
+                    style={styles.todoItem}
+                    onPress={() => router.push(`/todo/${todo.id}`)}
+                    activeOpacity={0.82}
+                  >
+                    <TouchableOpacity onPress={() => toggleComplete(todo.id)} activeOpacity={0.75}>
+                      <View style={[styles.checkbox, todo.completed && styles.checkboxChecked]}>
+                        {todo.completed && <MaterialCommunityIcons name="check" size={18} color="#000000" />}
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.todoInfo}>
+                      <Text style={[styles.todoTitle, todo.completed && styles.todoTitleDone]} numberOfLines={1}>
+                        {todo.title}
+                      </Text>
+                      {!!todo.description && (
+                        <Text style={styles.todoDesc} numberOfLines={1}>
+                          {todo.description}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.priorityBadge}>
+                      <Text style={styles.priorityText}>{getPriorityLabel(todo.priority)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
-      {expiringItems.length > 0 && (
-        <View style={styles.section}>
-          <ExpiryWarning
-            items={expiringItems}
-            onPressItem={(item) => router.push(`/item/${item.id}`)}
-          />
+          {expiringItems.length > 0 && (
+            <View style={styles.expirySection}>
+              <ExpiryWarning items={expiringItems} onPressItem={(item) => router.push(`/item/${item.id}`)} />
+            </View>
+          )}
         </View>
-      )}
-    </ScrollView>
-    <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
+      </ScrollView>
+      <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
     </SafeScreen>
   );
 }
@@ -276,168 +330,217 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: screen.background,
   },
   content: {
-    paddingBottom: 20,
+    paddingBottom: spacing['2xl'],
   },
   header: {
+    minHeight: 136,
+    backgroundColor: screen.header,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing['3xl'],
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['2xl'],
   },
   headerLeft: {
     flex: 1,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   greeting: {
-    fontSize: fontSize['6xl'],
-    fontWeight: fontWeight.bold,
+    color: screen.text,
+    fontSize: 30,
+    fontWeight: fontWeight.extraBold,
+    lineHeight: 36,
   },
   subtitle: {
-    fontSize: fontSize.base,
-    marginTop: 2,
+    color: '#BCC4D0',
+    fontSize: fontSize['4xl'],
+    fontWeight: fontWeight.semiBold,
+    marginTop: spacing.xs,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: screen.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badge: {
     position: 'absolute',
-    top: 8,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444', // 红色通知点，深浅模式通用
+    top: 13,
+    right: 15,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#F05252',
     borderWidth: 2,
+    borderColor: screen.iconButton,
   },
-  statsSection: {
-    padding: spacing.xl,
+  main: {
+    paddingHorizontal: spacing['3xl'],
+    paddingTop: spacing['3xl'],
   },
-  statsCard: {
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    ...shadows.sm,
+  statsShell: {
+    backgroundColor: screen.panel,
+    borderRadius: 30,
+    padding: spacing['3xl'],
+    marginBottom: 30,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.lg,
   },
-  statItem: {
+  statCard: {
     flex: 1,
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-  },
-  statIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    minHeight: 176,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
   },
-  statNumber: {
-    fontSize: fontSize['5xl'],
-    fontWeight: fontWeight.bold,
+  statIcon: {
+    width: 66,
+    height: 66,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  statValue: {
+    color: screen.text,
+    fontSize: 30,
+    lineHeight: 35,
+    fontWeight: fontWeight.extraBold,
   },
   statLabel: {
-    fontSize: fontSize.sm,
-    marginTop: 2,
+    color: '#AFB7C3',
+    fontSize: fontSize['2xl'],
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.xs,
   },
   section: {
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
+    marginBottom: 30,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.semiBold,
+    color: screen.text,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: fontWeight.extraBold,
+    marginBottom: spacing.lg,
   },
   sectionLink: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
+    color: screen.orange,
+    fontSize: fontSize['4xl'],
+    fontWeight: fontWeight.extraBold,
     padding: spacing.xs,
   },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   actionCard: {
-    width: '47%',
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    ...shadows.sm,
+    width: '47.8%',
+    minHeight: 200,
+    backgroundColor: screen.panel,
+    borderRadius: borderRadius['2xl'],
+    padding: spacing['3xl'],
+    justifyContent: 'center',
   },
   actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 72,
+    height: 72,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  actionText: {},
   actionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semiBold,
+    color: screen.text,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: fontWeight.extraBold,
   },
   actionDesc: {
-    fontSize: fontSize.sm,
-    marginTop: 2,
+    color: screen.muted,
+    fontSize: fontSize['4xl'],
+    lineHeight: 23,
+    fontWeight: fontWeight.semiBold,
+    marginTop: spacing.xs,
   },
   todoList: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   todoItem: {
+    minHeight: 104,
+    backgroundColor: screen.panel,
+    borderRadius: 24,
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.xl,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    ...shadows.sm,
+    alignItems: 'center',
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    borderWidth: 3,
+    borderColor: screen.todoBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: screen.green,
+    borderColor: screen.green,
   },
   todoInfo: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: spacing.lg,
   },
   todoTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
-    lineHeight: 20,
+    color: screen.text,
+    fontSize: 21,
+    lineHeight: 27,
+    fontWeight: fontWeight.extraBold,
+  },
+  todoTitleDone: {
+    color: screen.muted,
+    textDecorationLine: 'line-through',
   },
   todoDesc: {
-    fontSize: fontSize.sm,
-    marginTop: 4,
+    color: '#B4BCC8',
+    fontSize: fontSize['4xl'],
+    lineHeight: 23,
+    marginTop: spacing.xs,
+    fontWeight: fontWeight.medium,
   },
   priorityBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: borderRadius.sm,
+    backgroundColor: screen.dangerBg,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginLeft: spacing.md,
   },
   priorityText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semiBold,
+    color: screen.danger,
+    fontSize: fontSize.lg,
+    lineHeight: 18,
+    fontWeight: fontWeight.extraBold,
+  },
+  expirySection: {
+    marginBottom: spacing.xl,
   },
 });

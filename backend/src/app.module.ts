@@ -18,6 +18,7 @@ import { SupabaseModule } from './common/supabase/supabase.module';
 import { MailModule } from './common/mail/mail.module';
 import { EventsModule } from './common/events/events.module';
 import { ReminderModule } from './common/reminder/reminder.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ReminderModule } from './common/reminder/reminder.module';
     WidgetsModule,
     AuthModule,
     UploadModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

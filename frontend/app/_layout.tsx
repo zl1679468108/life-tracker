@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 import { PaperProvider, MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { TouchableOpacity, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, View, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { darkColors } from '../constants/theme';
 import { useAuthStore } from '../stores/authStore';
@@ -16,6 +16,7 @@ import { useTheme, useColors, useThemeStore } from '../stores/themeStore';
 import { i18n } from '../lib/i18n';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthExpiredHandler } from '../components/AuthExpiredHandler';
+import { addNotificationListeners } from '../lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -49,6 +50,35 @@ export default function RootLayout() {
         });
       });
     }
+  }, []);
+
+  // 处理推送通知点击（原生平台）
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // Web 端：监听浏览器通知点击
+      const handleClick = (event: Event) => {
+        const notification = (event as NotificationClickEvent).notification;
+        if (notification?.data?.link) {
+          router.push(notification.data.link as any);
+        }
+      };
+      // 注意：Web Notification API 的 click 事件需要通过 Service Worker 或全局监听
+      // 这里主要通过通知中心页面处理
+      return;
+    }
+
+    const cleanup = addNotificationListeners(
+      undefined, // 不处理收到通知（本地处理）
+      (notification: any) => {
+        // 尝试从 notification.data 中获取深度链接
+        const link = notification?.content?.data?.link;
+        if (link) {
+          router.push(link as any);
+        }
+      }
+    );
+
+    return cleanup;
   }, []);
 
   useEffect(() => {
@@ -121,10 +151,13 @@ export default function RootLayout() {
             <AuthExpiredHandler />
             <Stack screenOptions={{ contentStyle: { backgroundColor: colors.gray[50] } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="message/[id]" options={{ ...subPageOptions, headerTitle: '对话详情' }} />
             <Stack.Screen name="item/create" options={{ ...subPageOptions, headerTitle: '添加物品' }} />
             <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '物品详情' }} />
+            <Stack.Screen name="item/list" options={{ ...subPageOptions, headerTitle: '物品管理' }} />
             <Stack.Screen name="todo/create" options={{ ...subPageOptions, headerTitle: '添加待办' }} />
             <Stack.Screen name="todo/[id]" options={{ ...subPageOptions, headerTitle: '待办详情' }} />
+            <Stack.Screen name="todo/list" options={{ ...subPageOptions, headerTitle: '待办管理' }} />
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />

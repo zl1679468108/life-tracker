@@ -1,0 +1,72 @@
+import { create } from 'zustand';
+import { api } from '../lib/api';
+import type { Message, CreateMessageRequest } from '../types';
+
+interface MessageState {
+  currentConversationId: string | null;
+  messages: Message[];
+  loading: boolean;
+  error: string | null;
+  fetchMessages: (conversationId: string, limit?: number, before?: string) => Promise<void>;
+  sendMessage: (conversationId: string, data: CreateMessageRequest) => Promise<Message | null>;
+  setCurrentConversation: (id: string | null) => void;
+  clearMessages: () => void;
+  // Socket 回调：收到新消息时追加
+  addRemoteMessage: (message: Message) => void;
+}
+
+export const useMessageStore = create<MessageState>((set, get) => ({
+  currentConversationId: null,
+  messages: [],
+  loading: false,
+  error: null,
+
+  setCurrentConversation: (id: string | null) => {
+    set({ currentConversationId: id, messages: [] });
+  },
+
+  clearMessages: () => {
+    set({ messages: [] });
+  },
+
+  fetchMessages: async (conversationId: string, limit = 50, before?: string) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await api.messages.getMessages(conversationId, limit, before);
+      if (res.data) {
+        set({ messages: res.data, loading: false, error: null });
+      } else {
+        set({ error: res.message || '获取消息失败', loading: false });
+      }
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+
+  sendMessage: async (conversationId: string, data: CreateMessageRequest) => {
+    try {
+      const res = await api.messages.createMessage(conversationId, data);
+      if (res.data) {
+        set((state) => ({
+          messages: [...state.messages, res.data as Message],
+        }));
+        return res.data as Message;
+      }
+      return null;
+    } catch (error) {
+      set({ error: (error as Error).message });
+      return null;
+    }
+  },
+
+  // 收到远程新消息时追加到列表
+  addRemoteMessage: (message: Message) => {
+    const state = get();
+    // 只追加属于当前对话的消息
+    if (state.currentConversationId && message.conversation_id === state.currentConversationId) {
+      set((state) => ({
+        messages: [...state.messages, message],
+      }));
+    }
+  },
+}));

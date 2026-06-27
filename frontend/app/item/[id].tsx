@@ -96,13 +96,21 @@ export default function ItemDetailScreen() {
 
   const handleCreateShare = async (email: string, permission: 'view' | 'edit') => {
     if (!id || !user) return;
-    await createShare({
-      shared_with_email: email,
-      resource_type: 'item',
-      resource_id: id,
-      permission,
-    });
-    await fetchResourceShares('item', id);
+    try {
+      const res = await createShare({
+        shared_with_email: email,
+        resource_type: 'item',
+        resource_id: id,
+        permission,
+      });
+      // 分享成功后自动跳转到对话
+      if (res?.conversation_id) {
+        router.push(`/message/${res.conversation_id}`);
+      }
+      await fetchResourceShares('item', id);
+    } catch (e) {
+      // error handled in store
+    }
   };
 
   const handleUpdateSharePermission = async (shareId: string, permission: 'view' | 'edit') => {
@@ -403,6 +411,7 @@ export default function ItemDetailScreen() {
           onShare={handleCreateShare}
           onUpdatePermission={handleUpdateSharePermission}
           onDeleteShare={handleDeleteShare}
+          onShareSuccess={() => setShareDialogVisible(false)}
         />
       )}
     </ScrollView>

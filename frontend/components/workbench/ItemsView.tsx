@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, RefreshControl, TextInput, Keyboard } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, TextInput, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
@@ -8,9 +8,8 @@ import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, EmptyState, Chip, PageLoadable, CachedImage } from '../../components/ui';
-import { SwipeableRow } from '../../components/SwipeableRow';
-import { SafeScreen } from '../../components/SafeScreen';
+import { FAB, EmptyState, Chip, PageLoadable, CachedImage } from '../ui';
+import { SwipeableRow } from '../SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
 
@@ -23,22 +22,40 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export default function ItemsScreen() {
+export function WorkbenchItemsView() {
   const router = useRouter();
   const colors = useColors();
   const { t } = useTranslation();
   const ALL_CATEGORY = 'ALL';
-  const categoryFilters = [
-    { id: ALL_CATEGORY, label: t('common.all') },
+
+  const { items, loading, error: itemsError, fetchItems, deleteItem, clearError: clearItemsError } = useItemStore();
+  const { categories: customCategories, fetchCategories } = useCategoryStore();
+  const { locations: customLocations, fetchLocations } = useLocationStore();
+
+  // 动态构建分类筛选列表：预设分类 + 用户自定义分类
+  const presetCategories = [
     { id: 'electronics', label: '电子产品' },
     { id: 'books', label: '书籍' },
     { id: 'daily', label: '日用品' },
     { id: 'clothes', label: '衣物' },
-    { id: 'other', label: '其他' }
+    { id: 'other', label: '其他' },
   ];
-  const { items, loading, error: itemsError, fetchItems, deleteItem, clearError: clearItemsError } = useItemStore();
-  const { categories: customCategories, fetchCategories } = useCategoryStore();
-  const { locations: customLocations, fetchLocations } = useLocationStore();
+
+  const categoryFilters = useMemo(() => {
+    const result: Array<{ id: string; label: string }> = [{ id: ALL_CATEGORY, label: t('common.all') }];
+    // 添加预设分类
+    presetCategories.forEach((pc) => result.push(pc));
+    // 添加用户自定义分类（去重，排除与预设同名的）
+    const customCats = customCategories.filter((c) => c.type === 'item');
+    const existingLabels = new Set(result.map((f) => f.label));
+    customCats.forEach((c) => {
+      if (!existingLabels.has(c.name)) {
+        result.push({ id: c.id, label: c.name });
+      }
+    });
+    return result;
+  }, [customCategories, t]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,10 +73,7 @@ export default function ItemsScreen() {
   ];
 
   useEffect(() => {
-    fetchItems().then(() => {
-      // 默认选中全部（如果这是用户的需求，即进入页面即全选）
-      // setSelectedIds(new Set(items.map(i => i.id)));
-    });
+    fetchItems();
     fetchCategories('item');
     fetchLocations();
   }, []);
@@ -91,11 +105,7 @@ export default function ItemsScreen() {
   const filtered = items.filter((i) => {
     const matchesSearch = i.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
       i.description?.toLowerCase().includes(debouncedSearch.toLowerCase());
-    
-    // 如果选中“全部”，则匹配所有；否则按分类名称匹配（目前代码逻辑是按分类名，后续可优化为按 ID）
-    const selectedFilter = categoryFilters.find(f => f.id === selectedCategory);
-    const matchesCategory = selectedCategory === ALL_CATEGORY || getCategoryName(i.category_id) === selectedFilter?.label;
-    
+    const matchesCategory = selectedCategory === ALL_CATEGORY || i.category_id === selectedCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
@@ -104,14 +114,10 @@ export default function ItemsScreen() {
   });
 
   const handleDeleteItem = (item: LifeItem) => {
-    showAlert(
-      '确认删除',
-      `删除物品"${item.name}"？此操作不可撤销`,
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '删除', style: 'destructive', onPress: () => deleteItem(item.id) },
-      ]
-    );
+    showAlert('确认删除', `删除物品"${item.name}"？此操作不可撤销`, [
+      { text: '取消', style: 'cancel' },
+      { text: '删除', style: 'destructive', onPress: () => deleteItem(item.id) },
+    ]);
   };
 
   const toggleSelectItem = (id: string) => {
@@ -132,7 +138,7 @@ export default function ItemsScreen() {
           for (const id of selectedIds) await deleteItem(id);
           setSelectedIds(new Set());
           setBatchMode(false);
-        }
+        },
       },
     ]);
   };
@@ -146,17 +152,13 @@ export default function ItemsScreen() {
           style={[
             styles.itemCard,
             { backgroundColor: colors.white },
-            batchMode && isSelected && { borderColor: colors.primary, borderWidth: 2 }
+            batchMode && isSelected && { borderColor: colors.primary, borderWidth: 2 },
           ]}
-          onPress={() => batchMode ? toggleSelectItem(item.id) : router.push(`/item/${item.id}`)}
+          onPress={() => (batchMode ? toggleSelectItem(item.id) : router.push(`/item/${item.id}`))}
           activeOpacity={0.98}
         >
           {batchMode && (
-            <View style={[
-              styles.checkbox,
-              { borderColor: colors.gray[300] },
-              isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
-            ]}>
+            <View style={[styles.checkbox, { borderColor: colors.gray[300] }, isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
               {isSelected && <MaterialCommunityIcons name="check" size={14} color={colors.white} />}
             </View>
           )}
@@ -191,7 +193,7 @@ export default function ItemsScreen() {
         </TouchableOpacity>
       </SwipeableRow>
     );
-  }, [batchMode, selectedIds, colors, customCategories, customLocations]);
+  }, [batchMode, selectedIds, colors, customCategories, customLocations, router]);
 
   const renderHeader = () => (
     <View>
@@ -208,11 +210,7 @@ export default function ItemsScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        <View style={[
-          styles.searchBox,
-          { backgroundColor: colors.gray[100] },
-          isSearchFocused && { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.primary }
-        ]}>
+        <View style={[styles.searchBox, { backgroundColor: colors.gray[100] }, isSearchFocused && { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.primary }]}>
           <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? colors.primary : colors.gray[400]} />
           <TextInput
             ref={searchInputRef}
@@ -235,65 +233,55 @@ export default function ItemsScreen() {
       </View>
       <View style={styles.chipsContainer}>
         {categoryFilters.map((cat) => (
-          <Chip
-            key={cat.id}
-            label={cat.label}
-            selected={selectedCategory === cat.id}
-            onPress={() => setSelectedCategory(cat.id)}
-          />
+          <Chip key={cat.id} label={cat.label} selected={selectedCategory === cat.id} onPress={() => setSelectedCategory(cat.id)} />
         ))}
       </View>
     </View>
   );
 
-
   return (
-    <SafeScreen error={itemsError} onDismissError={clearItemsError}>
-      <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-        <PageLoadable
-          loading={loading}
-          error={itemsError}
-          empty={!loading && filtered.length === 0}
-          emptyIcon="package-variant"
-          emptyTitle="暂无物品"
-          emptyMessage="点击下方按钮添加第一个物品"
-          onEmptyAction={() => router.push('/item/create')}
-          emptyActionLabel="添加物品"
-          onRetry={fetchItems}
-        >
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            ListHeaderComponent={renderHeader}
-            contentContainerStyle={styles.list}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={5}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-            }
-          />
-        </PageLoadable>
-        {batchMode && (
-          <View style={[styles.batchBar, { backgroundColor: colors.white }]}>
-            <TouchableOpacity onPress={() => {
-              if (selectedIds.size === filtered.length) setSelectedIds(new Set());
-              else setSelectedIds(new Set(filtered.map((i) => i.id)));
-            }}>
-              <Text style={[styles.batchBtnText, { color: colors.gray[700] }]}>全选</Text>
-            </TouchableOpacity>
-            <Text style={[styles.batchCount, { color: colors.primary }]}>{selectedIds.size}</Text>
-            <Text style={[styles.batchLabel, { color: colors.gray[500] }]}>已选择</Text>
-            <View style={{ flex: 1 }} />
-            <TouchableOpacity style={[styles.batchDeleteBtn, { backgroundColor: colors.dangerLight }]} onPress={batchDelete}>
-              <Text style={[styles.batchDeleteText, { color: colors.danger }]}>删除</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {!batchMode && <FAB onPress={() => router.push('/item/create')} />}
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+      <PageLoadable
+        loading={loading}
+        error={itemsError}
+        empty={!loading && filtered.length === 0}
+        emptyIcon="package-variant"
+        emptyTitle="暂无物品"
+        emptyMessage="点击下方按钮添加第一个物品"
+        onEmptyAction={() => router.push('/item/create')}
+        emptyActionLabel="添加物品"
+        onRetry={fetchItems}
+      >
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.list}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          windowSize={5}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+        />
+      </PageLoadable>
+      {batchMode && (
+        <View style={[styles.batchBar, { backgroundColor: colors.white }]}>
+          <TouchableOpacity onPress={() => {
+            if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+            else setSelectedIds(new Set(filtered.map((i) => i.id)));
+          }}>
+            <Text style={[styles.batchBtnText, { color: colors.gray[700] }]}>全选</Text>
+          </TouchableOpacity>
+          <Text style={[styles.batchCount, { color: colors.primary }]}>{selectedIds.size}</Text>
+          <Text style={[styles.batchLabel, { color: colors.gray[500] }]}>已选择</Text>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity style={[styles.batchDeleteBtn, { backgroundColor: colors.dangerLight }]} onPress={batchDelete}>
+            <Text style={[styles.batchDeleteText, { color: colors.danger }]}>删除</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {!batchMode && <FAB onPress={() => router.push('/item/create')} />}
 
       {showSortModal && (
         <TouchableOpacity style={styles.sortOverlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
@@ -307,25 +295,20 @@ export default function ItemsScreen() {
             ]).map((opt) => (
               <TouchableOpacity
                 key={opt.key}
-                style={[
-                  styles.sortOption,
-                  sortBy === opt.key && { backgroundColor: colors.primaryLight }
-                ]}
+                style={[styles.sortOption, sortBy === opt.key && { backgroundColor: colors.primaryLight }]}
                 onPress={() => { setSortBy(opt.key); setShowSortModal(false); }}
               >
                 <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? colors.primary : colors.gray[400]} />
-                <Text style={[
-                  styles.sortOptionText,
-                  { color: colors.gray[800] },
-                  sortBy === opt.key && { color: colors.primary }
-                ]}>{opt.label}</Text>
+                <Text style={[styles.sortOptionText, { color: colors.gray[800] }, sortBy === opt.key && { color: colors.primary }]}>
+                  {opt.label}
+                </Text>
                 {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </TouchableOpacity>
         </TouchableOpacity>
       )}
-    </SafeScreen>
+    </View>
   );
 }
 
@@ -417,25 +400,6 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
-  },
-  skeletonList: {
-    padding: spacing.lg,
-  },
-  skeletonCard: {
-    flexDirection: 'row',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  skeletonContent: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  skeletonTags: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
   },
   headerActions: {
     flexDirection: 'row',

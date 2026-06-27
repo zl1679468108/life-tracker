@@ -7,7 +7,7 @@ import { useColors } from '../../stores/themeStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useRouter } from 'expo-router';
 
-type FilterTab = 'unread' | 'read';
+type FilterTab = 'all' | 'unread' | 'read';
 
 const MARK_UNREAD_WIDTH = 80;
 
@@ -16,13 +16,13 @@ function SwipeableNotifItem({
   isRead,
   onMarkAsRead,
   onMarkAsUnread,
-  onOpenTodo,
+  onOpenLink,
 }: {
   notification: any;
   isRead: boolean;
   onMarkAsRead: () => void;
   onMarkAsUnread: () => void;
-  onOpenTodo: (todoId: string) => void;
+  onOpenLink: (link: string) => void;
 }) {
   const colors = useColors();
   const translateX = useRef(new Animated.Value(0)).current;
@@ -115,12 +115,11 @@ function SwipeableNotifItem({
           ]}
           activeOpacity={0.7}
           onPress={async () => {
-            if (!notification.id.startsWith('todo-')) return;
-            const todoId = notification.id.replace('todo-', '');
+            if (!notification.link) return;
             if (!isRead) {
               await onMarkAsRead();
             }
-            onOpenTodo(todoId);
+            onOpenLink(notification.link);
           }}
         >
           <View style={[styles.notifIcon, { backgroundColor: notification.iconBg + '20' }]}>
@@ -164,7 +163,7 @@ export default function NotificationsScreen() {
     loaded,
     refreshNotifications,
   } = useNotificationStore();
-  const [activeTab, setActiveTab] = useState<FilterTab>('unread');
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   useEffect(() => {
     loadReadIds();
@@ -190,11 +189,13 @@ export default function NotificationsScreen() {
 
   const filteredNotifications = notifications.filter((n) => {
     const read = isRead(n.id);
+    if (activeTab === 'all') return true;
     if (activeTab === 'unread') return !read;
     return read;
   });
 
   const tabs: { key: FilterTab; label: string }[] = [
+    { key: 'all', label: '全部' },
     { key: 'unread', label: '未读' },
     { key: 'read', label: '已读' },
   ];
@@ -244,11 +245,10 @@ export default function NotificationsScreen() {
               <Text style={[styles.markAllText, { color: colors.primary }]}>全部标记为已读</Text>
             </TouchableOpacity>
           )}
-
           {filteredNotifications.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyTitle, { color: colors.gray[700] }]}>
-                {activeTab === 'unread' ? '暂无未读通知' : '暂无已读通知'}
+                {activeTab === 'all' ? '暂无通知' : activeTab === 'unread' ? '暂无未读通知' : '暂无已读通知'}
               </Text>
             </View>
           ) : (
@@ -261,7 +261,7 @@ export default function NotificationsScreen() {
                   isRead={read}
                   onMarkAsRead={() => handleMarkAsRead(n.id)}
                   onMarkAsUnread={() => handleMarkAsUnread(n.id)}
-                  onOpenTodo={(todoId) => router.push(`/todo/${todoId}`)}
+                  onOpenLink={(link) => router.push(link as any)}
                 />
               );
             })
