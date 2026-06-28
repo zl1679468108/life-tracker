@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { api } from '../../lib/api';
+import { showAlert } from '../../lib/alert';
 import type { WidgetStatsData, WidgetTodoData } from '../../types';
 
 export default function WidgetsScreen() {
@@ -34,8 +35,10 @@ export default function WidgetsScreen() {
         // @ts-ignore
         window.deferredPrompt.prompt();
       } else {
-        alert('请在浏览器菜单中选择"安装应用"');
+        showAlert('安装提示', '请在浏览器菜单中选择"安装应用"');
       }
+    } else {
+      showAlert('安装提示', '当前平台可通过系统桌面小组件或快捷方式访问 LifeTracker。');
     }
   };
 
