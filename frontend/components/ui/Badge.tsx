@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface BadgeProps {
@@ -11,18 +11,19 @@ interface BadgeProps {
 
 export function Badge({ label, variant = 'medium', style }: BadgeProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   
   const variantStyles = {
-    high: { backgroundColor: colors.dangerLight, color: colors.danger },
-    medium: { backgroundColor: colors.warningLight, color: colors.warning },
-    low: { backgroundColor: colors.successLight, color: colors.success },
+    high: { backgroundColor: palette.surfaceSoft, color: palette.danger },
+    medium: { backgroundColor: palette.surfaceSoft, color: palette.warning },
+    low: { backgroundColor: palette.surfaceSoft, color: palette.success },
   };
   
   const currentVariant = variantStyles[variant];
   
   const containerStyles = [
     styles.base,
-    { backgroundColor: currentVariant.backgroundColor },
+    { backgroundColor: currentVariant.backgroundColor, borderColor: palette.border },
     style,
   ];
 
@@ -38,6 +39,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 1,
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
   },
   text: {
     fontSize: fontSize.xs,

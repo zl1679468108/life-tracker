@@ -16,6 +16,7 @@ import { useTheme, useColors, useThemeStore } from '../stores/themeStore';
 import { i18n } from '../lib/i18n';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthExpiredHandler } from '../components/AuthExpiredHandler';
+import { AppAlertHost } from '../components/AppAlertHost';
 import { addNotificationListeners } from '../lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
@@ -57,7 +58,7 @@ export default function RootLayout() {
     if (Platform.OS === 'web') {
       // Web 端：监听浏览器通知点击
       const handleClick = (event: Event) => {
-        const notification = (event as NotificationClickEvent).notification;
+        const notification = (event as Event & { notification?: Notification }).notification;
         if (notification?.data?.link) {
           router.push(notification.data.link as any);
         }
@@ -149,14 +150,15 @@ export default function RootLayout() {
           <PaperProvider theme={paperTheme}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <AuthExpiredHandler />
+            <AppAlertHost />
             <Stack screenOptions={{ contentStyle: { backgroundColor: colors.gray[50] } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="message/[id]" options={{ ...subPageOptions, headerTitle: '对话详情' }} />
             <Stack.Screen name="item/create" options={{ ...subPageOptions, headerTitle: '添加物品' }} />
-            <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '物品详情' }} />
+            <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '编辑物品' }} />
             <Stack.Screen name="item/list" options={{ ...subPageOptions, headerTitle: '物品管理' }} />
             <Stack.Screen name="todo/create" options={{ ...subPageOptions, headerTitle: '添加待办' }} />
-            <Stack.Screen name="todo/[id]" options={{ ...subPageOptions, headerTitle: '待办详情' }} />
+            <Stack.Screen name="todo/[id]" options={{ ...subPageOptions, headerTitle: '编辑待办' }} />
             <Stack.Screen name="todo/list" options={{ ...subPageOptions, headerTitle: '待办管理' }} />
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
@@ -173,7 +175,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings/language" options={{ ...subPageOptions, headerTitle: '语言' }} />
             <Stack.Screen name="settings/borrowings" options={{ ...subPageOptions, headerTitle: '借用管理' }} />
             <Stack.Screen name="settings/borrowing-create" options={{ ...subPageOptions, headerTitle: '新增借用' }} />
-            <Stack.Screen name="settings/shares" options={{ ...subPageOptions, headerTitle: '共享管理' }} />
+            <Stack.Screen name="settings/shares" options={{ ...subPageOptions, headerTitle: '共享管理' }} redirect />
             <Stack.Screen name="settings/templates" options={{ ...subPageOptions, headerTitle: '模板管理' }} />
             <Stack.Screen name="settings/data" options={{ ...subPageOptions, headerTitle: '数据管理' }} />
             <Stack.Screen name="settings/assets" options={{ ...subPageOptions, headerTitle: '资产总览' }} />

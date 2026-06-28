@@ -7,7 +7,7 @@ import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useTemplateStore } from '../../stores/templateStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Input, Button, ImagePicker, FormSection, DatePicker, ReminderToggle } from '../../components/ui';
 import { Toast } from '../../components/Toast';
@@ -23,6 +23,7 @@ export default function CreateItemScreen() {
   const { locations: customLocations, fetchLocations } = useLocationStore();
   const { templates: itemTemplates, fetchTemplates: fetchItemTemplates } = useTemplateStore();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -40,7 +41,6 @@ export default function CreateItemScreen() {
   const [showValueSection, setShowValueSection] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const isEdit = !!params.id;
 
@@ -163,42 +163,42 @@ export default function CreateItemScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+    <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.gray[50] }]}
+        style={[styles.container, { backgroundColor: palette.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         <ScrollView
-          style={{ backgroundColor: colors.gray[50] }}
-          contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}
+          style={{ backgroundColor: palette.bg }}
+          contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
           {/* 从模板创建 */}
           {!isEdit && itemTemplates.length > 0 && (
             <TouchableOpacity
-              style={[styles.templateBtn, { backgroundColor: colors.secondaryLight }]}
+              style={[styles.templateBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
               onPress={() => setShowTemplatePicker(true)}
             >
-              <MaterialCommunityIcons name="file-document-outline" size={20} color={colors.secondary} />
-              <Text style={[styles.templateBtnText, { color: colors.secondary }]}>从模板创建</Text>
-              <MaterialCommunityIcons name="chevron-down" size={20} color={colors.secondary} />
+              <MaterialCommunityIcons name="file-document-outline" size={20} color={palette.violet} />
+              <Text style={[styles.templateBtnText, { color: palette.text }]}>从模板创建</Text>
+              <MaterialCommunityIcons name="chevron-down" size={20} color={palette.textMuted} />
             </TouchableOpacity>
           )}
 
           {showTemplatePicker && (
-            <View style={[styles.templatePicker, { backgroundColor: colors.white }]}>
+            <View style={[styles.templatePicker, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               {itemTemplates.map((t) => (
                 <TouchableOpacity
                   key={t.id}
-                  style={[styles.templateItem, { borderBottomColor: colors.gray[100] }]}
+                  style={[styles.templateItem, { borderBottomColor: palette.border }]}
                   onPress={() => handleUseTemplate(t)}
                 >
-                  <MaterialCommunityIcons name={(t.icon || 'package-variant') as any} size={20} color={t.color || colors.primary} />
+                  <MaterialCommunityIcons name={(t.icon || 'package-variant') as any} size={20} color={palette.orange} />
                   <View style={{ flex: 1, marginLeft: spacing.sm }}>
-                    <Text style={[{ fontSize: fontSize.base, color: colors.gray[800] }]}>{t.name}</Text>
-                    <Text style={[{ fontSize: fontSize.xs, color: colors.gray[400] }]}>使用 {t.usage_count} 次</Text>
+                    <Text style={[{ fontSize: fontSize.base, color: palette.text }]}>{t.name}</Text>
+                    <Text style={[{ fontSize: fontSize.xs, color: palette.textMuted }]}>使用 {t.usage_count} 次</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -206,7 +206,7 @@ export default function CreateItemScreen() {
                 style={[styles.templateItem, { justifyContent: 'center' }]}
                 onPress={() => setShowTemplatePicker(false)}
               >
-                <Text style={[{ fontSize: fontSize.base, color: colors.gray[400] }]}>取消</Text>
+                <Text style={[{ fontSize: fontSize.base, color: palette.textMuted }]}>取消</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -228,10 +228,10 @@ export default function CreateItemScreen() {
                   key={cat.id}
                   style={[
                     styles.optionItem,
-                    { backgroundColor: colors.gray[100] },
+                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
                     category === cat.id && {
-                      backgroundColor: colors.primaryLight,
-                      borderColor: colors.primary,
+                      backgroundColor: palette.surface,
+                      borderColor: palette.orange,
                     }
                   ]}
                   onPress={() => { setCategory(cat.id); if (errors.category) setErrors((e) => ({ ...e, category: undefined })); }}
@@ -239,12 +239,12 @@ export default function CreateItemScreen() {
                   <MaterialCommunityIcons
                     name={cat.icon as any}
                     size={20}
-                    color={category === cat.id ? colors.primary : colors.gray[500]}
+                    color={category === cat.id ? palette.orange : palette.textMuted}
                   />
                   <Text style={[
                     styles.optionText,
-                    { color: colors.gray[600] },
-                    category === cat.id && { color: colors.primary }
+                    { color: palette.textMuted },
+                    category === cat.id && { color: palette.orange }
                   ]}>
                     {cat.name}
                   </Text>
@@ -260,10 +260,10 @@ export default function CreateItemScreen() {
                   key={loc.id}
                   style={[
                     styles.optionItem,
-                    { backgroundColor: colors.gray[100] },
+                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
                     location === loc.id && {
-                      backgroundColor: colors.primaryLight,
-                      borderColor: colors.primary,
+                      backgroundColor: palette.surface,
+                      borderColor: palette.orange,
                     }
                   ]}
                   onPress={() => { setLocation(loc.id); if (errors.location) setErrors((e) => ({ ...e, location: undefined })); }}
@@ -271,12 +271,12 @@ export default function CreateItemScreen() {
                   <MaterialCommunityIcons
                     name={loc.icon as any}
                     size={20}
-                    color={location === loc.id ? colors.primary : colors.gray[500]}
+                    color={location === loc.id ? palette.orange : palette.textMuted}
                   />
                   <Text style={[
                     styles.optionText,
-                    { color: colors.gray[600] },
-                    location === loc.id && { color: colors.primary }
+                    { color: palette.textMuted },
+                    location === loc.id && { color: palette.orange }
                   ]}>
                     {loc.name}
                   </Text>
@@ -340,16 +340,16 @@ export default function CreateItemScreen() {
 
           {/* T47: 价值信息 */}
           <TouchableOpacity
-            style={[styles.valueToggle, { backgroundColor: colors.white }]}
+            style={[styles.valueToggle, { backgroundColor: palette.surface, borderColor: palette.border }]}
             onPress={() => setShowValueSection(!showValueSection)}
           >
-            <MaterialCommunityIcons name="cash-multiple" size={20} color={colors.success} />
-            <Text style={[styles.valueToggleText, { color: colors.gray[800] }]}>价值信息</Text>
-            <MaterialCommunityIcons name={showValueSection ? 'chevron-up' : 'chevron-down'} size={20} color={colors.gray[400]} />
+            <MaterialCommunityIcons name="cash-multiple" size={20} color={palette.success} />
+            <Text style={[styles.valueToggleText, { color: palette.text }]}>价值信息</Text>
+            <MaterialCommunityIcons name={showValueSection ? 'chevron-up' : 'chevron-down'} size={20} color={palette.textMuted} />
           </TouchableOpacity>
 
           {showValueSection && (
-            <View style={[styles.valueSection, { backgroundColor: colors.white }]}>
+            <View style={[styles.valueSection, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <Input
                 label="购买价格"
                 value={purchasePrice}
@@ -417,6 +417,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
   },
   optionActive: {
     borderWidth: 1,
@@ -434,6 +435,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     marginBottom: spacing.md,
   },
   templateBtnText: {
@@ -442,6 +444,7 @@ const styles = StyleSheet.create({
   },
   templatePicker: {
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     marginBottom: spacing.md,
     overflow: 'hidden',
   },
@@ -457,6 +460,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     marginTop: spacing.md,
     ...shadows.sm,
   },
@@ -467,6 +471,7 @@ const styles = StyleSheet.create({
   },
   valueSection: {
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.md,
     marginTop: spacing.sm,
     ...shadows.sm,

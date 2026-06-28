@@ -5,9 +5,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useTodoStore } from '../../stores/todoStore';
 import { LifeTodo } from '../../types';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, Checkbox, Badge, EmptyState, PageLoadable, Skeleton } from '../../components/ui';
+import { FAB, Checkbox, Badge, PageLoadable, Skeleton } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -17,7 +17,8 @@ type SortType = 'time' | 'priority' | 'title';
 export default function TodoListScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos, clearError: clearTodosError } = useTodoStore();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos } = useTodoStore();
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('time');
   const [showSortModal, setShowSortModal] = useState(false);
@@ -70,7 +71,7 @@ export default function TodoListScreen() {
       <TouchableOpacity
         style={[
           styles.todoCard,
-          { backgroundColor: colors.white },
+          { backgroundColor: palette.surface, borderColor: palette.border },
           isActive && { opacity: 0.95, ...shadows.md },
         ]}
         onLongPress={drag}
@@ -79,22 +80,22 @@ export default function TodoListScreen() {
         disabled={isActive}
       >
         <View style={styles.todoHeader}>
-          <MaterialCommunityIcons name="drag" size={20} color={colors.gray[400]} />
+          <MaterialCommunityIcons name="drag" size={20} color={palette.textMuted} />
           <Checkbox checked={item.completed} onPress={() => toggleComplete(item.id)} />
           <View style={styles.todoContent}>
-            <Text style={[styles.todoTitle, { color: colors.gray[800] }, item.completed && { textDecorationLine: 'line-through', color: colors.gray[400] }]}>
+            <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
               {item.title}
             </Text>
             {item.description && (
-              <Text style={[styles.todoDesc, { color: colors.gray[500] }]} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
         {item.due_date && (
           <View style={styles.todoFooter}>
-            <MaterialCommunityIcons name="calendar" size={14} color={colors.gray[400]} />
-            <Text style={[styles.todoDate, { color: colors.gray[400] }]}>
+            <MaterialCommunityIcons name="calendar-outline" size={14} color={palette.textMuted} />
+            <Text style={[styles.todoDate, { color: palette.textMuted }]}>
               截止: {new Date(item.due_date).toLocaleDateString('zh-CN')}
             </Text>
           </View>
@@ -106,66 +107,66 @@ export default function TodoListScreen() {
   const renderItem = useCallback(({ item }: { item: LifeTodo }) => (
     <SwipeableRow onDelete={() => handleDeleteTodo(item)}>
       <TouchableOpacity
-        style={[styles.todoCard, { backgroundColor: colors.white }]}
+        style={[styles.todoCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         onPress={() => router.push(`/todo/${item.id}`)}
         activeOpacity={0.98}
       >
         <View style={styles.todoHeader}>
           <Checkbox checked={item.completed} onPress={() => toggleComplete(item.id)} />
           <View style={styles.todoContent}>
-            <Text style={[styles.todoTitle, { color: colors.gray[800] }, item.completed && { textDecorationLine: 'line-through', color: colors.gray[400] }]}>
+            <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
               {item.title}
             </Text>
             {item.description && (
-              <Text style={[styles.todoDesc, { color: colors.gray[500] }]} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
         {item.due_date && (
           <View style={styles.todoFooter}>
-            <MaterialCommunityIcons name="calendar" size={14} color={colors.gray[400]} />
-            <Text style={[styles.todoDate, { color: colors.gray[400] }]}>
+            <MaterialCommunityIcons name="calendar-outline" size={14} color={palette.textMuted} />
+            <Text style={[styles.todoDate, { color: palette.textMuted }]}>
               截止: {new Date(item.due_date).toLocaleDateString('zh-CN')}
             </Text>
           </View>
         )}
       </TouchableOpacity>
     </SwipeableRow>
-  ), [colors, router, toggleComplete]);
+  ), [palette, router, toggleComplete]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.gray[50] }]}>
-      <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-        <View style={[styles.header, { backgroundColor: colors.white }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.bg }]}>
+      <View style={[styles.container, { backgroundColor: palette.bg }]}>
+        <View style={[styles.header, { backgroundColor: palette.bg }]}>
           <View style={styles.headerTop}>
-            <Text style={[styles.title, { color: colors.gray[900] }]}>待办</Text>
+            <Text style={[styles.title, { color: palette.text }]}>待办</Text>
             <View style={styles.headerActions}>
-              <Text style={[styles.count, { color: colors.gray[500] }]}>{pendingCount} 个待完成</Text>
+              <Text style={[styles.count, { color: palette.textMuted }]}>{pendingCount} 个待完成</Text>
               <TouchableOpacity
-                style={[styles.headerBtn, { backgroundColor: colors.gray[100] }, dragEnabled && { backgroundColor: colors.primaryLight }]}
+                style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, dragEnabled && { borderColor: palette.orange }]}
                 onPress={() => setDragEnabled(!dragEnabled)}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name={dragEnabled ? 'check' : 'drag-variant'}
                   size={18}
-                  color={dragEnabled ? colors.primary : colors.gray[600]}
+                  color={dragEnabled ? palette.orange : palette.textSecondary}
                 />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.gray[100] }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
-                <MaterialCommunityIcons name="sort" size={18} color={colors.gray[600]} />
+              <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
-          <View style={[styles.filterTabs, { backgroundColor: colors.gray[100] }]}>
+          <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             {(['all', 'pending', 'completed'] as FilterType[]).map((f) => (
               <TouchableOpacity
                 key={f}
-                style={[styles.filterTab, filter === f && { backgroundColor: colors.white, ...shadows.sm }]}
+                style={[styles.filterTab, filter === f && { backgroundColor: palette.surface, borderColor: palette.border }]}
                 onPress={() => setFilter(f)}
               >
-                <Text style={[styles.filterText, { color: colors.gray[500] }, filter === f && { color: colors.gray[900] }]}>
+                <Text style={[styles.filterText, { color: palette.textMuted }, filter === f && { color: palette.text }]}>
                   {f === 'all' ? '全部' : f === 'pending' ? '待完成' : '已完成'}
                 </Text>
               </TouchableOpacity>
@@ -176,7 +177,7 @@ export default function TodoListScreen() {
         {loading ? (
           <View style={styles.skeletonList}>
             {[1, 2, 3].map((i) => (
-              <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.white }]}>
+              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
                 <Skeleton width={22} height={22} borderRadius={6} />
                 <View style={styles.skeletonContent}>
                   <Skeleton width="70%" height={15} />
@@ -206,7 +207,7 @@ export default function TodoListScreen() {
                 renderItem={renderDragItem}
                 onDragEnd={({ data }) => reorderTodos(data)}
                 contentContainerStyle={styles.list}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
               />
             ) : (
               <FlatList
@@ -218,7 +219,7 @@ export default function TodoListScreen() {
                 maxToRenderPerBatch={10}
                 updateCellsBatchingPeriod={50}
                 windowSize={5}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
               />
             )}
           </PageLoadable>
@@ -227,10 +228,10 @@ export default function TodoListScreen() {
         <FAB variant="secondary" onPress={() => router.push('/todo/create')} />
 
         {showSortModal && (
-          <TouchableOpacity style={styles.sortOverlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.sortHandle, { backgroundColor: colors.gray[200] }]} />
-              <Text style={[styles.sortTitle, { color: colors.gray[900] }]}>排序方式</Text>
+          <TouchableOpacity style={[styles.sortOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSortModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+              <View style={[styles.sortHandle, { backgroundColor: palette.borderStrong }]} />
+              <Text style={[styles.sortTitle, { color: palette.text }]}>排序方式</Text>
               {([
                 { key: 'time' as const, label: '添加时间', icon: 'clock-outline' },
                 { key: 'priority' as const, label: '优先级', icon: 'flag-outline' },
@@ -238,14 +239,14 @@ export default function TodoListScreen() {
               ]).map((opt) => (
                 <TouchableOpacity
                   key={opt.key}
-                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: colors.primaryLight }]}
+                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: palette.surfaceSoft }]}
                   onPress={() => { setSortBy(opt.key); setShowSortModal(false); }}
                 >
-                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? colors.primary : colors.gray[400]} />
-                  <Text style={[styles.sortOptionText, { color: colors.gray[800] }, sortBy === opt.key && { color: colors.primary }]}>
+                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? palette.orange : palette.textMuted} />
+                  <Text style={[styles.sortOptionText, { color: palette.text }, sortBy === opt.key && { color: palette.orange }]}>
                     {opt.label}
                   </Text>
-                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
+                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={palette.orange} />}
                 </TouchableOpacity>
               ))}
             </TouchableOpacity>
@@ -281,8 +282,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
   },
   filterTabs: {
+    minHeight: 44,
     flexDirection: 'row',
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     padding: 4,
     marginBottom: spacing.lg,
   },
@@ -291,6 +294,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   filterText: {
     fontSize: fontSize.base,
@@ -301,7 +306,9 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   todoCard: {
+    minHeight: 78,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
     ...shadows.sm,
@@ -339,6 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
     ...shadows.sm,
@@ -353,21 +361,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sortOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
     zIndex: 100,
   },
   sortModal: {
     borderTopLeftRadius: borderRadius['2xl'],
     borderTopRightRadius: borderRadius['2xl'],
+    borderWidth: 1,
     padding: spacing.xl,
     paddingBottom: 40,
   },

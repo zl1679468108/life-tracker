@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface DatePickerProps {
@@ -26,6 +26,7 @@ export function DatePicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const [showNative, setShowNative] = useState(false);
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   const handleClick = () => {
     if (Platform.OS === 'web') {
@@ -56,14 +57,14 @@ export function DatePicker({
   if (Platform.OS === 'web') {
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.gray[700] }]}>{label}</Text>
+        <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{label}</Text>
         <View style={styles.webContainer}>
           <TouchableOpacity
-            style={[styles.dateInput, { borderColor: colors.gray[200], backgroundColor: colors.gray[50] }]}
+            style={[styles.dateInput, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}
             onPress={handleClick}
           >
-            <MaterialCommunityIcons name={icon as any} size={20} color={colors.gray[400]} />
-            <Text style={[styles.dateText, { color: colors.gray[400] }, displayValue ? { color: colors.gray[800] } : null]}>
+            <MaterialCommunityIcons name={icon as any} size={20} color={displayValue ? palette.orange : palette.textMuted} />
+            <Text style={[styles.dateText, { color: palette.textMuted }, displayValue ? { color: palette.text } : null]}>
               {displayValue || placeholder || `选择${label}`}
             </Text>
           </TouchableOpacity>
@@ -91,10 +92,10 @@ export function DatePicker({
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionLabel, { color: colors.gray[700] }]}>{label}</Text>
-      <TouchableOpacity style={[styles.dateInput, { borderColor: colors.gray[200], backgroundColor: colors.gray[50] }]}>
-        <MaterialCommunityIcons name={icon as any} size={20} color={colors.gray[400]} />
-        <Text style={[styles.dateText, { color: colors.gray[400] }, displayValue ? { color: colors.gray[800] } : null]}>
+      <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{label}</Text>
+      <TouchableOpacity style={[styles.dateInput, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+        <MaterialCommunityIcons name={icon as any} size={20} color={displayValue ? palette.orange : palette.textMuted} />
+        <Text style={[styles.dateText, { color: palette.textMuted }, displayValue ? { color: palette.text } : null]}>
           {displayValue || placeholder || `选择${label}`}
         </Text>
       </TouchableOpacity>

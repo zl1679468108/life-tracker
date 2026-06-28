@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LifeTracker v1.4 Figma Coverage Board</title>
+  <style>
+    :root {
+      --bg: #08111f;
+      --surface: #0d1626;
+      --surface-soft: #121d2f;
+      --hover: #172235;
+      --border: #243043;
+      --border-strong: #33425a;
+      --text: #ffffff;
+      --text-2: #d5dce7;
+      --muted: #8c98aa;
+      --orange: #ff8754;
+      --violet: #8b68f5;
+      --success: #32d296;
+      --warning: #fbb329;
+      --danger: #ff6b7a;
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #050a13;
+      color: var(--text);
+    }
+    .board {
+      max-width: 1760px;
+      margin: 0 auto;
+      padding: 42px 36px 72px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 24px;
+      margin-bottom: 34px;
+    }
+    .panel {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      background: rgba(8,17,31,0.86);
+      box-shadow: var(--shadow);
+      padding: 26px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: 34px;
+      line-height: 42px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 24px;
+      line-height: 32px;
+      margin: 36px 0 16px;
+    }
+    h3 {
+      font-size: 16px;
+      line-height: 24px;
+      margin-bottom: 10px;
+    }
+    .copy {
+      margin-top: 14px;
+      color: var(--text-2);
+      font-size: 14px;
+      line-height: 24px;
+    }
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .rule {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 14px;
+      min-height: 94px;
+    }
+    .rule strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      line-height: 20px;
+    }
+    .rule span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .module {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(13,22,38,0.72) 100%);
+      padding: 16px;
+      min-height: 156px;
+    }
+    .module-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .mark {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--border-strong);
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: var(--orange);
+      font-size: 16px;
+      font-weight: 800;
+      background: var(--surface-soft);
+      flex: 0 0 auto;
+    }
+    .mark svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .module h3 { margin: 0; }
+    .module p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .tag {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--text-2);
+      font-size: 11px;
+      line-height: 16px;
+      padding: 4px 8px;
+    }
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(250px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+    .phone {
+      min-height: 620px;
+      border: 1px solid var(--border-strong);
+      border-radius: 28px;
+      background: var(--bg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 18px 14px 76px;
+      position: relative;
+    }
+    .phone.light {
+      --bg: #f6f8fc;
+      --surface: #ffffff;
+      --surface-soft: #eef2f8;
+      --hover: #e6ecf5;
+      --border: #dde5f0;
+      --border-strong: #b9c6d8;
+      --text: #0f1724;
+      --text-2: #334155;
+      --muted: #68758a;
+      --orange: #f36f3c;
+      --violet: #7c5cfc;
+      --success: #10a66e;
+      --warning: #d89400;
+      --danger: #e84a5f;
+      color-scheme: light;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 14px;
+      margin-bottom: 16px;
+    }
+    .phone-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .phone-title h3 {
+      color: var(--text);
+      font-size: 22px;
+      line-height: 30px;
+      margin: 0;
+    }
+    .phone-title p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+      margin-top: 2px;
+    }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      display: grid;
+      place-items: center;
+      color: var(--text-2);
+      flex: 0 0 auto;
+    }
+    .search {
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+    .row {
+      min-height: 66px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .row-main { flex: 1; min-width: 0; }
+    .row-title {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 700;
+    }
+    .row-desc {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 16px;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .section-label {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 22px;
+      font-weight: 800;
+      margin: 18px 0 8px;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      min-height: 102px;
+      padding: 12px;
+    }
+    .card strong {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 20px;
+      margin-top: 10px;
+    }
+    .card span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 16px;
+      margin-top: 3px;
+    }
+    .input {
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      padding: 12px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .button {
+      height: 48px;
+      border-radius: 12px;
+      background: var(--orange);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 14px;
+    }
+    .tabs {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 64px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: center;
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+    }
+    .active { color: var(--orange); }
+    .caption {
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 20px;
+      font-weight: 800;
+      margin: 0 0 10px;
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="hero">
+      <div class="panel">
+        <h1>LifeTracker Figma Coverage</h1>
+        <p class="copy">补齐 PRD 全模块设计覆盖。此板用于追加到 Figma `02 Screens & Interactions`，证明每个模块都有入口、页面形态、状态和复用组件规则。</p>
+        <p class="copy">图标区域只使用线性图标或单字文字图标；所有低频模块复用列表、新增、编辑模板，不再创建独立详情页视觉。</p>
+      </div>
+      <div class="panel rule-grid">
+        <div class="rule"><strong>导航边界</strong><span>底部只保留首页、工作台、消息、我的；物品/待办通过工作台和快捷动作进入。</span></div>
+        <div class="rule"><strong>入口覆盖</strong><span>工作台平铺全部业务模块，我的外层平铺账号、偏好、数据与支持。</span></div>
+        <div class="rule"><strong>页面模型</strong><span>默认列表 / 新增 / 编辑；历史详情路由只复用编辑页或只读摘要。</span></div>
+        <div class="rule"><strong>主题覆盖</strong><span>深色操作台和浅色模式成对设计，所有组件使用同一 token。</span></div>
+        <div class="rule"><strong>图标规范</strong><span>线性图标优先；无合适图标时使用模块名中的单字图标。</span></div>
+        <div class="rule"><strong>状态覆盖</strong><span>loading、empty、error、selected、disabled、danger confirmation 均记录。</span></div>
+      </div>
+    </section>
+
+    <h2>PRD Coverage Matrix</h2>
+    <section class="matrix">
+      <div class="module"><div class="module-head"><div class="mark">首</div><div><h3>首页总览</h3><p>Tab 首页</p></div></div><p>统计、搜索、通知、添加物品、添加待办、最近待办。</p><div class="tags"><span class="tag">overview</span><span class="tag">light/dark</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">物</div><div><h3>物品管理</h3><p>/item/list / /item/create / /item/[id]</p></div></div><p>列表、新增、编辑；AI 识别作为图片/条码上下文能力。</p><div class="tags"><span class="tag">list</span><span class="tag">create</span><span class="tag">edit</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">办</div><div><h3>待办管理</h3><p>/todo/list / /todo/create / /todo/[id]</p></div></div><p>筛选、排序、优先级、截止日期、提醒时间、完成状态。</p><div class="tags"><span class="tag">list</span><span class="tag">create</span><span class="tag">edit</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">讯</div><div><h3>消息</h3><p>/(tabs)/messages / /message/[id]</p></div></div><p>对话列表、新建对话 Sheet、消息卡片、输入框、共享深链。</p><div class="tags"><span class="tag">list</span><span class="tag">sheet</span><span class="tag">conversation</span></div></div>
+
+      <div class="module"><div class="module-head"><div class="mark">分</div><div><h3>分类管理</h3><p>/settings/category-manage</p></div></div><p>系统预设 + 自定义分类；新增/编辑分类名称、类型、颜色和图标。</p><div class="tags"><span class="tag">list</span><span class="tag">create</span><span class="tag">edit</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">位</div><div><h3>位置管理</h3><p>/settings/location-manage</p></div></div><p>位置层级、父级位置、删除限制，复用管理列表和表单模板。</p><div class="tags"><span class="tag">tree list</span><span class="tag">form</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">模</div><div><h3>模板管理</h3><p>/settings/templates</p></div></div><p>物品/待办模板列表、编辑模板、套用模板入口。</p><div class="tags"><span class="tag">list</span><span class="tag">use</span><span class="tag">edit</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">借</div><div><h3>借用管理</h3><p>/settings/borrowings</p></div></div><p>借出、归还、逾期记录；新增和编辑借用记录。</p><div class="tags"><span class="tag">list</span><span class="tag">create</span><span class="tag">edit</span></div></div>
+
+      <div class="module"><div class="module-head"><div class="mark">日</div><div><h3>日历视图</h3><p>/settings/calendar</p></div></div><p>月视图 + 当日待办/提醒列表，支持截止时间深链。</p><div class="tags"><span class="tag">calendar</span><span class="tag">list</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">享</div><div><h3>共享管理</h3><p>/settings/shares</p></div></div><p>共享对象、资源、权限；新增共享和编辑权限。</p><div class="tags"><span class="tag">list</span><span class="tag">permission</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">统</div><div><h3>数据统计</h3><p>/settings/stats</p></div></div><p>KPI、趋势、分类分布、任务完成率；图表卡片可读。</p><div class="tags"><span class="tag">KPI</span><span class="tag">charts</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">知</div><div><h3>通知中心</h3><p>/settings/notifications</p></div></div><p>全部、未读、已读；点击未读标记并深链跳转。</p><div class="tags"><span class="tag">tabs</span><span class="tag">read state</span></div></div>
+
+      <div class="module"><div class="module-head"><div class="mark">数</div><div><h3>数据管理</h3><p>/settings/data</p></div></div><p>备份、恢复、导入、导出、数据统计摘要。</p><div class="tags"><span class="tag">actions</span><span class="tag">danger confirm</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">资</div><div><h3>资产总览</h3><p>/settings/assets</p></div></div><p>总资产、分类分布、资产明细，连接物品价值字段。</p><div class="tags"><span class="tag">KPI</span><span class="tag">distribution</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">件</div><div><h3>桌面小组件</h3><p>/settings/widgets</p></div></div><p>PWA 小组件说明、快捷入口预览、启用状态。</p><div class="tags"><span class="tag">preview</span><span class="tag">settings</span></div></div>
+      <div class="module"><div class="module-head"><div class="mark">我</div><div><h3>我的与账号</h3><p>/(tabs)/settings</p></div></div><p>账号管理、密码、退出、主题、语言、同步、反馈、版本。</p><div class="tags"><span class="tag">settings rows</span><span class="tag">profile</span></div></div>
+    </section>
+
+    <h2>Supplement Screens</h2>
+    <section class="screens">
+      <div>
+        <p class="caption">01 工作台完整入口</p>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="phone-title"><div><h3>工作台</h3><p>所有模块按分组直接进入</p></div><div class="icon-btn">⌕</div></div>
+          <div class="search">⌕ 搜索功能</div>
+          <div class="grid2">
+            <div class="card"><div class="mark">物</div><strong>物品</strong><span>列表 / 新增 / 编辑</span></div>
+            <div class="card"><div class="mark">办</div><strong>待办</strong><span>筛选 / 完成 / 编辑</span></div>
+            <div class="card"><div class="mark">讯</div><strong>消息</strong><span>对话与共享协作</span></div>
+            <div class="card"><div class="mark">我</div><strong>我的</strong><span>账号和系统设置</span></div>
+          </div>
+          <div class="section-label">管理工具</div>
+          <div class="row"><div class="mark">分</div><div class="row-main"><div class="row-title">分类管理</div><div class="row-desc">系统分类、自定义分类、颜色图标</div></div></div>
+          <div class="row"><div class="mark">位</div><div class="row-main"><div class="row-title">位置管理</div><div class="row-desc">房间、层级、存放位置</div></div></div>
+          <div class="row"><div class="mark">模</div><div class="row-main"><div class="row-title">模板管理</div><div class="row-desc">常用物品和待办模板</div></div></div>
+          <div class="tabs"><div>首页</div><div class="active">工作台</div><div>消息</div><div>我的</div></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="caption">02 管理模块模板</p>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="phone-title"><div><h3>分类管理</h3><p>列表 / 新增 / 编辑通用模板</p></div><div class="icon-btn">＋</div></div>
+          <div class="search">⌕ 搜索分类或位置</div>
+          <div class="row"><div class="mark">电</div><div class="row-main"><div class="row-title">电子产品</div><div class="row-desc">物品分类 · 系统预设 · 24 件物品</div></div></div>
+          <div class="row"><div class="mark">书</div><div class="row-main"><div class="row-title">书籍</div><div class="row-desc">物品分类 · 系统预设 · 18 件物品</div></div></div>
+          <div class="row"><div class="mark">家</div><div class="row-main"><div class="row-title">家务</div><div class="row-desc">待办分类 · 自定义 · 可编辑</div></div></div>
+          <div class="section-label">新增 / 编辑</div>
+          <div class="input">名称：家务</div>
+          <div class="input">类型：物品 / 待办</div>
+          <div class="input">图标：线性图标或单字</div>
+          <div class="button">保存</div>
+        </div>
+      </div>
+
+      <div>
+        <p class="caption">03 生活记录模板</p>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="phone-title"><div><h3>借用管理</h3><p>借出、归还、逾期记录</p></div><div class="icon-btn">＋</div></div>
+          <div class="row"><div class="mark">借</div><div class="row-main"><div class="row-title">MacBook Pro</div><div class="row-desc">借给 Alex · 06-20 · 借出中</div></div></div>
+          <div class="row"><div class="mark">还</div><div class="row-main"><div class="row-title">相机镜头</div><div class="row-desc">已归还 · 06-18 · 无逾期</div></div></div>
+          <div class="section-label">新增 / 编辑借用</div>
+          <div class="input">物品</div>
+          <div class="input">借用人</div>
+          <div class="input">借出日期 / 预计归还</div>
+          <div class="input">备注</div>
+          <div class="button">保存记录</div>
+        </div>
+      </div>
+
+      <div>
+        <p class="caption">04 数据与提醒</p>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="phone-title"><div><h3>数据统计</h3><p>KPI、趋势和分类分布</p></div><div class="icon-btn">⌕</div></div>
+          <div class="grid2">
+            <div class="card"><strong>1,246</strong><span>物品总数</span></div>
+            <div class="card"><strong>78.5%</strong><span>待办完成率</span></div>
+            <div class="card"><strong>86</strong><span>本月新增</span></div>
+            <div class="card"><strong>45</strong><span>本月完成</span></div>
+          </div>
+          <div class="section-label">趋势图</div>
+          <div class="card" style="min-height:160px"><span>折线 / 柱状 / 分类分布图表区域</span></div>
+          <div class="section-label">通知中心 / 数据管理 / 资产总览复用此页头与列表模板</div>
+          <div class="tabs"><div>首页</div><div class="active">工作台</div><div>消息</div><div>我的</div></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="caption">05 我的与设置</p>
+        <div class="phone light">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="phone-title"><div><h3>我的</h3><p>账号、偏好和数据支持</p></div></div>
+          <div class="row"><div class="mark">我</div><div class="row-main"><div class="row-title">LifeTracker 用户</div><div class="row-desc">premium@example.com</div></div></div>
+          <div class="section-label">账号与安全</div>
+          <div class="row"><div class="mark">账</div><div class="row-main"><div class="row-title">账号管理</div><div class="row-desc">头像、昵称、邮箱</div></div></div>
+          <div class="row"><div class="mark">密</div><div class="row-main"><div class="row-title">修改密码</div><div class="row-desc">更新登录密码</div></div></div>
+          <div class="section-label">偏好设置</div>
+          <div class="row"><div class="mark">题</div><div class="row-main"><div class="row-title">主题设置</div><div class="row-desc">系统 / 深色 / 浅色</div></div></div>
+          <div class="row"><div class="mark">语</div><div class="row-main"><div class="row-title">语言</div><div class="row-desc">中文 / English</div></div></div>
+          <div class="tabs"><div>首页</div><div>工作台</div><div>消息</div><div class="active">我的</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

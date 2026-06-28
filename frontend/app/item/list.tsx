@@ -6,9 +6,9 @@ import { useItemStore } from '../../stores/itemStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, EmptyState, Chip, PageLoadable, CachedImage } from '../../components/ui';
+import { FAB, Chip, PageLoadable, CachedImage } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
@@ -25,6 +25,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function ItemListScreen() {
   const router = useRouter();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
   const ALL_CATEGORY = 'ALL';
   const categoryFilters = [
@@ -135,74 +136,74 @@ export default function ItemListScreen() {
         <TouchableOpacity
           style={[
             styles.itemCard,
-            { backgroundColor: colors.white },
-            batchMode && isSelected && { borderColor: colors.primary, borderWidth: 2 },
+            { backgroundColor: palette.surface, borderColor: palette.border },
+            batchMode && isSelected && { borderColor: palette.orange, borderWidth: 2 },
           ]}
           onPress={() => (batchMode ? toggleSelectItem(item.id) : router.push(`/item/${item.id}`))}
           activeOpacity={0.98}
         >
           {batchMode && (
-            <View style={[styles.checkbox, { borderColor: colors.gray[300] }, isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-              {isSelected && <MaterialCommunityIcons name="check" size={14} color={colors.white} />}
+            <View style={[styles.checkbox, { borderColor: palette.borderStrong }, isSelected && { backgroundColor: palette.orange, borderColor: palette.orange }]}>
+              {isSelected && <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />}
             </View>
           )}
           {item.images && item.images.length > 0 ? (
             <CachedImage uri={item.images[0]} size={52} borderRadius={14} />
           ) : (
-            <View style={[styles.itemIcon, { backgroundColor: colors.primaryLight }]}>
-              <MaterialCommunityIcons name={icon as any} size={24} color={colors.primary} />
+            <View style={[styles.itemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <MaterialCommunityIcons name={icon as any} size={24} color={palette.orange} />
             </View>
           )}
           <View style={styles.itemDetails}>
-            <Text style={[styles.itemName, { color: colors.gray[800] }]}>{item.name}</Text>
+            <Text style={[styles.itemName, { color: palette.text }]}>{item.name}</Text>
             {item.description && (
-              <Text style={[styles.itemDesc, { color: colors.gray[500] }]} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.itemDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
             <View style={styles.itemTags}>
               {item.location_id && (
-                <View style={[styles.tag, { backgroundColor: colors.primaryLight }]}>
-                  <MaterialCommunityIcons name="map-marker" size={12} color={colors.primary} />
-                  <Text style={[styles.tagText, { color: colors.primary }]}>{getLocationName(item.location_id)}</Text>
+                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={12} color={palette.orange} />
+                  <Text style={[styles.tagText, { color: palette.orange }]}>{getLocationName(item.location_id)}</Text>
                 </View>
               )}
               {item.category_id && (
-                <View style={[styles.tag, { backgroundColor: colors.secondaryLight }]}>
-                  <MaterialCommunityIcons name="tag" size={12} color={colors.secondary} />
-                  <Text style={[styles.tagText, { color: colors.secondary }]}>{getCategoryName(item.category_id)}</Text>
+                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name="tag-outline" size={12} color={palette.violet} />
+                  <Text style={[styles.tagText, { color: palette.violet }]}>{getCategoryName(item.category_id)}</Text>
                 </View>
               )}
             </View>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} style={{ marginTop: 4 }} />
+          <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} style={{ marginTop: 4 }} />
         </TouchableOpacity>
       </SwipeableRow>
     );
-  }, [batchMode, selectedIds, colors, customCategories, customLocations, router]);
+  }, [batchMode, selectedIds, palette, customCategories, customLocations, router]);
 
   const renderHeader = () => (
     <View>
-      <View style={[styles.header, { backgroundColor: colors.white }]}>
+      <View style={[styles.header, { backgroundColor: palette.bg }]}>
         <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.gray[900] }]}>物品</Text>
+          <Text style={[styles.title, { color: palette.text }]}>物品</Text>
           <View style={styles.headerActions}>
-            <Text style={[styles.count, { color: colors.gray[500] }]}>共 {items.length} 件</Text>
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.gray[100] }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
-              <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={18} color={colors.gray[600]} />
+            <Text style={[styles.count, { color: palette.textMuted }]}>共 {items.length} 件</Text>
+            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
+              <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={18} color={palette.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.gray[100] }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="sort" size={18} color={colors.gray[600]} />
+            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
-        <View style={[styles.searchBox, { backgroundColor: colors.gray[100] }, isSearchFocused && { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.primary }]}>
-          <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? colors.primary : colors.gray[400]} />
+        <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
+          <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? palette.orange : palette.textMuted} />
           <TextInput
             ref={searchInputRef}
-            style={[styles.searchInput, { color: colors.gray[800] }]}
+            style={[styles.searchInput, { color: palette.text }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="搜索物品名称..."
-            placeholderTextColor={colors.gray[400]}
+            placeholderTextColor={palette.textMuted}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             returnKeyType="search"
@@ -210,7 +211,7 @@ export default function ItemListScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}>
-              <MaterialCommunityIcons name="close-circle" size={18} color={colors.gray[400]} />
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -224,8 +225,8 @@ export default function ItemListScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.gray[50] }]}>
-      <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.bg }]}>
+      <View style={[styles.container, { backgroundColor: palette.bg }]}>
         <PageLoadable
           loading={loading}
           error={itemsError}
@@ -248,32 +249,32 @@ export default function ItemListScreen() {
             maxToRenderPerBatch={10}
             updateCellsBatchingPeriod={50}
             windowSize={5}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
           />
         </PageLoadable>
         {batchMode && (
-          <View style={[styles.batchBar, { backgroundColor: colors.white }]}>
+          <View style={[styles.batchBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <TouchableOpacity onPress={() => {
               if (selectedIds.size === filtered.length) setSelectedIds(new Set());
               else setSelectedIds(new Set(filtered.map((i) => i.id)));
             }}>
-              <Text style={[styles.batchBtnText, { color: colors.gray[700] }]}>全选</Text>
+              <Text style={[styles.batchBtnText, { color: palette.textSecondary }]}>全选</Text>
             </TouchableOpacity>
-            <Text style={[styles.batchCount, { color: colors.primary }]}>{selectedIds.size}</Text>
-            <Text style={[styles.batchLabel, { color: colors.gray[500] }]}>已选择</Text>
+            <Text style={[styles.batchCount, { color: palette.orange }]}>{selectedIds.size}</Text>
+            <Text style={[styles.batchLabel, { color: palette.textMuted }]}>已选择</Text>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity style={[styles.batchDeleteBtn, { backgroundColor: colors.dangerLight }]} onPress={batchDelete}>
-              <Text style={[styles.batchDeleteText, { color: colors.danger }]}>删除</Text>
+            <TouchableOpacity style={[styles.batchDeleteBtn, { backgroundColor: palette.surfaceSoft }]} onPress={batchDelete}>
+              <Text style={[styles.batchDeleteText, { color: palette.danger }]}>删除</Text>
             </TouchableOpacity>
           </View>
         )}
         {!batchMode && <FAB onPress={() => router.push('/item/create')} />}
 
         {showSortModal && (
-          <TouchableOpacity style={styles.sortOverlay} activeOpacity={1} onPress={() => setShowSortModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.sortHandle, { backgroundColor: colors.gray[200] }]} />
-              <Text style={[styles.sortTitle, { color: colors.gray[900] }]}>排序方式</Text>
+          <TouchableOpacity style={[styles.sortOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSortModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+              <View style={[styles.sortHandle, { backgroundColor: palette.borderStrong }]} />
+              <Text style={[styles.sortTitle, { color: palette.text }]}>排序方式</Text>
               {([
                 { key: 'time' as const, label: '添加时间', icon: 'clock-outline' },
                 { key: 'name' as const, label: '名称', icon: 'sort-alphabetical-ascending' },
@@ -281,14 +282,14 @@ export default function ItemListScreen() {
               ]).map((opt) => (
                 <TouchableOpacity
                   key={opt.key}
-                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: colors.primaryLight }]}
+                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: palette.surfaceSoft }]}
                   onPress={() => { setSortBy(opt.key); setShowSortModal(false); }}
                 >
-                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? colors.primary : colors.gray[400]} />
-                  <Text style={[styles.sortOptionText, { color: colors.gray[800] }, sortBy === opt.key && { color: colors.primary }]}>
+                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? palette.orange : palette.textMuted} />
+                  <Text style={[styles.sortOptionText, { color: palette.text }, sortBy === opt.key && { color: palette.orange }]}>
                     {opt.label}
                   </Text>
-                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
+                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={palette.orange} />}
                 </TouchableOpacity>
               ))}
             </TouchableOpacity>
@@ -324,9 +325,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
   },
   searchBox: {
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.lg,
     gap: spacing.sm,
@@ -348,7 +351,9 @@ const styles = StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    minHeight: 84,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.lg,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
@@ -358,6 +363,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -386,6 +392,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
   },
   tagText: {
     fontSize: fontSize.xs,
@@ -397,9 +404,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -417,6 +425,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
     marginHorizontal: spacing.lg,
@@ -445,13 +454,13 @@ const styles = StyleSheet.create({
   },
   sortOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'flex-end',
     zIndex: 100,
   },
   sortModal: {
     borderTopLeftRadius: borderRadius['2xl'],
     borderTopRightRadius: borderRadius['2xl'],
+    borderWidth: 1,
     padding: spacing.xl,
     paddingBottom: 40,
   },

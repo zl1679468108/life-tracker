@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { spacing, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, spacing, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface FormSectionProps {
@@ -12,15 +12,16 @@ interface FormSectionProps {
 
 export function FormSection({ label, required, error, children }: FormSectionProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   
   return (
     <View style={styles.section}>
-      <Text style={[styles.label, { color: colors.gray[700] }]}>
+      <Text style={[styles.label, { color: palette.textSecondary }]}>
         {label}
-        {required && <Text style={[styles.required, { color: colors.danger }]}> *</Text>}
+        {required && <Text style={[styles.required, { color: palette.danger }]}> *</Text>}
       </Text>
       {children}
-      {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: palette.danger }]}>{error}</Text>}
     </View>
   );
 }

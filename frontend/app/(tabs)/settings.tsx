@@ -1,46 +1,61 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
+import { Toast } from '../../components/Toast';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { showAlert } from '../../lib/alert';
+import { i18n, useTranslation } from '../../lib/i18n';
 import { useAuthStore } from '../../stores/authStore';
+import { useColors } from '../../stores/themeStore';
 import { useProfileStore } from '../../stores/profileStore';
 import { useSyncStore } from '../../stores/syncStore';
-import { Toast } from '../../components/Toast';
-import { i18n, useTranslation } from '../../lib/i18n';
 
-interface SettingsItemProps {
-  icon: string;
-  iconGradient: readonly [string, string];
+type Palette = typeof appDesign.dark;
+
+type MineEntry = {
   title: string;
-  description?: string;
+  desc: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  route?: string;
+  tone?: keyof Pick<Palette, 'orange' | 'violet' | 'success' | 'warning' | 'danger'>;
   onPress?: () => void;
-  showArrow?: boolean;
+  loading?: boolean;
+  readonly?: boolean;
+};
+
+function IconMark({ icon, color, palette }: { icon: MineEntry['icon']; color: string; palette: Palette }) {
+  return (
+    <View style={[styles.entryIcon, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+      <MaterialCommunityIcons name={icon} size={20} color={color} />
+    </View>
+  );
 }
 
-function SettingsItem({ icon, iconGradient, title, description, onPress, showArrow = true }: SettingsItemProps) {
-  const colors = useColors();
-
+function MineRow({ entry, palette, onPress }: { entry: MineEntry; palette: Palette; onPress: () => void }) {
+  const tone = entry.tone ? palette[entry.tone] : palette.textMuted;
   return (
-    <TouchableOpacity style={styles.settingsItem} onPress={onPress} activeOpacity={0.7}>
-      <LinearGradient
-        colors={iconGradient}
-        style={styles.settingsIcon}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <MaterialCommunityIcons name={icon as any} size={20} color={colors.white} />
-      </LinearGradient>
-      <View style={styles.settingsContent}>
-        <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>{title}</Text>
-        {description && <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>{description}</Text>}
+    <TouchableOpacity
+      style={[styles.entryRow, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      onPress={onPress}
+      activeOpacity={entry.readonly ? 1 : 0.82}
+      disabled={entry.readonly || entry.loading}
+    >
+      <IconMark icon={entry.icon} color={tone} palette={palette} />
+      <View style={styles.entryText}>
+        <Text style={[styles.entryTitle, { color: palette.text }]}>{entry.title}</Text>
+        <Text style={[styles.entryDesc, { color: palette.textMuted }]} numberOfLines={1}>
+          {entry.desc}
+        </Text>
       </View>
-      {showArrow && (
-        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
+      {entry.loading ? (
+        <ActivityIndicator size="small" color={palette.orange} />
+      ) : entry.readonly ? (
+        <Text style={[styles.readonlyText, { color: palette.textMuted }]}>v1.2.0</Text>
+      ) : (
+        <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
       )}
     </TouchableOpacity>
   );
@@ -49,8 +64,9 @@ function SettingsItem({ icon, iconGradient, title, description, onPress, showArr
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
-  const { user } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, initCachedAvatar } = useProfileStore();
   const { status, lastSyncTime, syncAll } = useSyncStore();
   const [toastVisible, setToastVisible] = useState(false);
@@ -70,167 +86,129 @@ export default function SettingsScreen() {
       setToastMsg(msg);
       setToastType(type);
       setToastVisible(true);
-      toastTimer.current = setTimeout(() => setToastVisible(false), 2000);
+      toastTimer.current = setTimeout(() => setToastVisible(false), 2200);
     }, 50);
   }, []);
-
-  const handleSync = useCallback(async () => {
-    if (status === 'syncing') return;
-
-    try {
-      await syncAll();
-      showToast(t('settings.syncSuccess'), 'success');
-    } catch (error) {
-      showToast(t('settings.syncFailed'), 'error');
-    }
-  }, [status, syncAll, showToast, t]);
 
   const formatLastSyncTime = (timestamp: number | null) => {
     if (!timestamp) return t('common.noData');
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
+    const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
     if (diffMins < 1) return t('common.refresh');
     if (diffMins < 60) return `${diffMins}m`;
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `${diffHours}h`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d`;
+    return `${Math.floor(diffHours / 24)}d`;
   };
 
+  const handleSync = useCallback(async () => {
+    if (status === 'syncing') return;
+    try {
+      await syncAll();
+      showToast(t('settings.syncSuccess'), 'success');
+    } catch {
+      showToast(t('settings.syncFailed'), 'error');
+    }
+  }, [status, syncAll, showToast, t]);
+
+  const handleSignOut = () => {
+    showAlert(t('auth.logout'), t('auth.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('auth.logout'),
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/auth/login');
+        },
+      },
+    ]);
+  };
+
+  const go = (route: string) => router.push(route as never);
+
+  const sections: Array<{ title: string; entries: MineEntry[] }> = [
+    {
+      title: '账号与安全',
+      entries: [
+        { title: '账号管理', desc: user?.email || '管理头像、昵称和账号资料', icon: 'account-circle-outline', route: '/settings/account', tone: 'orange' },
+        { title: '修改密码', desc: '更新登录密码和安全凭据', icon: 'lock-outline', route: '/settings/change-password', tone: 'violet' },
+        { title: '退出登录', desc: '退出当前账号并返回登录页', icon: 'logout', onPress: handleSignOut, tone: 'danger' },
+      ],
+    },
+    {
+      title: '偏好设置',
+      entries: [
+        { title: '主题设置', desc: '深色、浅色或跟随系统', icon: 'theme-light-dark', route: '/settings/theme', tone: 'violet' },
+        { title: '语言', desc: i18n.getLanguage() === 'zh-CN' ? '中文' : 'English', icon: 'translate', route: '/settings/language', tone: 'success' },
+      ],
+    },
+    {
+      title: '数据与支持',
+      entries: [
+        {
+          title: '数据同步',
+          desc: status === 'syncing' ? t('common.loading') : `${t('settings.lastSync')}: ${formatLastSyncTime(lastSyncTime)}`,
+          icon: 'cloud-sync-outline',
+          onPress: handleSync,
+          loading: status === 'syncing',
+          tone: 'orange',
+        },
+        { title: '数据管理', desc: '备份、恢复、导入、导出', icon: 'database-outline', route: '/settings/data', tone: 'violet' },
+        { title: '反馈建议', desc: '提交问题或产品建议', icon: 'message-alert-outline', route: '/settings/feedback', tone: 'warning' },
+        { title: '版本信息', desc: '当前应用版本', icon: 'information-outline', readonly: true },
+      ],
+    },
+  ];
+
   return (
-    <SafeScreen>
-      <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: colors.gray[900] }]}>{t('settings.title')}</Text>
-
-      <TouchableOpacity style={[styles.profileCard, { backgroundColor: colors.white }]} onPress={() => router.push('/settings/account')} activeOpacity={0.8}>
-        {cachedAvatarUrl ? (
-          <Image
-            source={{ uri: cachedAvatarUrl }}
-            style={styles.profileAvatarImage}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={150}
-          />
-        ) : (
-          <LinearGradient
-            colors={[...colors.primaryGradient]}
-            style={styles.profileAvatar}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <MaterialCommunityIcons name="account" size={28} color={colors.white} />
-          </LinearGradient>
-        )}
-        <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, { color: colors.gray[800] }]}>{profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}</Text>
-          <Text style={[styles.profileEmail, { color: colors.gray[500] }]}>{user?.email || t('auth.login')}</Text>
+    <SafeScreen backgroundColor={palette.bg}>
+      <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: palette.text }]}>我的</Text>
         </View>
-        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
-      </TouchableOpacity>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.dataSync')}</Text>
-        <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
-          <TouchableOpacity style={styles.settingsItem} onPress={handleSync} activeOpacity={0.7} disabled={status === 'syncing'}>
-            <LinearGradient
-              colors={[colors.secondary, colors.secondaryLight]}
-              style={styles.settingsIcon}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              {status === 'syncing' ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <MaterialCommunityIcons name="cloud-sync" size={20} color={colors.white} />
-              )}
-            </LinearGradient>
-            <View style={styles.settingsContent}>
-              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>{t('settings.dataSync')}</Text>
-              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>
-                {status === 'syncing' ? t('common.loading') : `${t('settings.lastSync')}: ${formatLastSyncTime(lastSyncTime)}`}
+        <TouchableOpacity
+          style={[styles.profileCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+          onPress={() => go('/settings/account')}
+          activeOpacity={0.82}
+        >
+          {cachedAvatarUrl ? (
+            <Image source={{ uri: cachedAvatarUrl }} style={styles.avatarImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          ) : (
+            <View style={[styles.avatarFallback, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.avatarText, { color: palette.orange }]}>
+                {(profile?.display_name || user?.email || '我').slice(0, 1).toUpperCase()}
               </Text>
             </View>
-            {status === 'syncing' ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsItem} onPress={() => router.push('/settings/data')} activeOpacity={0.7}>
-            <LinearGradient
-              colors={[colors.warning, colors.warningLight]}
-              style={styles.settingsIcon}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialCommunityIcons name="database" size={20} color={colors.white} />
-            </LinearGradient>
-            <View style={styles.settingsContent}>
-              <Text style={[styles.settingsTitle, { color: colors.gray[800] }]}>数据管理</Text>
-              <Text style={[styles.settingsDesc, { color: colors.gray[400] }]}>备份/恢复/导入导出</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[300]} />
-          </TouchableOpacity>
-        </View>
-      </View>
+          )}
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
+              {profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}
+            </Text>
+            <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
+              {user?.email || t('auth.login')}
+            </Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+        </TouchableOpacity>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.theme')}</Text>
-        <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
-          <SettingsItem
-            icon="palette"
-            iconGradient={[colors.danger, colors.dangerLight]}
-            title={t('settings.theme')}
-            description={t('settings.themeSystem')}
-            onPress={() => router.push('/settings/theme')}
-          />
-          <SettingsItem
-            icon="translate"
-            iconGradient={[colors.success, colors.successLight]}
-            title={t('settings.language')}
-            description={i18n.getLanguage() === 'zh-CN' ? '中文' : 'English'}
-            onPress={() => router.push('/settings/language')}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.preferences')}</Text>
-        <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
-          <SettingsItem
-            icon="lock"
-            iconGradient={[colors.primary, colors.primaryLight]}
-            title={t('settings.changePassword')}
-            description={t('settings.changePasswordDesc')}
-            onPress={() => router.push('/settings/change-password')}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>{t('settings.about')}</Text>
-        <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
-          <SettingsItem
-            icon="information"
-            iconGradient={[colors.gray[400], colors.gray[500]]}
-            title={t('settings.version')}
-            description="v1.2.0"
-            showArrow={false}
-          />
-          <SettingsItem
-            icon="message-alert"
-            iconGradient={[colors.danger, colors.dangerLight]}
-            title={t('settings.feedback')}
-            description={t('feedback.title')}
-            onPress={() => router.push('/settings/feedback')}
-          />
-        </View>
-      </View>
-    </ScrollView>
-    <Toast visible={toastVisible} message={toastMsg} type="info" />
+        {sections.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>{section.title}</Text>
+            {section.entries.map((entry) => (
+              <MineRow
+                key={entry.title}
+                entry={entry}
+                palette={palette}
+                onPress={() => (entry.onPress ? entry.onPress() : entry.route ? go(entry.route) : undefined)}
+              />
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+      <Toast visible={toastVisible} message={toastMsg} type={toastType} />
     </SafeScreen>
   );
 }
@@ -240,94 +218,104 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: 112,
+  },
+  header: {
+    marginBottom: spacing.md,
   },
   title: {
-    fontSize: fontSize['7xl'],
+    fontSize: 22,
+    lineHeight: 30,
     fontWeight: fontWeight.bold,
-    padding: spacing.lg,
   },
   profileCard: {
+    minHeight: 104,
+    borderWidth: 1,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.sm,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  profileAvatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
-  profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  avatarFallback: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
+  },
+  avatarText: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: fontWeight.bold,
   },
   profileInfo: {
     flex: 1,
-    marginLeft: spacing.lg,
+    minWidth: 0,
   },
   profileName: {
     fontSize: fontSize['3xl'],
-    fontWeight: fontWeight.semiBold,
+    lineHeight: 24,
+    fontWeight: fontWeight.bold,
   },
   profileEmail: {
     fontSize: fontSize.base,
+    lineHeight: 20,
     marginTop: 2,
   },
   section: {
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: fontSize['2xl'],
+    lineHeight: 24,
+    fontWeight: fontWeight.bold,
     marginBottom: spacing.sm,
   },
-  sectionCard: {
+  entryRow: {
+    minHeight: 72,
+    borderWidth: 1,
     borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  settingsItem: {
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.sm,
   },
-  settingsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  entryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
   },
-  settingsContent: {
+  entryText: {
     flex: 1,
+    minWidth: 0,
   },
-  settingsTitle: {
+  entryTitle: {
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.medium,
+    lineHeight: 22,
+    fontWeight: fontWeight.semiBold,
   },
-  settingsDesc: {
+  entryDesc: {
     fontSize: fontSize.sm,
-    marginTop: 2,
+    lineHeight: 18,
+    marginTop: 1,
+  },
+  readonlyText: {
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.medium,
   },
 });

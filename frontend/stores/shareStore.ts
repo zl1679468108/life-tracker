@@ -11,7 +11,7 @@ interface ShareState {
   fetchOutgoingShares: () => Promise<void>;
   fetchIncomingShares: () => Promise<void>;
   fetchResourceShares: (type: 'item' | 'todo', id: string) => Promise<void>;
-  createShare: (data: CreateShareRequest) => Promise<void>;
+  createShare: (data: CreateShareRequest) => Promise<LifeShare | undefined>;
   updateShare: (id: string, data: UpdateShareRequest) => Promise<void>;
   deleteShare: (id: string) => Promise<void>;
   clearError: () => void;

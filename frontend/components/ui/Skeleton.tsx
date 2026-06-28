@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
-import { borderRadius } from '../../constants/theme';
+import { appDesign } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface SkeletonProps {
@@ -17,6 +17,7 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const animatedValue = new Animated.Value(0);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function Skeleton({
       style={[
         styles.container,
         {
-          backgroundColor: colors.gray[200],
+          backgroundColor: palette.surfaceSoft,
           width,
           height,
           borderRadius: br,

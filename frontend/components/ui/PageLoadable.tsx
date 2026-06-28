@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Loading } from './Loading';
 import { Skeleton } from './Skeleton';
@@ -43,17 +43,18 @@ export function PageLoadable({
   children,
 }: PageLoadableProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   // 错误状态
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <MaterialCommunityIcons name="alert-circle-outline" size={56} color={colors.gray[300]} />
-        <Text style={[styles.errorTitle, { color: colors.gray[600] }]}>加载失败</Text>
-        <Text style={[styles.errorMsg, { color: colors.gray[400] }]}>{error}</Text>
+        <MaterialCommunityIcons name="alert-circle-outline" size={56} color={palette.danger} />
+        <Text style={[styles.errorTitle, { color: palette.text }]}>加载失败</Text>
+        <Text style={[styles.errorMsg, { color: palette.textMuted }]}>{error}</Text>
         {onRetry && (
           <TouchableOpacity
-            style={[styles.retryBtn, { backgroundColor: colors.primary }]}
+            style={[styles.retryBtn, { backgroundColor: palette.orange }]}
             onPress={onRetry}
             activeOpacity={0.8}
           >
@@ -79,12 +80,12 @@ export function PageLoadable({
   if (empty) {
     return (
       <View style={styles.centerContainer}>
-        <MaterialCommunityIcons name={emptyIcon as any} size={64} color={colors.gray[200]} />
-        {emptyTitle && <Text style={[styles.emptyTitle, { color: colors.gray[500] }]}>{emptyTitle}</Text>}
-        {emptyMessage && <Text style={[styles.emptyMsg, { color: colors.gray[400] }]}>{emptyMessage}</Text>}
+        <MaterialCommunityIcons name={emptyIcon as any} size={64} color={palette.textMuted} />
+        {emptyTitle && <Text style={[styles.emptyTitle, { color: palette.text }]}>{emptyTitle}</Text>}
+        {emptyMessage && <Text style={[styles.emptyMsg, { color: palette.textMuted }]}>{emptyMessage}</Text>}
         {onEmptyAction && emptyActionLabel && (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+            style={[styles.actionBtn, { backgroundColor: palette.orange }]}
             onPress={onEmptyAction}
             activeOpacity={0.8}
           >
@@ -101,10 +102,11 @@ export function PageLoadable({
 /** 默认全屏骨架屏 */
 function SkeletonPage() {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   return (
-    <View style={[styles.skeletonContainer, { backgroundColor: colors.gray[50] }]}>
+    <View style={[styles.skeletonContainer, { backgroundColor: palette.bg }]}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.white }]}>
+        <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           <Skeleton width={52} height={52} borderRadius={14} />
           <View style={styles.skeletonContent}>
             <Skeleton width="60%" height={16} />
@@ -177,6 +179,7 @@ const styles = StyleSheet.create({
   skeletonCard: {
     flexDirection: 'row',
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },

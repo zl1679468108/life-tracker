@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface ButtonProps {
@@ -27,13 +27,14 @@ export function Button({
   icon,
 }: ButtonProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyle: ViewStyle[] = [styles.base, styles[`size_${size}`] as ViewStyle];
 
-    if (variant === 'primary') baseStyle.push({ backgroundColor: colors.primary });
-    else if (variant === 'secondary') baseStyle.push({ backgroundColor: colors.gray[100] });
-    else if (variant === 'danger') baseStyle.push({ backgroundColor: colors.dangerLight });
+    if (variant === 'primary') baseStyle.push({ backgroundColor: palette.orange });
+    else if (variant === 'secondary') baseStyle.push({ backgroundColor: palette.surfaceSoft, borderColor: palette.border, borderWidth: 1 });
+    else if (variant === 'danger') baseStyle.push({ backgroundColor: palette.surfaceSoft, borderColor: palette.border, borderWidth: 1 });
     else baseStyle.push(styles.text);
 
     if (disabled) baseStyle.push(styles.disabled);
@@ -45,10 +46,10 @@ export function Button({
   const getTextStyle = (): TextStyle[] => {
     const baseStyle: TextStyle[] = [styles.textBase];
 
-    if (variant === 'primary') baseStyle.push({ color: colors.white });
-    else if (variant === 'secondary') baseStyle.push({ color: colors.gray[600] });
-    else if (variant === 'danger') baseStyle.push({ color: colors.danger });
-    else baseStyle.push({ color: colors.primary });
+    if (variant === 'primary') baseStyle.push({ color: '#FFFFFF' });
+    else if (variant === 'secondary') baseStyle.push({ color: palette.textSecondary });
+    else if (variant === 'danger') baseStyle.push({ color: palette.danger });
+    else baseStyle.push({ color: palette.orange });
 
     baseStyle.push(styles[`textSize_${size}`] as TextStyle);
     if (textStyle) baseStyle.push(textStyle);
@@ -65,7 +66,7 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? colors.white : colors.primary}
+          color={variant === 'primary' ? '#FFFFFF' : palette.orange}
           size="small"
         />
       ) : (

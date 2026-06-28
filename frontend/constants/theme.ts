@@ -1,33 +1,33 @@
 // 浅色主题
 export const lightColors = {
-  primary: '#FF6B35',
-  primaryHover: '#E55A2B',
-  primaryLight: '#FFF4ED',
-  primaryGradient: ['#FF6B35', '#FF8F5E'] as const,
+  primary: '#F36F3C',
+  primaryHover: '#E45F2F',
+  primaryLight: '#FFF0E9',
+  primaryGradient: ['#F36F3C', '#F9735F'] as const,
 
   secondary: '#7C5CFC',
-  secondaryLight: '#F3F0FF',
+  secondaryLight: '#F0EDFF',
 
-  success: '#10B981',
+  success: '#10A66E',
   successLight: '#ECFDF5',
 
-  warning: '#F59E0B',
+  warning: '#D89400',
   warningLight: '#FFFBEB',
 
-  danger: '#EF4444',
+  danger: '#E84A5F',
   dangerLight: '#FEF2F2',
 
   gray: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+    50: '#F6F8FC',
+    100: '#EEF2F8',
+    200: '#DDE5F0',
+    300: '#B9C6D8',
+    400: '#9AA7B8',
+    500: '#68758A',
+    600: '#475569',
+    700: '#334155',
+    800: '#1E293B',
+    900: '#0F1724',
   },
 
   white: '#FFFFFF',
@@ -36,37 +36,37 @@ export const lightColors = {
 
 // 深色主题
 export const darkColors = {
-  primary: '#FF8F5E',
+  primary: '#FF8754',
   primaryHover: '#FF6B35',
-  primaryLight: '#2D1B14',
-  primaryGradient: ['#FF8F5E', '#FF6B35'] as const,
+  primaryLight: '#351F18',
+  primaryGradient: ['#FF8754', '#FF6B7A'] as const,
 
-  secondary: '#9B7FFC',
-  secondaryLight: '#1F1A3A',
+  secondary: '#8B68F5',
+  secondaryLight: '#211B3D',
 
-  success: '#34D399',
-  successLight: '#0D2818',
+  success: '#32D296',
+  successLight: '#0D351F',
 
-  warning: '#FBBF24',
+  warning: '#FBB329',
   warningLight: '#2D2006',
 
-  danger: '#F87171',
-  dangerLight: '#2D1414',
+  danger: '#FF6B7A',
+  dangerLight: '#461B20',
 
   gray: {
-    50: '#111827',
-    100: '#1F2937',
-    200: '#374151',
-    300: '#4B5563',
-    400: '#6B7280',
-    500: '#9CA3AF',
-    600: '#D1D5DB',
-    700: '#E5E7EB',
-    800: '#F3F4F6',
-    900: '#F9FAFB',
+    50: '#08111F',
+    100: '#0D1626',
+    200: '#121D2F',
+    300: '#172235',
+    400: '#596579',
+    500: '#8C98AA',
+    600: '#D5DCE7',
+    700: '#E5EAF2',
+    800: '#F4F7FB',
+    900: '#FFFFFF',
   },
 
-  white: '#000000',
+  white: '#0D1626',
   black: '#FFFFFF',
 };
 
@@ -96,7 +96,7 @@ export const borderRadius = {
   md: 12,
   lg: 16,
   xl: 20,
-  '2xl': 28,
+  '2xl': 24,
   full: 9999,
 };
 
@@ -160,3 +160,44 @@ export const animation = {
 // 默认图标
 export const defaultCategoryIcon = 'tag';
 export const defaultLocationIcon = 'map-marker';
+
+export const appDesign = {
+  dark: {
+    bg: '#08111F',
+    bgElevated: '#0B1424',
+    surface: '#0D1626',
+    surfaceSoft: '#121D2F',
+    surfaceHover: '#172235',
+    border: '#243043',
+    borderStrong: '#33425A',
+    text: '#FFFFFF',
+    textSecondary: '#D5DCE7',
+    textMuted: '#8C98AA',
+    textDisabled: '#596579',
+    orange: '#FF8754',
+    violet: '#8B68F5',
+    success: '#32D296',
+    warning: '#FBB329',
+    danger: '#FF6B7A',
+    scrim: 'rgba(0,0,0,0.48)',
+  },
+  light: {
+    bg: '#F6F8FC',
+    bgElevated: '#FFFFFF',
+    surface: '#FFFFFF',
+    surfaceSoft: '#EEF2F8',
+    surfaceHover: '#E6ECF5',
+    border: '#DDE5F0',
+    borderStrong: '#B9C6D8',
+    text: '#0F1724',
+    textSecondary: '#334155',
+    textMuted: '#68758A',
+    textDisabled: '#9AA7B8',
+    orange: '#F36F3C',
+    violet: '#7C5CFC',
+    success: '#10A66E',
+    warning: '#D89400',
+    danger: '#E84A5F',
+    scrim: 'rgba(15,23,36,0.36)',
+  },
+};

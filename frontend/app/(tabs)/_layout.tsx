@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { layout, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, layout, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
 
@@ -15,6 +15,7 @@ function TabIcon({ name, color }: { name: string; color: string }) {
 export default function TabLayout() {
   const colors = useColors();
   const conversations = useConversationStore((s) => s.conversations);
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   // 计算总未读数
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -23,12 +24,12 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.gray[400],
-        tabBarStyle: [styles.tabBar, { borderTopColor: colors.gray[100], backgroundColor: colors.white }],
+        tabBarActiveTintColor: palette.orange,
+        tabBarInactiveTintColor: palette.textMuted,
+        tabBarStyle: [styles.tabBar, { borderTopColor: palette.border, backgroundColor: palette.surface }],
         tabBarLabelStyle: styles.tabLabel,
         tabBarIconStyle: styles.tabIcon,
-        sceneStyle: { backgroundColor: colors.gray[50] },
+        sceneStyle: { backgroundColor: palette.bg },
       }}
     >
       <Tabs.Screen

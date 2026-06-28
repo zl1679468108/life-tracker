@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, TextInput, Text, StyleSheet, ViewStyle, TouchableOpacity, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface InputProps {
@@ -47,12 +47,13 @@ export function Input({
   const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
   const inputRef = useRef<TextInput>(null);
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   const containerStyles = [
     styles.container,
-    { backgroundColor: colors.gray[50], borderColor: colors.gray[200] },
-    isFocused && { borderColor: colors.primary, backgroundColor: colors.white },
-    error && { borderColor: colors.danger },
+    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+    isFocused && { borderColor: palette.orange, backgroundColor: palette.surface },
+    error && { borderColor: palette.danger },
     disabled && styles.disabled,
     multiline && styles.multiline,
     style,
@@ -60,7 +61,7 @@ export function Input({
 
   const inputStyles = [
     styles.input,
-    { color: colors.gray[800] },
+    { color: palette.text },
     leftIcon && styles.inputWithLeftIcon,
     (rightIcon || secureTextEntry) && styles.inputWithRightIcon,
     multiline && styles.multilineInput,
@@ -85,9 +86,9 @@ export function Input({
   return (
     <View style={styles.wrapper}>
       {label && (
-        <Text style={[styles.label, { color: colors.gray[700] }]}>
+        <Text style={[styles.label, { color: palette.textSecondary }]}>
           {label}
-          {required && <Text style={{ color: colors.danger }}> *</Text>}
+          {required && <Text style={{ color: palette.danger }}> *</Text>}
           {error && !required && ' *'}
         </Text>
       )}
@@ -96,7 +97,7 @@ export function Input({
           <MaterialCommunityIcons
             name={leftIcon as any}
             size={20}
-            color={colors.gray[400]}
+            color={isFocused ? palette.orange : palette.textMuted}
             style={styles.leftIcon}
           />
         )}
@@ -106,7 +107,7 @@ export function Input({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.gray[400]}
+          placeholderTextColor={palette.textMuted}
           secureTextEntry={secureTextEntry && !isPasswordVisible}
           multiline={multiline}
           numberOfLines={numberOfLines}
@@ -128,7 +129,7 @@ export function Input({
             <MaterialCommunityIcons
               name={isPasswordVisible ? 'eye' : 'eye-off'}
               size={20}
-              color={colors.gray[400]}
+              color={palette.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -140,12 +141,12 @@ export function Input({
             <MaterialCommunityIcons
               name={rightIcon as any}
               size={20}
-              color={colors.gray[400]}
+              color={palette.textMuted}
             />
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: palette.danger }]}>{error}</Text>}
     </View>
   );
 }

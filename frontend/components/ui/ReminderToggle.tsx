@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Switch, Chip } from 'react-native-paper';
-import { useColors } from '../../hooks/useThemeColors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors } from '../../stores/themeStore';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 
 interface ReminderToggleProps {
   enabled: boolean;
@@ -26,23 +26,24 @@ export function ReminderToggle({
   onDaysChange,
 }: ReminderToggleProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.white }]}>
+    <View style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.label, { color: colors.gray[800] }]}>
+        <Text style={[styles.label, { color: palette.text }]}>
           保质期提醒
         </Text>
         <Switch
           value={enabled}
           onValueChange={onToggle}
-          color={colors.primary}
+          color={palette.orange}
         />
       </View>
 
       {enabled && (
         <View style={styles.options}>
-          <Text style={[styles.subLabel, { color: colors.gray[500] }]}>
+          <Text style={[styles.subLabel, { color: palette.textMuted }]}>
             提前提醒时间
           </Text>
           <View style={styles.chipsContainer}>
@@ -53,13 +54,14 @@ export function ReminderToggle({
                 onPress={() => onDaysChange(option.value)}
                 style={[
                   styles.chip,
+                  { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
                   daysBefore === option.value && {
-                    backgroundColor: colors.primaryLight,
-                    borderColor: colors.primary,
+                    backgroundColor: palette.surface,
+                    borderColor: palette.orange,
                   },
                 ]}
                 textStyle={{
-                  color: daysBefore === option.value ? colors.primary : colors.gray[500],
+                  color: daysBefore === option.value ? palette.orange : palette.textMuted,
                 }}
               >
                 {option.label}
@@ -76,6 +78,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     marginVertical: spacing.sm,
   },
   header: {
@@ -102,5 +105,6 @@ const styles = StyleSheet.create({
   chip: {
     marginRight: spacing.sm,
     marginBottom: spacing.sm,
+    borderWidth: 1,
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { shadows } from '../../constants/theme';
+import { appDesign, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface FABProps {
@@ -13,7 +13,8 @@ interface FABProps {
 
 export function FAB({ icon = 'plus', onPress, variant = 'primary', style }: FABProps) {
   const colors = useColors();
-  const backgroundColor = variant === 'primary' ? colors.primary : colors.success;
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const backgroundColor = variant === 'primary' ? palette.orange : palette.violet;
 
   return (
     <TouchableOpacity
@@ -21,7 +22,7 @@ export function FAB({ icon = 'plus', onPress, variant = 'primary', style }: FABP
       activeOpacity={0.9}
       style={[styles.container, { backgroundColor }, style]}
     >
-      <MaterialCommunityIcons name={icon as any} size={24} color={colors.white} />
+      <MaterialCommunityIcons name={icon as any} size={24} color="#FFFFFF" />
     </TouchableOpacity>
   );
 }

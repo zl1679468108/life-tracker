@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
-import { fontSize, spacing } from '../../constants/theme';
+import { appDesign, fontSize, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 interface LoadingProps {
@@ -12,13 +12,14 @@ interface LoadingProps {
 
 export function Loading({ size = 'large', text, overlay = false, style }: LoadingProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   
   if (overlay) {
     return (
       <View style={[styles.overlay, style]}>
         <View style={styles.overlayContent}>
-          <ActivityIndicator size={size} color={colors.primary} />
-          {text && <Text style={[styles.text, { color: colors.gray[500] }]}>{text}</Text>}
+          <ActivityIndicator size={size} color={palette.orange} />
+          {text && <Text style={[styles.text, { color: palette.textMuted }]}>{text}</Text>}
         </View>
       </View>
     );
@@ -26,8 +27,8 @@ export function Loading({ size = 'large', text, overlay = false, style }: Loadin
 
   return (
     <View style={[styles.container, style]}>
-      <ActivityIndicator size={size} color={colors.primary} />
-      {text && <Text style={[styles.text, { color: colors.gray[500] }]}>{text}</Text>}
+      <ActivityIndicator size={size} color={palette.orange} />
+      {text && <Text style={[styles.text, { color: palette.textMuted }]}>{text}</Text>}
     </View>
   );
 }
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(8, 17, 31, 0.64)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
