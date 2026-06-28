@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '../../hooks/useThemeColors';
 import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { Input, Button } from './index';
-import type { LifeShare } from '../../types';
+import { Button } from './index';
+import { api } from '../../lib/api';
+import type { LifeFriend, LifeShare } from '../../types';
 
 interface ShareDialogProps {
   visible: boolean;
@@ -13,7 +14,7 @@ interface ShareDialogProps {
   resourceId: string;
   shares: LifeShare[];
   loading: boolean;
-  onShare: (email: string, permission: 'view' | 'edit') => Promise<void>;
+  onShare: (friendId: string, permission: 'view' | 'edit') => Promise<void>;
   onUpdatePermission: (shareId: string, permission: 'view' | 'edit') => Promise<void>;
   onDeleteShare: (shareId: string) => Promise<void>;
   onShareSuccess?: () => void; // 分享成功回调（可选，用于关闭对话框等）
@@ -32,16 +33,26 @@ export function ShareDialog({
   onShareSuccess,
 }: ShareDialogProps) {
   const colors = useColors();
-  const [email, setEmail] = useState('');
+  const [friends, setFriends] = useState<LifeFriend[]>([]);
+  const [selectedFriendId, setSelectedFriendId] = useState('');
   const [permission, setPermission] = useState<'view' | 'edit'>('view');
   const [submitting, setSubmitting] = useState(false);
+  const [friendsLoading, setFriendsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setFriendsLoading(true);
+    api.messages.friends()
+      .then((res) => setFriends(res.data || []))
+      .finally(() => setFriendsLoading(false));
+  }, [visible]);
 
   const handleShare = async () => {
-    if (!email.trim()) return;
+    if (!selectedFriendId) return;
     setSubmitting(true);
     try {
-      await onShare(email.trim(), permission);
-      setEmail('');
+      await onShare(selectedFriendId, permission);
+      setSelectedFriendId('');
       setPermission('view');
       onShareSuccess?.();
     } catch (e) {
@@ -95,13 +106,41 @@ export function ShareDialog({
 
           {/* Add share form */}
           <View style={styles.form}>
-            <Input
-              label="共享给用户邮箱"
-              placeholder="输入用户邮箱"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
+            <Text style={[styles.permLabel, { color: colors.gray[700] }]}>选择好友：</Text>
+            {friendsLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : friends.length === 0 ? (
+              <Text style={[styles.emptyText, { color: colors.gray[400] }]}>暂无已通过好友</Text>
+            ) : (
+              <View style={styles.friendList}>
+                {friends.map((friend) => (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={[
+                      styles.friendChip,
+                      { backgroundColor: colors.gray[100], borderColor: colors.gray[200] },
+                      selectedFriendId === friend.friend.id && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+                    ]}
+                    onPress={() => setSelectedFriendId(friend.friend.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={friend.pinned ? 'star' : 'account'}
+                      size={16}
+                      color={selectedFriendId === friend.friend.id ? colors.primary : colors.gray[500]}
+                    />
+                    <Text
+                      style={[
+                        styles.friendChipText,
+                        { color: selectedFriendId === friend.friend.id ? colors.primary : colors.gray[700] },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {friend.friend.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
             <View style={styles.permRow}>
               <Text style={[styles.permLabel, { color: colors.gray[700] }]}>权限：</Text>
               <TouchableOpacity
@@ -126,6 +165,7 @@ export function ShareDialog({
               onPress={handleShare}
               variant="primary"
               loading={submitting}
+              disabled={!selectedFriendId}
             />
           </View>
 
@@ -197,6 +237,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.md,
+  },
+  friendList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  friendChip: {
+    maxWidth: '48%',
+    minHeight: 36,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  friendChipText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
   },
   listHeader: {
     marginBottom: spacing.sm,

@@ -19,6 +19,8 @@ interface CreateMessageData {
   card_data?: any;
 }
 
+type FriendshipStatus = 'pending' | 'accepted' | 'rejected';
+
 @Injectable()
 export class MessagesService {
   constructor(
@@ -268,6 +270,218 @@ export class MessagesService {
     }));
   }
 
+  private async ensureAcceptedFriend(userId: string, friendId: string) {
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .select('id')
+      .or(`and(requester_id.eq.${userId},addressee_id.eq.${friendId}),and(requester_id.eq.${friendId},addressee_id.eq.${userId})`)
+      .eq('status', 'accepted')
+      .maybeSingle();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    if (!data) throw new BadRequestException('只能与已通过好友操作');
+    return data;
+  }
+
+  private async enrichFriendship(row: any, userId: string) {
+    const friendId = row.requester_id === userId ? row.addressee_id : row.requester_id;
+    const { data: profile } = await this.supabase
+      .from('life_profiles')
+      .select('id, email, display_name, avatar_url')
+      .eq('id', friendId)
+      .single();
+
+    return {
+      id: row.id,
+      status: row.status as FriendshipStatus,
+      friend: {
+        id: friendId,
+        email: profile?.email || null,
+        display_name: profile?.display_name || profile?.email?.split('@')[0] || '未知用户',
+        avatar_url: profile?.avatar_url || null,
+      },
+      pinned: row.requester_id === userId ? row.requester_pinned : row.addressee_pinned,
+      request_message: row.request_message || null,
+      direction: row.requester_id === userId ? 'outgoing' : 'incoming',
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      responded_at: row.responded_at,
+    };
+  }
+
+  async findFriends(userId: string) {
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .eq('status', 'accepted')
+      .order('updated_at', { ascending: false });
+
+    if (error) throw new InternalServerErrorException(error.message);
+    const friends = await Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
+    return friends.sort((a, b) => Number(b.pinned) - Number(a.pinned));
+  }
+
+  async findFriendRequests(userId: string) {
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
+  }
+
+  async sendFriendRequest(userId: string, targetUserId: string, message?: string) {
+    if (!targetUserId || targetUserId === userId) {
+      throw new BadRequestException('不能添加自己为好友');
+    }
+
+    const { data: existing, error: existingError } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .or(`and(requester_id.eq.${userId},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${userId})`)
+      .maybeSingle();
+
+    if (existingError) throw new InternalServerErrorException(existingError.message);
+    if (existing) {
+      if (existing.status === 'accepted') throw new BadRequestException('已经是好友');
+      if (existing.status === 'pending') throw new BadRequestException('好友申请已发送');
+    }
+
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .insert({
+        requester_id: userId,
+        addressee_id: targetUserId,
+        request_message: message,
+      })
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    this.eventsGateway.emitFriendRequestUpdated(targetUserId, { type: 'request_created', friendship_id: data.id });
+    return this.enrichFriendship(data, userId);
+  }
+
+  async respondFriendRequest(userId: string, friendshipId: string, action: 'accept' | 'reject') {
+    const { data: existing, error: findError } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .eq('id', friendshipId)
+      .eq('addressee_id', userId)
+      .eq('status', 'pending')
+      .single();
+
+    if (findError || !existing) throw new NotFoundException('好友申请不存在或无权限处理');
+
+    const status: FriendshipStatus = action === 'accept' ? 'accepted' : 'rejected';
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq('id', friendshipId)
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    if (status === 'accepted') {
+      await this.createOrGetFriendConversation(existing.requester_id, existing.addressee_id);
+    }
+
+    this.eventsGateway.emitFriendRequestUpdated(existing.requester_id, { type: `request_${status}`, friendship_id: friendshipId });
+    this.eventsGateway.emitFriendRequestUpdated(existing.addressee_id, { type: `request_${status}`, friendship_id: friendshipId });
+    return this.enrichFriendship(data, userId);
+  }
+
+  async setFriendPinned(userId: string, friendshipId: string, pinned: boolean) {
+    const { data: existing, error: findError } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .eq('id', friendshipId)
+      .eq('status', 'accepted')
+      .single();
+
+    if (findError || !existing || (existing.requester_id !== userId && existing.addressee_id !== userId)) {
+      throw new NotFoundException('好友关系不存在或无权限操作');
+    }
+
+    const field = existing.requester_id === userId ? 'requester_pinned' : 'addressee_pinned';
+    const { data, error } = await this.supabase
+      .from('life_friendships')
+      .update({ [field]: pinned })
+      .eq('id', friendshipId)
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return this.enrichFriendship(data, userId);
+  }
+
+  async deleteFriend(userId: string, friendshipId: string) {
+    const { data: existing, error: findError } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .eq('id', friendshipId)
+      .eq('status', 'accepted')
+      .single();
+
+    if (findError || !existing || (existing.requester_id !== userId && existing.addressee_id !== userId)) {
+      throw new NotFoundException('好友关系不存在或无权限操作');
+    }
+
+    const { error } = await this.supabase
+      .from('life_friendships')
+      .delete()
+      .eq('id', friendshipId);
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    const otherId = existing.requester_id === userId ? existing.addressee_id : existing.requester_id;
+    this.eventsGateway.emitFriendRequestUpdated(userId, { type: 'friend_deleted', friendship_id: friendshipId });
+    this.eventsGateway.emitFriendRequestUpdated(otherId, { type: 'friend_deleted', friendship_id: friendshipId });
+    return { success: true };
+  }
+
+  private async createOrGetFriendConversation(userA: string, userB: string) {
+    const { data: existing } = await this.supabase
+      .from('life_conversations')
+      .select('id')
+      .contains('participant_ids', [userA])
+      .contains('participant_ids', [userB])
+      .maybeSingle();
+
+    if (existing) return existing;
+
+    const { data: conv, error } = await this.supabase
+      .from('life_conversations')
+      .insert({
+        participant_ids: [userA, userB],
+        last_message_type: 'system',
+        last_message_content: '你们已成为好友',
+        last_message_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw new InternalServerErrorException(error.message);
+
+    await this.supabase
+      .from('life_messages')
+      .insert({
+        conversation_id: conv.id,
+        sender_id: userA,
+        type: 'system',
+        content: '你们已成为好友',
+      });
+
+    this.eventsGateway.emitConversationUpdated(userA, convertTimesToBeijing(conv));
+    this.eventsGateway.emitConversationUpdated(userB, convertTimesToBeijing(conv));
+    return conv;
+  }
+
   /**
    * 手动创建对话（供用户主动发起）
    */
@@ -283,6 +497,9 @@ export class MessagesService {
     if (!data.participant_ids.includes(userId)) {
       throw new BadRequestException('发起者必须是对话参与者');
     }
+
+    const otherUserId = data.participant_ids.find((id) => id !== userId);
+    await this.ensureAcceptedFriend(userId, otherUserId);
 
     // 检查是否已存在相同参与者的对话
     const { data: existing } = await this.supabase

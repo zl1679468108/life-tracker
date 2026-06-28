@@ -245,7 +245,8 @@ export interface LifeShare {
 
 // 共享请求
 export interface CreateShareRequest {
-  shared_with_email: string;
+  shared_with_email?: string;
+  shared_with_id?: string;
   resource_type: 'item' | 'todo';
   resource_id: string;
   permission: 'view' | 'edit';
@@ -253,6 +254,23 @@ export interface CreateShareRequest {
 
 export interface UpdateShareRequest {
   permission: 'view' | 'edit';
+}
+
+export interface LifeFriend {
+  id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  friend: {
+    id: string;
+    email?: string | null;
+    display_name: string;
+    avatar_url?: string | null;
+  };
+  pinned: boolean;
+  request_message?: string | null;
+  direction: 'incoming' | 'outgoing';
+  created_at: string;
+  updated_at: string;
+  responded_at?: string | null;
 }
 
 // 模板类型

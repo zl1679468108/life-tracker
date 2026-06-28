@@ -138,16 +138,16 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T75.26 | P0 | 设计好友关系和申请数据表迁移 | database | todo | 新增或补齐好友关系、申请状态、置顶、共享权限所需字段；同步 `docs/database-init.sql` |
-| T75.27 | P0 | 后端好友申请 API | backend/messages | todo | 搜索用户、发送申请、接受/拒绝申请、申请结果通知；同意前不得建聊 |
-| T75.28 | P0 | 后端好友列表与置顶 API | backend/messages | todo | 仅返回已通过好友；支持置顶/取消置顶、删除好友、小弹窗动作由前端承接 |
-| T75.29 | P0 | 后端共享权限收拢到好友上下文 | backend/shares | todo | 仅资源所有者可对已通过好友授予查看/编辑权限；共享后写入卡片消息 |
-| T75.30 | P0 | 消息列表按第 5 排还原 | frontend/messages | todo | 好友/系统通知分段、未读红点、右上添加好友、下拉刷新 |
-| T75.31 | P0 | 添加好友页按交互地图还原 | frontend/messages | todo | 搜索邮箱/用户名、候选用户列表、验证消息、发送申请 |
-| T75.32 | P0 | 好友操作页按交互地图还原 | frontend/messages | todo | 置顶、共享设置、删除好友；删除必须左滑触发并弹窗确认 |
-| T75.33 | P0 | 聊天页按交互地图还原 | frontend/messages | todo | 文字气泡、系统消息、物品/待办卡片、输入栏、发送状态 |
-| T75.34 | P1 | 分享入口改为选择已通过好友 | frontend/items/todos/messages | todo | 物品/待办编辑页共享只展示好友，成功后进入或更新对应好友对话卡片 |
-| T75.35 | P1 | 消息实时推送适配好友申请状态 | frontend/backend | todo | socket 事件覆盖申请、申请结果、新消息、对话更新 |
+| T75.26 | P0 | 设计好友关系和申请数据表迁移 | database | done | 2026-06-28 新增 `life_friendships`，覆盖申请状态、置顶、响应时间和 RLS；已同步 `docs/database-init.sql` |
+| T75.27 | P0 | 后端好友申请 API | backend/messages | done | 2026-06-28 消息模块新增用户搜索、发送申请、接受/拒绝申请和申请结果 socket 事件；同意前禁止手动建聊 |
+| T75.28 | P0 | 后端好友列表与置顶 API | backend/messages | done | 2026-06-28 新增已通过好友列表、置顶/取消置顶、删除好友 API，前端动作承接应用内确认 |
+| T75.29 | P0 | 后端共享权限收拢到好友上下文 | backend/shares | done | 2026-06-28 shares 创建时校验资源所有者和 accepted 好友关系，成功后继续写入好友对话卡片消息 |
+| T75.30 | P0 | 消息列表按第 5 排还原 | frontend/messages | done | 2026-06-28 消息列表保留未读红点、右上添加好友、下拉刷新；好友申请与系统通知并入添加好友/通知中心上下文 |
+| T75.31 | P0 | 添加好友页按交互地图还原 | frontend/messages | done | 2026-06-28 添加好友 Sheet 支持搜索邮箱/用户名、候选用户列表、验证消息、发送申请、申请处理 |
+| T75.32 | P0 | 好友操作页按交互地图还原 | frontend/messages | done | 2026-06-28 好友列表上下文支持置顶/取消置顶、左滑删除好友 + 应用内确认；共享设置在物品/待办编辑上下文 |
+| T75.33 | P0 | 聊天页按交互地图还原 | frontend/messages | done | 2026-06-28 聊天页已覆盖文字气泡、系统消息、物品/待办卡片、输入栏、发送状态和实时消息追加 |
+| T75.34 | P1 | 分享入口改为选择已通过好友 | frontend/items/todos/messages | done | 2026-06-28 ShareDialog 改为加载已通过好友并选择好友授权，后端仅允许共享给 accepted 好友，成功后写入/更新好友对话卡片 |
+| T75.35 | P1 | 消息实时推送适配好友申请状态 | frontend/backend | done | 2026-06-28 socket 事件覆盖好友申请/申请结果/好友删除，并保留新消息、对话更新 |
 
 ### 管理工具与生活记录
 
@@ -175,8 +175,8 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T75.48 | P0 | 我的外层页按第 6 排还原 | frontend/profile | todo | 资料卡、账号、偏好、支持入口；不再隐藏常用设置 |
-| T75.49 | P0 | 账号管理页按通用编辑表单还原 | frontend/account | todo | 头像、昵称、邮箱、用户 ID 只读、保存资料 |
+| T75.48 | P0 | 我的外层页按第 6 排还原 | frontend/profile | done | 2026-06-28 我的外层页已覆盖资料卡、账号与安全、偏好设置、数据与支持入口；常用设置不再隐藏 |
+| T75.49 | P0 | 账号管理页按通用编辑表单还原 | frontend/account | done | 2026-06-28 账号管理页已覆盖头像、昵称、邮箱、保存资料、修改密码和退出登录确认 |
 | T75.50 | P0 | 退出登录改为应用内确认弹窗 | frontend/auth | done | 2026-06-28 外层我的页和账号管理页退出登录均走全局应用内确认弹窗 |
 | T75.51 | P1 | 修改密码页补齐和视觉统一 | frontend/auth | done | 2026-06-28 修改密码页已覆盖当前密码、新密码、确认密码、错误提示和提交 loading |
 | T75.52 | P1 | 主题/语言页按单选列表还原 | frontend/settings | done | 2026-06-28 主题页覆盖跟随系统/深色/浅色，语言页覆盖中文/英文，均按现有 store 即时生效 |
@@ -187,7 +187,7 @@
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
 | T75.54 | P0 | 跑前端 TypeScript 检查 | frontend/testing | done | 2026-06-28 `cd frontend && npx tsc --noEmit` 通过；最近验证同日通过 |
-| T75.55 | P0 | 跑后端构建检查 | backend/testing | todo | 涉及好友/共享 API 后执行 `cd backend && npm run build` |
+| T75.55 | P0 | 跑后端构建检查 | backend/testing | done | 2026-06-28 `cd backend && npm run build` 通过 |
 | T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | done | 2026-06-28 `cd frontend && npm run build:web` 通过；最近验证同日通过 |
 | T75.57 | P0 | 关键接口 curl 验证 | backend/testing | todo | 好友申请、好友列表、共享权限、消息卡片、通知深链 |
 | T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | todo | 对比首页、工作台、物品、待办、消息、我的、低频模块深浅色 |
@@ -299,8 +299,8 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 126 |
-| todo | 19 |
+| done | 139 |
+| todo | 6 |
 | in_progress | 0 |
 | blocked | 0 |
 

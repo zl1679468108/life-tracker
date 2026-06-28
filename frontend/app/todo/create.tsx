@@ -347,8 +347,8 @@ export default function CreateTodoScreen() {
           resourceId={params.id}
           shares={resourceShares}
           loading={sharesLoading}
-          onShare={async (email, permission) => {
-            await createShare({ resource_type: 'todo', resource_id: params.id!, shared_with_email: email, permission });
+          onShare={async (friendId, permission) => {
+            await createShare({ resource_type: 'todo', resource_id: params.id!, shared_with_id: friendId, permission });
             await fetchResourceShares('todo', params.id!);
           }}
           onUpdatePermission={async (shareId, permission) => {

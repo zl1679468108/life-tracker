@@ -435,8 +435,8 @@ export default function CreateItemScreen() {
           resourceId={params.id}
           shares={resourceShares}
           loading={sharesLoading}
-          onShare={async (email, permission) => {
-            await createShare({ resource_type: 'item', resource_id: params.id!, shared_with_email: email, permission });
+          onShare={async (friendId, permission) => {
+            await createShare({ resource_type: 'item', resource_id: params.id!, shared_with_id: friendId, permission });
             await fetchResourceShares('item', params.id!);
           }}
           onUpdatePermission={async (shareId, permission) => {

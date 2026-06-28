@@ -13,6 +13,50 @@ export class MessagesController {
     return this.messagesService.findConversations(user.id);
   }
 
+  @Get('friends')
+  async findFriends(@CurrentUser() user: SupabaseUser) {
+    return this.messagesService.findFriends(user.id);
+  }
+
+  @Get('friends/requests')
+  async findFriendRequests(@CurrentUser() user: SupabaseUser) {
+    return this.messagesService.findFriendRequests(user.id);
+  }
+
+  @Post('friends/requests')
+  async sendFriendRequest(
+    @CurrentUser() user: SupabaseUser,
+    @Body() body: { target_user_id: string; message?: string },
+  ) {
+    return this.messagesService.sendFriendRequest(user.id, body.target_user_id, body.message);
+  }
+
+  @Patch('friends/requests/:id')
+  async respondFriendRequest(
+    @CurrentUser() user: SupabaseUser,
+    @Param('id') id: string,
+    @Body() body: { action: 'accept' | 'reject' },
+  ) {
+    return this.messagesService.respondFriendRequest(user.id, id, body.action);
+  }
+
+  @Patch('friends/:id/pin')
+  async setFriendPinned(
+    @CurrentUser() user: SupabaseUser,
+    @Param('id') id: string,
+    @Body() body: { pinned: boolean },
+  ) {
+    return this.messagesService.setFriendPinned(user.id, id, body.pinned);
+  }
+
+  @Patch('friends/:id/delete')
+  async deleteFriend(
+    @CurrentUser() user: SupabaseUser,
+    @Param('id') id: string,
+  ) {
+    return this.messagesService.deleteFriend(user.id, id);
+  }
+
   @Get('conversations/:id')
   async findMessages(
     @Param('id') conversationId: string,

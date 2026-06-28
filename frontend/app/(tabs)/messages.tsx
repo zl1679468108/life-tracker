@@ -13,12 +13,15 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
+import { SwipeableRow } from '../../components/SwipeableRow';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
+import { showAlert } from '../../lib/alert';
 import { socketService } from '../../lib/socket';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
+import type { LifeFriend } from '../../types';
 
 type Palette = typeof appDesign.dark;
 
@@ -80,12 +83,19 @@ export default function MessagesScreen() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [friendsLoading, setFriendsLoading] = useState(false);
-  const [friends, setFriends] = useState<Array<{ user_id: string; user_name: string; email?: string }>>([]);
+  const [friends, setFriends] = useState<LifeFriend[]>([]);
+  const [friendRequests, setFriendRequests] = useState<LifeFriend[]>([]);
+  const [requestMessage, setRequestMessage] = useState('');
 
   useEffect(() => {
     fetchConversations();
     const handleConversationUpdated = () => fetchConversations();
+    const handleFriendUpdated = () => {
+      fetchFriends();
+      fetchFriendRequests();
+    };
     socketService.onConversationUpdated(handleConversationUpdated);
+    socketService.onFriendRequestUpdated(handleFriendUpdated);
     return () => socketService.removeAllListeners();
   }, []);
 
@@ -122,31 +132,88 @@ export default function MessagesScreen() {
     setSearchResults([]);
     setNewChatMode('search');
     setFriends([]);
+    setFriendRequests([]);
+    setRequestMessage('');
     Keyboard.dismiss();
   };
 
   const fetchFriends = useCallback(async () => {
     setFriendsLoading(true);
     try {
-      const res = await api.shares.outgoing();
-      if (res.data) {
-        const friendMap = new Map<string, { user_id: string; user_name: string; email?: string }>();
-        res.data.forEach((share: any) => {
-          if (!friendMap.has(share.shared_with_id)) {
-            friendMap.set(share.shared_with_id, {
-              user_id: share.shared_with_id,
-              user_name: share.shared_with_name || '未知用户',
-            });
-          }
-        });
-        setFriends(Array.from(friendMap.values()));
-      }
+      const res = await api.messages.friends();
+      if (res.data) setFriends(res.data);
     } catch {
       // ignore
     } finally {
       setFriendsLoading(false);
     }
   }, []);
+
+  const fetchFriendRequests = useCallback(async () => {
+    try {
+      const res = await api.messages.friendRequests();
+      if (res.data) setFriendRequests(res.data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleSendFriendRequest = async () => {
+    if (!selectedUserId) return;
+    setCreating(true);
+    try {
+      await api.messages.sendFriendRequest({
+        target_user_id: selectedUserId,
+        message: requestMessage.trim() || undefined,
+      });
+      showAlert('申请已发送', '对方同意后即可开始对话。');
+      setSelectedUserId(null);
+      setSearchQuery('');
+      setRequestMessage('');
+      await fetchFriendRequests();
+    } catch {
+      showAlert('发送失败', '好友申请发送失败，请稍后重试。');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRespondRequest = async (id: string, action: 'accept' | 'reject') => {
+    try {
+      await api.messages.respondFriendRequest(id, action);
+      await Promise.all([fetchFriendRequests(), fetchFriends(), fetchConversations()]);
+    } catch {
+      showAlert('处理失败', '好友申请处理失败，请稍后重试。');
+    }
+  };
+
+  const handleTogglePin = async (friend: LifeFriend) => {
+    try {
+      await api.messages.setFriendPinned(friend.id, !friend.pinned);
+      await fetchFriends();
+    } catch {
+      showAlert('操作失败', '好友置顶状态更新失败，请稍后重试。');
+    }
+  };
+
+  const handleDeleteFriend = async (friend: LifeFriend) => {
+    showAlert('删除好友', `确认删除好友「${friend.friend.display_name}」？`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.messages.deleteFriend(friend.id);
+            if (selectedUserId === friend.friend.id) setSelectedUserId(null);
+            await Promise.all([fetchFriends(), fetchConversations()]);
+          } catch {
+            showAlert('删除失败', '好友删除失败，请稍后重试。');
+          }
+        },
+      },
+    ]);
+  };
 
   const handleCreateChat = async () => {
     if (!selectedUserId || !user) return;
@@ -170,7 +237,7 @@ export default function MessagesScreen() {
   const openFriends = async () => {
     setNewChatMode('friends');
     setSelectedUserId(null);
-    if (friends.length === 0) await fetchFriends();
+    await Promise.all([fetchFriends(), fetchFriendRequests()]);
   };
 
   if (loading && conversations.length === 0) {
@@ -270,7 +337,7 @@ export default function MessagesScreen() {
             <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSheet} />
             <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: palette.text }]}>新建对话</Text>
+              <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '好友列表'}</Text>
                 <TouchableOpacity style={styles.closeButton} onPress={closeSheet}>
                   <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
                 </TouchableOpacity>
@@ -286,7 +353,7 @@ export default function MessagesScreen() {
                   activeOpacity={0.82}
                 >
                   <MaterialCommunityIcons name="magnify" size={16} color={newChatMode === 'search' ? palette.orange : palette.textMuted} />
-                  <Text style={[styles.segmentText, { color: newChatMode === 'search' ? palette.text : palette.textMuted }]}>搜索用户</Text>
+                  <Text style={[styles.segmentText, { color: newChatMode === 'search' ? palette.text : palette.textMuted }]}>添加好友</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.segmentItem, newChatMode === 'friends' && { backgroundColor: palette.surface, borderColor: palette.border }]}
@@ -336,33 +403,75 @@ export default function MessagesScreen() {
                       ))}
                     </ScrollView>
                   )}
+                  {selectedUserId && (
+                    <View style={[styles.inputBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                      <MaterialCommunityIcons name="message-text-outline" size={18} color={palette.textMuted} />
+                      <TextInput
+                        style={[styles.input, { color: palette.text }]}
+                        value={requestMessage}
+                        onChangeText={setRequestMessage}
+                        placeholder="验证消息（选填）"
+                        placeholderTextColor={palette.textMuted}
+                      />
+                    </View>
+                  )}
                 </>
               ) : friendsLoading ? (
                 <SheetStatus palette={palette} text="加载中..." />
-              ) : friends.length === 0 ? (
-                <SheetStatus palette={palette} text="暂无好友，搜索用户或分享物品来添加好友" icon="account-group-outline" />
+              ) : friends.length === 0 && friendRequests.filter((r) => r.direction === 'incoming').length === 0 ? (
+                <SheetStatus palette={palette} text="暂无已通过好友，先发送好友申请" icon="account-group-outline" />
               ) : (
                 <ScrollView style={styles.resultList} nestedScrollEnabled>
+                  {friendRequests.filter((r) => r.direction === 'incoming').map((r) => (
+                    <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+                      <AvatarWord name={r.friend.display_name} palette={palette} />
+                      <View style={styles.userText}>
+                        <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
+                        <Text style={[styles.userDesc, { color: palette.textMuted }]}>{r.request_message || '请求添加你为好友'}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => handleRespondRequest(r.id, 'reject')} style={styles.requestIconBtn}>
+                        <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleRespondRequest(r.id, 'accept')} style={styles.requestIconBtn}>
+                        <MaterialCommunityIcons name="check" size={18} color={palette.success} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                   {friends.map((f) => (
-                    <UserPickRow
-                      key={f.user_id}
-                      id={f.user_id}
-                      name={f.user_name}
-                      selected={selectedUserId === f.user_id}
-                      palette={palette}
-                      onPress={() => setSelectedUserId(f.user_id)}
-                    />
+                    <SwipeableRow key={f.id} onDelete={() => handleDeleteFriend(f)}>
+                      <UserPickRow
+                        id={f.friend.id}
+                        name={f.friend.display_name}
+                        desc={f.friend.email || undefined}
+                        selected={selectedUserId === f.friend.id}
+                        palette={palette}
+                        onPress={() => setSelectedUserId(f.friend.id)}
+                        trailing={
+                          <TouchableOpacity
+                            style={styles.requestIconBtn}
+                            onPress={() => handleTogglePin(f)}
+                            activeOpacity={0.78}
+                          >
+                            <MaterialCommunityIcons
+                              name={f.pinned ? 'star' : 'star-outline'}
+                              size={20}
+                              color={f.pinned ? palette.warning : palette.textMuted}
+                            />
+                          </TouchableOpacity>
+                        }
+                      />
+                    </SwipeableRow>
                   ))}
                 </ScrollView>
               )}
 
               <TouchableOpacity
                 style={[styles.createButton, { backgroundColor: selectedUserId ? palette.orange : palette.surfaceHover }]}
-                onPress={handleCreateChat}
+                onPress={newChatMode === 'search' ? handleSendFriendRequest : handleCreateChat}
                 disabled={!selectedUserId || creating}
                 activeOpacity={0.84}
               >
-                {creating ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.createText}>发起对话</Text>}
+                {creating ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.createText}>{newChatMode === 'search' ? '发送申请' : '发起对话'}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -388,6 +497,7 @@ function UserPickRow({
   selected,
   palette,
   onPress,
+  trailing,
 }: {
   id: string;
   name: string;
@@ -395,6 +505,7 @@ function UserPickRow({
   selected: boolean;
   palette: Palette;
   onPress: () => void;
+  trailing?: React.ReactNode;
 }) {
   return (
     <TouchableOpacity
@@ -408,6 +519,7 @@ function UserPickRow({
         <Text style={[styles.userName, { color: palette.text }]}>{name || '未知用户'}</Text>
         {!!desc && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{desc}</Text>}
       </View>
+      {trailing}
       {selected && <MaterialCommunityIcons name="check-circle-outline" size={22} color={palette.orange} />}
     </TouchableOpacity>
   );
@@ -654,6 +766,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     marginBottom: spacing.sm,
+  },
+  requestRow: {
+    minHeight: 74,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  requestIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userText: {
     flex: 1,

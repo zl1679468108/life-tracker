@@ -125,4 +125,8 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 更新对话列表（用于前端刷新列表）
     this.server.to(`user:${userId}`).emit('conversations:updated', conversation);
   }
+
+  emitFriendRequestUpdated(userId: string, payload: any) {
+    this.server.to(`user:${userId}`).emit('friends:request-updated', payload);
+  }
 }

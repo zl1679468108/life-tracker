@@ -29,8 +29,7 @@ export class SharesController {
 
   @Post()
   async create(@Body() body: any, @CurrentUser() user: SupabaseUser) {
-    // 通过邮箱查找用户
-    const sharedWithId = await this.sharesService.findUserByEmail(body.shared_with_email);
+    const sharedWithId = body.shared_with_id || await this.sharesService.findUserByEmail(body.shared_with_email);
     if (!sharedWithId) {
       return { code: 400, message: '找不到该邮箱对应的用户' };
     }

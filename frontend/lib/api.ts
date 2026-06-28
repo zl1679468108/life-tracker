@@ -47,6 +47,7 @@ import type {
   Conversation,
   CreateMessageRequest,
   CreateConversationRequest,
+  LifeFriend,
 } from '../types';
 import { withRetry } from './retry';
 
@@ -589,6 +590,41 @@ export const api = {
       return request<{ conversation: Conversation; message: Message | null }>('/api/messages/conversations/manual', {
         method: 'POST',
         body: data,
+      });
+    },
+
+    friends: async (): Promise<ApiResponse<LifeFriend[]>> => {
+      return request<LifeFriend[]>('/api/messages/friends');
+    },
+
+    friendRequests: async (): Promise<ApiResponse<LifeFriend[]>> => {
+      return request<LifeFriend[]>('/api/messages/friends/requests');
+    },
+
+    sendFriendRequest: async (data: { target_user_id: string; message?: string }): Promise<ApiResponse<LifeFriend>> => {
+      return request<LifeFriend>('/api/messages/friends/requests', {
+        method: 'POST',
+        body: data,
+      });
+    },
+
+    respondFriendRequest: async (id: string, action: 'accept' | 'reject'): Promise<ApiResponse<LifeFriend>> => {
+      return request<LifeFriend>(`/api/messages/friends/requests/${id}`, {
+        method: 'PATCH',
+        body: { action },
+      });
+    },
+
+    setFriendPinned: async (id: string, pinned: boolean): Promise<ApiResponse<LifeFriend>> => {
+      return request<LifeFriend>(`/api/messages/friends/${id}/pin`, {
+        method: 'PATCH',
+        body: { pinned },
+      });
+    },
+
+    deleteFriend: async (id: string): Promise<ApiResponse<{ success: boolean }>> => {
+      return request<{ success: boolean }>(`/api/messages/friends/${id}/delete`, {
+        method: 'PATCH',
       });
     },
   },

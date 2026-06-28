@@ -181,6 +181,18 @@ export class SharesService {
       throw new BadRequestException('不能共享给自己');
     }
 
+    const { data: friendship, error: friendshipError } = await this.supabase
+      .from('life_friendships')
+      .select('id')
+      .or(`and(requester_id.eq.${data.owner_id},addressee_id.eq.${data.shared_with_id}),and(requester_id.eq.${data.shared_with_id},addressee_id.eq.${data.owner_id})`)
+      .eq('status', 'accepted')
+      .maybeSingle();
+
+    if (friendshipError) throw new InternalServerErrorException(friendshipError.message);
+    if (!friendship) {
+      throw new BadRequestException('只能共享给已通过好友');
+    }
+
     // 获取资源名称
     const resourceName = data.resource_type === 'item'
       ? (resource as any).name || '未知物品'

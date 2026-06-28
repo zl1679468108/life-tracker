@@ -525,6 +525,27 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_shares_conversation ON life_shares(conversation_id);
 
 -- ============================================================
+-- 12.1 好友关系与申请表 — v1.4.1
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_friendships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  addressee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  request_message TEXT,
+  requester_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+  addressee_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+  responded_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (requester_id <> addressee_id),
+  UNIQUE (requester_id, addressee_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friendships_requester ON life_friendships(requester_id, status);
+CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON life_friendships(addressee_id, status);
+
+-- ============================================================
 -- 13. RLS 策略 — conversations + messages
 -- ============================================================
 
@@ -564,6 +585,33 @@ CREATE POLICY "Participants can create messages" ON life_messages
     auth.uid() = sender_id
   );
 
+-- friendships: 申请双方可以读，申请人可创建，双方可更新相关状态
+ALTER TABLE life_friendships ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Friend participants can view friendships" ON life_friendships;
+CREATE POLICY "Friend participants can view friendships" ON life_friendships
+  FOR SELECT USING (
+    auth.uid() = requester_id OR auth.uid() = addressee_id
+  );
+
+DROP POLICY IF EXISTS "Users can create friend requests" ON life_friendships;
+CREATE POLICY "Users can create friend requests" ON life_friendships
+  FOR INSERT WITH CHECK (
+    auth.uid() = requester_id
+  );
+
+DROP POLICY IF EXISTS "Friend participants can update friendships" ON life_friendships;
+CREATE POLICY "Friend participants can update friendships" ON life_friendships
+  FOR UPDATE USING (
+    auth.uid() = requester_id OR auth.uid() = addressee_id
+  );
+
+DROP POLICY IF EXISTS "Friend participants can delete friendships" ON life_friendships;
+CREATE POLICY "Friend participants can delete friendships" ON life_friendships
+  FOR DELETE USING (
+    auth.uid() = requester_id OR auth.uid() = addressee_id
+  );
+
 -- ============================================================
 -- 14. 自动更新 updated_at 触发器
 -- ============================================================
@@ -578,4 +626,9 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS update_conversations_updated_at ON life_conversations;
 CREATE TRIGGER update_conversations_updated_at
   BEFORE UPDATE ON life_conversations
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+DROP TRIGGER IF EXISTS update_friendships_updated_at ON life_friendships;
+CREATE TRIGGER update_friendships_updated_at
+  BEFORE UPDATE ON life_friendships
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();

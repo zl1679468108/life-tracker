@@ -126,6 +126,10 @@ class SocketService {
     this.on('conversations:updated', callback);
   }
 
+  onFriendRequestUpdated(callback: (payload: any) => void) {
+    this.on('friends:request-updated', callback);
+  }
+
   // 移除所有监听器
   removeAllListeners() {
     this.socket?.removeAllListeners();
