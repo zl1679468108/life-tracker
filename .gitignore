@@ -65,6 +65,7 @@ yarn-error.log*
 
 # Testing
 coverage/
+.playwright-mcp/
 
 # TypeScript
 *.tsbuildinfo

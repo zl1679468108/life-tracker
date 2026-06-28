@@ -189,9 +189,9 @@
 | T75.54 | P0 | 跑前端 TypeScript 检查 | frontend/testing | done | 2026-06-28 `cd frontend && npx tsc --noEmit` 通过；最近验证同日通过 |
 | T75.55 | P0 | 跑后端构建检查 | backend/testing | done | 2026-06-28 `cd backend && npm run build` 通过 |
 | T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | done | 2026-06-28 `cd frontend && npm run build:web` 通过；最近验证同日通过 |
-| T75.57 | P0 | 关键接口 curl 验证 | backend/testing | blocked | 需可用 Supabase 迁移环境和认证 token；本地已通过 `cd backend && npm run build` |
-| T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | blocked | 需可登录 Web 会话和稳定测试数据；本地已通过 `cd frontend && npm run build:web` |
-| T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | blocked | 需 Android development build/设备；当前未连接设备，JS/TS 与 Web 构建已通过 |
+| T75.57 | P0 | 关键接口 curl 验证 | backend/testing | blocked | 需可用 Supabase 迁移环境和认证 token；本地已通过 `cd backend && npm run build`，执行步骤见 `docs/QA_V1_4_1.md` |
+| T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | blocked | 需可登录 Web 会话和稳定测试数据；本地已通过 `cd frontend && npm run build:web`，截图清单见 `docs/QA_V1_4_1.md` |
+| T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | blocked | 需 Android development build/设备；当前未连接设备，JS/TS 与 Web 构建已通过，冒烟清单见 `docs/QA_V1_4_1.md` |
 | T75.60 | P1 | 更新任务完成记录和版本信息 | docs/frontend | done | 2026-06-28 已更新 TASKS 状态、记录验证命令，并将 frontend/backend 版本号更新到 v1.4.1 |
 
 ## 技术债与质量
