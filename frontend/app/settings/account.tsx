@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -105,7 +105,7 @@ export default function AccountScreen() {
       
       showToast(t('settings.syncSuccess'), 'success');
       setEditing(false);
-    } catch (error) {
+    } catch {
       showToast(t('common.requestFailed'), 'error');
     } finally {
       setSaving(false);
@@ -113,18 +113,6 @@ export default function AccountScreen() {
   };
 
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(t('auth.logoutConfirm'));
-      if (!confirmed) return;
-      try {
-        await signOut();
-        router.replace('/auth/login');
-      } catch (error) {
-        showToast(t('common.requestFailed'), 'error');
-      }
-      return;
-    }
-
     showAlert(
       t('auth.logout'),
       t('auth.logoutConfirm'),
@@ -134,7 +122,7 @@ export default function AccountScreen() {
           try {
             await signOut();
             router.replace('/auth/login');
-          } catch (error) {
+          } catch {
             showAlert(t('common.error'), t('common.requestFailed'));
           }
         }},

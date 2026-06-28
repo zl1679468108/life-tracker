@@ -7,7 +7,7 @@ import { useCategoryStore } from '../../stores/categoryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input, Button, ImagePicker, DatePicker } from '../../components/ui';
+import { FormActions, Input, ImagePicker, DatePicker } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { uploadImages } from '../../lib/upload';
@@ -146,17 +146,7 @@ export default function CreateTodoScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: isEdit ? '编辑待办' : '添加待办',
-      headerRight: () => (
-        <View style={{ flexShrink: 0 }}>
-          <Button
-            title="保存"
-            onPress={handleSubmit}
-            variant="primary"
-            size="sm"
-            loading={loading}
-          />
-        </View>
-      ),
+      headerRight: undefined,
     });
   }, [navigation, title, loading, handleSubmit, router, isEdit]);
 
@@ -286,6 +276,13 @@ export default function CreateTodoScreen() {
             placeholder="设置提醒时间"
             minDate={new Date()}
           />
+
+          <FormActions
+            onCancel={() => router.back()}
+            onSubmit={handleSubmit}
+            submitLabel={isEdit ? '保存修改' : '保存'}
+            loading={loading}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -337,14 +334,11 @@ export default function CreateTodoScreen() {
               onChangeText={setNewCategoryName}
               placeholder="输入分类名称"
             />
-            <View style={styles.pickerActions}>
-              <TouchableOpacity style={[styles.pickerCancelBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowNewCategory(false)}>
-                <Text style={[styles.pickerCancelBtnText, { color: palette.textSecondary }]}>取消</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.pickerSaveBtn, { backgroundColor: palette.orange }]} onPress={handleCreateCategory}>
-                <Text style={styles.pickerSaveBtnText}>创建</Text>
-              </TouchableOpacity>
-            </View>
+            <FormActions
+              onCancel={() => setShowNewCategory(false)}
+              onSubmit={handleCreateCategory}
+              submitLabel="创建"
+            />
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -479,34 +473,5 @@ const styles = StyleSheet.create({
   pickerAddText: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.medium,
-  },
-  pickerActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  pickerCancelBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerCancelBtnText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.semiBold,
-  },
-  pickerSaveBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerSaveBtnText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.semiBold,
-    color: '#FFFFFF',
   },
 });

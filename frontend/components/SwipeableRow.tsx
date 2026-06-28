@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { View, Animated, PanResponder, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
 import { useColors } from '../stores/themeStore';
 
 const DELETE_WIDTH = 80;
@@ -14,6 +14,7 @@ interface SwipeableRowProps {
 
 export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
   const isOpen = useRef(false);
@@ -84,14 +85,14 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
     <View style={styles.container}>
       <View style={[styles.deleteBackground, { backgroundColor: colors.danger }]}>
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="delete-outline" size={20} color={colors.white} />
+          <MaterialCommunityIcons name="delete-outline" size={20} color="#FFFFFF" />
           <Text style={styles.deleteText}>删除</Text>
         </TouchableOpacity>
       </View>
       <Animated.View
         style={[
           styles.content,
-          { backgroundColor: colors.white, transform: [{ translateX }] },
+          { backgroundColor: palette.surface, transform: [{ translateX }] },
         ]}
         {...panResponder.panHandlers}
       >

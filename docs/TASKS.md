@@ -99,26 +99,26 @@
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
 | T75.1 | P0 | 对齐 v1.4.1 设计 token | frontend/theme | done | 2026-06-28 `appDesign` 已映射深浅色、字号、间距、圆角并保留 `useColors()` |
-| T75.2 | P0 | 建立通用页面骨架组件 | frontend/ui | todo | SafeArea + Header + ScrollView + 底部安全区；标题 22/30/700，左右边距 16 |
-| T75.3 | P0 | 建立标题栏动作组件 | frontend/ui | todo | 返回、搜索、通知、新增等图标按钮，触控区不小于 44 x 44，使用 MaterialCommunityIcons 线性图标 |
-| T75.4 | P0 | 建立通用列表行组件 | frontend/ui | todo | 图标/文字图标、标题、描述、右侧箭头/状态点、按压态、深浅色适配 |
-| T75.5 | P0 | 建立通用 CRUD 表单组件 | frontend/ui | todo | 字段、错误、底部“取消 + 保存/保存修改”、按钮 loading、KeyboardAvoidingView |
+| T75.2 | P0 | 建立通用页面骨架组件 | frontend/ui | done | 2026-06-28 新增 `AppScreen`，封装 SafeArea、ScrollView、底部安全区和错误提示 |
+| T75.3 | P0 | 建立标题栏动作组件 | frontend/ui | done | 2026-06-28 新增 `AppHeader`，支持返回、搜索、通知、新增等 44x44 图标按钮 |
+| T75.4 | P0 | 建立通用列表行组件 | frontend/ui | done | 2026-06-28 新增 `AppListRow`，工作台和我的页已接入 |
+| T75.5 | P0 | 建立通用 CRUD 表单组件 | frontend/ui | done | 2026-06-28 新增 `FormActions`，物品/待办新增编辑页已接入底部“取消 + 保存/保存修改” |
 | T75.6 | P0 | 建立应用内确认弹窗 | frontend/ui | done | 2026-06-28 新增 `AppAlertHost`，`showAlert` 改为应用内弹窗，不再调用原生 Alert / Web confirm |
-| T75.7 | P0 | 建立搜索触发态组件 | frontend/ui | todo | 标题栏搜索图标打开搜索态/Sheet，支持 300ms 防抖、清除、回车搜索 |
-| T75.8 | P0 | 统一左滑删除交互 | frontend/ui | todo | 物品、待办、分类、位置、模板、借用、好友等列表复用 `SwipeableRow` + 确认弹窗 |
-| T75.9 | P1 | 统一空态、加载、错误态 | frontend/ui | todo | 列表页必须有线性图标、短标题、主操作；首次加载用骨架屏 |
-| T75.10 | P1 | 统一浅色模式同构样式 | frontend/theme | todo | 确认所有新页面在浅色模式不是简单换背景，卡片、边框、文字层级完整 |
+| T75.7 | P0 | 建立搜索触发态组件 | frontend/ui | done | 2026-06-28 首页和工作台标题栏搜索图标已打开 `GlobalSearch`，支持功能入口、搜索态、清除和回车搜索 |
+| T75.8 | P0 | 统一左滑删除交互 | frontend/ui | done | 2026-06-28 `SwipeableRow` 已适配 v1.4.1 深浅色并用于物品、待办、模板、借用、分类、位置；好友删除随 T75.32 好友操作页实现 |
+| T75.9 | P1 | 统一空态、加载、错误态 | frontend/ui | done | 2026-06-28 `PageLoadable`、`Loading`、`Skeleton`、`EmptyState` 已统一 v1.4.1 深浅色 token |
+| T75.10 | P1 | 统一浅色模式同构样式 | frontend/theme | done | 2026-06-28 基础 UI、搜索、空态、模板卡、借用卡已统一使用 `appDesign` 深浅色 token 和边框层级 |
 
 ### 导航与入口边界
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
 | T75.11 | P0 | 审计现有路由与 PRD 入口矩阵 | frontend/navigation | todo | 对照 PRD §3.5、§3.6，列出缺失、重复、废弃入口 |
-| T75.12 | P0 | 注册 v1.4.1 所需 Stack.Screen | frontend/navigation | todo | 新增/确认分类、位置、模板、借用、日历、统计、通知、数据、资产、小组件、账号、密码、主题、语言、反馈等二级页 |
+| T75.12 | P0 | 注册 v1.4.1 所需 Stack.Screen | frontend/navigation | done | 2026-06-28 分类、位置、模板、借用、日历、统计、通知、数据、资产、小组件、账号、密码、主题、语言、反馈及 auth 子页已注册 |
 | T75.13 | P0 | 工作台入口按交互地图重排 | frontend/workbench | done | 2026-06-28 已移除工作台“我的”和独立共享管理入口，保留核心/管理/生活记录/数据与提醒分组 |
 | T75.14 | P0 | 我的页入口按 PRD 外层平铺 | frontend/profile | done | 2026-06-28 我的页外层保留账号与安全、偏好设置、数据与支持，移除标题副文案 |
 | T75.15 | P1 | 历史详情路由兼容降级 | frontend/navigation | todo | `/item/[id]`、`/todo/[id]` 复用编辑页或只读摘要 Sheet，不新增详情页视觉 |
-| T75.16 | P1 | 全局搜索入口收口 | frontend/search | todo | 首页/工作台标题栏搜索进入统一搜索体验，可搜索物品、待办和功能入口 |
+| T75.16 | P1 | 全局搜索入口收口 | frontend/search | done | 2026-06-28 首页/工作台标题栏搜索进入 `GlobalSearch`，支持物品、待办和工作台功能入口 |
 
 ### 首页与核心业务页
 
@@ -177,7 +177,7 @@
 |---|---|---|---|---|---|
 | T75.48 | P0 | 我的外层页按第 6 排还原 | frontend/profile | todo | 资料卡、账号、偏好、支持入口；不再隐藏常用设置 |
 | T75.49 | P0 | 账号管理页按通用编辑表单还原 | frontend/account | todo | 头像、昵称、邮箱、用户 ID 只读、保存资料 |
-| T75.50 | P0 | 退出登录改为应用内确认弹窗 | frontend/auth | done | 2026-06-28 退出登录走全局应用内确认弹窗，确认后清除登录态并跳转登录页 |
+| T75.50 | P0 | 退出登录改为应用内确认弹窗 | frontend/auth | done | 2026-06-28 外层我的页和账号管理页退出登录均走全局应用内确认弹窗 |
 | T75.51 | P1 | 修改密码页补齐和视觉统一 | frontend/auth | todo | 当前密码、新密码、确认密码、错误提示、提交 loading |
 | T75.52 | P1 | 主题/语言页按单选列表还原 | frontend/settings | todo | 跟随系统、深色、浅色；中文/英文；即时或保存后生效按现有 store 规则 |
 | T75.53 | P1 | 数据同步和反馈入口视觉统一 | frontend/settings | todo | 同步 loading/success/error；反馈表单接现有 feedback API |
@@ -186,9 +186,9 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T75.54 | P0 | 跑前端 TypeScript 检查 | frontend/testing | done | 2026-06-28 `cd frontend && npx tsc --noEmit` 通过；`__mocks__` 从应用 TSC 排除 |
+| T75.54 | P0 | 跑前端 TypeScript 检查 | frontend/testing | done | 2026-06-28 `cd frontend && npx tsc --noEmit` 通过；最近验证同日通过 |
 | T75.55 | P0 | 跑后端构建检查 | backend/testing | todo | 涉及好友/共享 API 后执行 `cd backend && npm run build` |
-| T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | todo | `cd frontend && npm run build:web` |
+| T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | done | 2026-06-28 `cd frontend && npm run build:web` 通过；最近验证同日通过 |
 | T75.57 | P0 | 关键接口 curl 验证 | backend/testing | todo | 好友申请、好友列表、共享权限、消息卡片、通知深链 |
 | T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | todo | 对比首页、工作台、物品、待办、消息、我的、低频模块深浅色 |
 | T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | todo | 导航、键盘、SafeArea、左滑、弹窗、通知降级 |
@@ -299,8 +299,8 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 89 |
-| todo | 56 |
+| done | 100 |
+| todo | 45 |
 | in_progress | 0 |
 | blocked | 0 |
 
@@ -343,4 +343,4 @@
 | T73.6 | P1 | 消息列表深色化和新建对话面板优化 | frontend | done | 2026-06-27 常联系好友、对话列表、搜索用户、好友列表完成 |
 | T73.7 | P1 | 我的页面深色化和账号设置结构优化 | frontend | done | 2026-06-27 资料卡、同步状态、设置分组完成 |
 
-最后更新：2026-06-28（T75.1/T75.6/T75.13/T75.14/T75.50/T75.54 已完成并通过前端 TypeScript 检查）
+最后更新：2026-06-28（T75.10 已完成，基础 UI 与低频卡片深浅色同构；前端 TypeScript 检查通过）

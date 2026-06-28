@@ -163,6 +163,8 @@ export default function RootLayout() {
             <Stack.Screen name="auth/login" options={{ headerShown: false }} />
             <Stack.Screen name="auth/register" options={{ headerShown: false }} />
             <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/update-password" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/verify-email" options={{ headerShown: false }} />
             <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
             <Stack.Screen name="settings/category-manage" options={{ ...subPageOptions, headerTitle: '物品分类' }} />
             <Stack.Screen name="settings/location-manage" options={{ ...subPageOptions, headerTitle: '存放位置' }} />

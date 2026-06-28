@@ -7,6 +7,7 @@ import { useLocationStore } from '../../stores/locationStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
+import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeLocation } from '../../types';
 import { useTranslation } from '../../lib/i18n';
 
@@ -119,9 +120,9 @@ export default function LocationManageScreen() {
   const handleDelete = (id: string, name: string) => {
     showAlert(t('locations.deleteConfirm'), `${name}`, [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => {
-        deleteLocation(id);
-        fetchLocations(true);
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
+        await deleteLocation(id);
+        await fetchLocations(true);
       }},
     ]);
   };
@@ -144,6 +145,23 @@ export default function LocationManageScreen() {
 
   const renderLocationItem = (loc: LifeLocation & { children?: LifeLocation[] }, depth: number = 0) => {
     const indent = depth * 20;
+    const displayRow = (
+      <View style={[styles.lmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
+        <LinearGradient
+          colors={[colors.success, colors.success + '80']}
+          style={styles.lmIconWrap}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={colors.white} />
+        </LinearGradient>
+        <Text style={[styles.lmItemName, { color: colors.gray[800] }]}>{loc.name}</Text>
+        <TouchableOpacity style={styles.lmEditBtn} onPress={() => handleStartEdit(loc)}>
+          <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+    );
+
     return (
       <View key={loc.id}>
         {editingId === loc.id ? (
@@ -172,23 +190,9 @@ export default function LocationManageScreen() {
             </View>
           </View>
         ) : (
-          <View style={[styles.lmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
-            <LinearGradient
-              colors={[colors.success, colors.success + '80']}
-              style={styles.lmIconWrap}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={colors.white} />
-            </LinearGradient>
-            <Text style={[styles.lmItemName, { color: colors.gray[800] }]}>{loc.name}</Text>
-            <TouchableOpacity style={styles.lmEditBtn} onPress={() => handleStartEdit(loc)}>
-              <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleDelete(loc.id, loc.name)}>
-              <MaterialCommunityIcons name="delete-outline" size={20} color={colors.danger} />
-            </TouchableOpacity>
-          </View>
+          <SwipeableRow onDelete={() => handleDelete(loc.id, loc.name)}>
+            {displayRow}
+          </SwipeableRow>
         )}
         {loc.children && loc.children.length > 0 && (
           <View style={styles.childrenContainer}>

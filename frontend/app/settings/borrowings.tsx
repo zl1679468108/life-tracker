@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { spacing, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { BorrowingCard, Button, EmptyState } from '../../components/ui';
 import { showAlert } from '../../lib/alert';
+import { SwipeableRow } from '../../components/SwipeableRow';
 
 type TabType = 'all' | 'borrowed' | 'returned' | 'overdue';
 
@@ -15,7 +15,7 @@ export default function BorrowingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ itemId?: string }>();
   const colors = useColors();
-  const { borrowings, fetchBorrowings, fetchByItemId, returnBorrowing, loading } = useBorrowingStore();
+  const { borrowings, fetchBorrowings, fetchByItemId, returnBorrowing, deleteBorrowing } = useBorrowingStore();
   const { fetchItems } = useItemStore();
   const [activeTab, setActiveTab] = useState<TabType>(params.itemId ? 'all' : 'borrowed');
   const [refreshing, setRefreshing] = useState(false);
@@ -46,6 +46,24 @@ export default function BorrowingsScreen() {
         text: '确认归还',
         onPress: async () => {
           await returnBorrowing(id);
+          if (params.itemId) {
+            await fetchByItemId(params.itemId);
+          } else {
+            await fetchBorrowings();
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDelete = (id: string) => {
+    showAlert('确认删除', '删除后将无法恢复该借用记录。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteBorrowing(id);
           if (params.itemId) {
             await fetchByItemId(params.itemId);
           } else {
@@ -108,12 +126,13 @@ export default function BorrowingsScreen() {
           />
         ) : (
           filteredBorrowings.map((borrowing) => (
-            <BorrowingCard
-              key={borrowing.id}
-              borrowing={borrowing}
-              onPress={() => router.push(`/item/${borrowing.item_id}`)}
-              onReturn={borrowing.status !== 'returned' ? () => handleReturn(borrowing.id) : undefined}
-            />
+            <SwipeableRow key={borrowing.id} onDelete={() => handleDelete(borrowing.id)}>
+              <BorrowingCard
+                borrowing={borrowing}
+                onPress={() => router.push(`/item/${borrowing.item_id}`)}
+                onReturn={borrowing.status !== 'returned' ? () => handleReturn(borrowing.id) : undefined}
+              />
+            </SwipeableRow>
           ))
         )}
       </ScrollView>

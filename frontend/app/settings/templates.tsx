@@ -6,6 +6,7 @@ import { useTemplateStore } from '../../stores/templateStore';
 import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../hooks/useThemeColors';
 import { TemplateCard, EmptyState, Button } from '../../components/ui';
+import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
 type TabType = 'all' | 'item' | 'todo';
@@ -104,12 +105,12 @@ export default function TemplatesScreen() {
           />
         ) : (
           filteredTemplates.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              onUse={() => handleUse(template)}
-              onDelete={() => handleDelete(template.id)}
-            />
+            <SwipeableRow key={template.id} onDelete={() => handleDelete(template.id)}>
+              <TemplateCard
+                template={template}
+                onUse={() => handleUse(template)}
+              />
+            </SwipeableRow>
           ))
         )}
       </ScrollView>

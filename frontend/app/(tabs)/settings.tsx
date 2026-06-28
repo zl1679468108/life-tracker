@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeScreen } from '../../components/SafeScreen';
 import { Toast } from '../../components/Toast';
+import { AppHeader, AppListRow, AppScreen } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { showAlert } from '../../lib/alert';
 import { i18n, useTranslation } from '../../lib/i18n';
@@ -26,38 +26,24 @@ type MineEntry = {
   readonly?: boolean;
 };
 
-function IconMark({ icon, color, palette }: { icon: MineEntry['icon']; color: string; palette: Palette }) {
-  return (
-    <View style={[styles.entryIcon, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-      <MaterialCommunityIcons name={icon} size={20} color={color} />
-    </View>
-  );
-}
-
 function MineRow({ entry, palette, onPress }: { entry: MineEntry; palette: Palette; onPress: () => void }) {
   const tone = entry.tone ? palette[entry.tone] : palette.textMuted;
   return (
-    <TouchableOpacity
-      style={[styles.entryRow, { backgroundColor: palette.surface, borderColor: palette.border }]}
+    <AppListRow
+      title={entry.title}
+      description={entry.desc}
+      icon={entry.icon}
+      accent={tone}
       onPress={onPress}
-      activeOpacity={entry.readonly ? 1 : 0.82}
       disabled={entry.readonly || entry.loading}
-    >
-      <IconMark icon={entry.icon} color={tone} palette={palette} />
-      <View style={styles.entryText}>
-        <Text style={[styles.entryTitle, { color: palette.text }]}>{entry.title}</Text>
-        <Text style={[styles.entryDesc, { color: palette.textMuted }]} numberOfLines={1}>
-          {entry.desc}
-        </Text>
-      </View>
-      {entry.loading ? (
-        <ActivityIndicator size="small" color={palette.orange} />
-      ) : entry.readonly ? (
-        <Text style={[styles.readonlyText, { color: palette.textMuted }]}>v1.2.0</Text>
-      ) : (
-        <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
-      )}
-    </TouchableOpacity>
+      meta={
+        entry.loading ? (
+          <ActivityIndicator size="small" color={palette.orange} />
+        ) : entry.readonly ? (
+          <Text style={[styles.readonlyText, { color: palette.textMuted }]}>v1.2.0</Text>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -163,73 +149,53 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
-      <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: palette.text }]}>我的</Text>
+    <AppScreen>
+      <AppHeader title="我的" />
+
+      <TouchableOpacity
+        style={[styles.profileCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        onPress={() => go('/settings/account')}
+        activeOpacity={0.82}
+      >
+        {cachedAvatarUrl ? (
+          <Image source={{ uri: cachedAvatarUrl }} style={styles.avatarImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+        ) : (
+          <View style={[styles.avatarFallback, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            <Text style={[styles.avatarText, { color: palette.orange }]}>
+              {(profile?.display_name || user?.email || '我').slice(0, 1).toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <View style={styles.profileInfo}>
+          <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
+            {profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}
+          </Text>
+          <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
+            {user?.email || t('auth.login')}
+          </Text>
         </View>
+        <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.profileCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
-          onPress={() => go('/settings/account')}
-          activeOpacity={0.82}
-        >
-          {cachedAvatarUrl ? (
-            <Image source={{ uri: cachedAvatarUrl }} style={styles.avatarImage} contentFit="cover" cachePolicy="memory-disk" transition={150} />
-          ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.avatarText, { color: palette.orange }]}>
-                {(profile?.display_name || user?.email || '我').slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
-              {profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}
-            </Text>
-            <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
-              {user?.email || t('auth.login')}
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
-        </TouchableOpacity>
-
-        {sections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>{section.title}</Text>
-            {section.entries.map((entry) => (
-              <MineRow
-                key={entry.title}
-                entry={entry}
-                palette={palette}
-                onPress={() => (entry.onPress ? entry.onPress() : entry.route ? go(entry.route) : undefined)}
-              />
-            ))}
-          </View>
-        ))}
-      </ScrollView>
+      {sections.map((section) => (
+        <View key={section.title} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>{section.title}</Text>
+          {section.entries.map((entry) => (
+            <MineRow
+              key={entry.title}
+              entry={entry}
+              palette={palette}
+              onPress={() => (entry.onPress ? entry.onPress() : entry.route ? go(entry.route) : undefined)}
+            />
+          ))}
+        </View>
+      ))}
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
-    </SafeScreen>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: 112,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 30,
-    fontWeight: fontWeight.bold,
-  },
   profileCard: {
     minHeight: 104,
     borderWidth: 1,
@@ -280,38 +246,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: fontWeight.bold,
     marginBottom: spacing.sm,
-  },
-  entryRow: {
-    minHeight: 72,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  entryIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  entryText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  entryTitle: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
-    fontWeight: fontWeight.semiBold,
-  },
-  entryDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 1,
   },
   readonlyText: {
     fontSize: fontSize.base,

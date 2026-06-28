@@ -1,8 +1,9 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeScreen } from '../../components/SafeScreen';
+import { GlobalSearch } from '../../components/GlobalSearch';
+import { AppHeader, AppListRow, AppScreen } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
@@ -18,6 +19,7 @@ export default function WorkbenchScreen() {
   const router = useRouter();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const [searchVisible, setSearchVisible] = useState(false);
 
   const core: Entry[] = [
     { title: '物品', desc: '列表 / 新增 / 编辑', icon: 'package-variant', route: '/item/list', color: palette.orange },
@@ -56,93 +58,47 @@ export default function WorkbenchScreen() {
   const go = (route: string) => router.push(route as never);
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
-      <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: palette.text }]}>工作台</Text>
-        </View>
+    <AppScreen>
+      <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
 
-        <View style={[styles.search, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-          <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
-          <Text style={[styles.searchText, { color: palette.textMuted }]}>搜索功能</Text>
-        </View>
+      <View style={styles.coreGrid}>
+        {core.map((entry) => (
+          <TouchableOpacity
+            key={entry.title}
+            style={[styles.coreCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+            onPress={() => go(entry.route)}
+            activeOpacity={0.82}
+          >
+            <View style={[styles.coreIcon, { backgroundColor: entry.color }]}>
+              <MaterialCommunityIcons name={entry.icon} size={23} color="#FFFFFF" />
+            </View>
+            <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
+            <Text style={[styles.coreDesc, { color: palette.textMuted }]}>{entry.desc}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <View style={styles.coreGrid}>
-          {core.map((entry) => (
-            <TouchableOpacity
+      {groups.map((group) => (
+        <View key={group.title} style={styles.group}>
+          <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
+          {group.entries.map((entry) => (
+            <AppListRow
               key={entry.title}
-              style={[styles.coreCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+              title={entry.title}
+              description={entry.desc}
+              icon={entry.icon}
+              accent={entry.color}
               onPress={() => go(entry.route)}
-              activeOpacity={0.82}
-            >
-              <View style={[styles.coreIcon, { backgroundColor: entry.color }]}>
-                <MaterialCommunityIcons name={entry.icon} size={23} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
-              <Text style={[styles.coreDesc, { color: palette.textMuted }]}>{entry.desc}</Text>
-            </TouchableOpacity>
+            />
           ))}
         </View>
-
-        {groups.map((group) => (
-          <View key={group.title} style={styles.group}>
-            <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
-            {group.entries.map((entry) => (
-              <TouchableOpacity
-                key={entry.title}
-                style={[styles.row, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                onPress={() => go(entry.route)}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.rowIcon, { backgroundColor: entry.color }]}>
-                  <MaterialCommunityIcons name={entry.icon} size={20} color="#FFFFFF" />
-                </View>
-                <View style={styles.rowContent}>
-                  <Text style={[styles.rowTitle, { color: palette.text }]}>{entry.title}</Text>
-                  <Text style={[styles.rowDesc, { color: palette.textMuted }]} numberOfLines={1}>
-                    {entry.desc}
-                  </Text>
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </ScrollView>
-    </SafeScreen>
+      ))}
+      <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: 112,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 30,
-    fontWeight: fontWeight.bold,
-  },
-  search: {
-    height: 44,
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  searchText: {
-    fontSize: fontSize.base,
-  },
   coreGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -182,35 +138,5 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: fontWeight.bold,
     marginBottom: spacing.sm,
-  },
-  row: {
-    minHeight: 68,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  rowIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowContent: {
-    flex: 1,
-  },
-  rowTitle: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
-    fontWeight: fontWeight.semiBold,
-  },
-  rowDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 1,
   },
 });

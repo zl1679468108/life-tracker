@@ -8,6 +8,7 @@ import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../cons
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { ColorPicker } from '../../components/ui';
+import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeCategory } from '../../types';
 import { useTranslation } from '../../lib/i18n';
 
@@ -140,9 +141,9 @@ export default function CategoryManageScreen() {
   const handleDelete = (id: string, name: string) => {
     showAlert(t('categories.deleteConfirm'), `${name}`, [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => {
-        deleteCategory(id);
-        fetchCategories(undefined, true);
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
+        await deleteCategory(id);
+        await fetchCategories(undefined, true);
       }},
     ]);
   };
@@ -182,6 +183,28 @@ export default function CategoryManageScreen() {
     const categoryColor = cat.color || (isCustom ? colors.success : colors.primary);
     const indent = depth * 20;
     
+    const displayRow = (
+      <View style={[styles.cmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
+        <LinearGradient
+          colors={[categoryColor, categoryColor + '80']}
+          style={styles.cmIconWrap}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={20} color={colors.white} />
+        </LinearGradient>
+        <Text style={[styles.cmItemName, { color: colors.gray[800] }]}>{cat.name}</Text>
+        <View style={[styles.cmTypeBadge, cat.type === 'item' ? { backgroundColor: colors.primary + '15' } : { backgroundColor: colors.success + '15' }]}>
+          <Text style={styles.cmTypeBadgeText}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
+        </View>
+        {isCustom && (
+          <TouchableOpacity style={styles.cmEditBtn} onPress={() => handleStartEdit(cat)}>
+            <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+
     return (
       <View key={cat.id}>
         {editingId === cat.id ? (
@@ -222,30 +245,11 @@ export default function CategoryManageScreen() {
             </View>
           </View>
         ) : (
-          <View style={[styles.cmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
-            <LinearGradient
-              colors={[categoryColor, categoryColor + '80']}
-              style={styles.cmIconWrap}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={20} color={colors.white} />
-            </LinearGradient>
-            <Text style={[styles.cmItemName, { color: colors.gray[800] }]}>{cat.name}</Text>
-            <View style={[styles.cmTypeBadge, cat.type === 'item' ? { backgroundColor: colors.primary + '15' } : { backgroundColor: colors.success + '15' }]}>
-              <Text style={styles.cmTypeBadgeText}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
-            </View>
-            {isCustom && (
-              <>
-                <TouchableOpacity style={styles.cmEditBtn} onPress={() => handleStartEdit(cat)}>
-                  <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(cat.id, cat.name)}>
-                  <MaterialCommunityIcons name="delete-outline" size={20} color={colors.danger} />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+          isCustom ? (
+            <SwipeableRow onDelete={() => handleDelete(cat.id, cat.name)}>
+              {displayRow}
+            </SwipeableRow>
+          ) : displayRow
         )}
         {cat.children && cat.children.length > 0 && (
           <View style={styles.childrenContainer}>

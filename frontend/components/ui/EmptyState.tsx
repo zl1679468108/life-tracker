@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { fontSize, fontWeight, spacing, borderRadius } from '../../constants/theme';
+import { appDesign, fontSize, fontWeight, spacing, borderRadius } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Button } from './Button';
 
@@ -25,14 +25,15 @@ export function EmptyState({
   style,
 }: EmptyStateProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   
   return (
     <View style={[styles.container, style]}>
-      <View style={[styles.iconContainer, { backgroundColor: colors.gray[100] }]}>
-        <MaterialCommunityIcons name={icon as any} size={48} color={colors.gray[300]} />
+      <View style={[styles.iconContainer, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+        <MaterialCommunityIcons name={icon as any} size={48} color={palette.textMuted} />
       </View>
-      <Text style={[styles.title, { color: colors.gray[700] }]}>{title}</Text>
-      {description && <Text style={[styles.description, { color: colors.gray[400] }]}>{description}</Text>}
+      <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
+      {description && <Text style={[styles.description, { color: palette.textMuted }]}>{description}</Text>}
       {actionLabel && onAction && (
         <Button
           title={actionLabel}
@@ -58,6 +59,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xl,

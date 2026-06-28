@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../hooks/useThemeColors';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { useColors } from '../../stores/themeStore';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import type { LifeTemplate } from '../../types';
 
 interface TemplateCardProps {
@@ -14,61 +14,62 @@ interface TemplateCardProps {
 
 export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCardProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
-  const iconColor = template.color || colors.primary;
+  const iconColor = template.color || palette.orange;
   const iconName = template.icon || (template.template_type === 'item' ? 'package-variant' : 'checkbox-marked');
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.white }]}
+      style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
+        <View style={[styles.iconContainer, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
           <MaterialCommunityIcons name={iconName as any} size={24} color={iconColor} />
         </View>
         <View style={styles.info}>
-          <Text style={[styles.name, { color: colors.gray[800] }]} numberOfLines={1}>
+          <Text style={[styles.name, { color: palette.text }]} numberOfLines={1}>
             {template.name}
           </Text>
           {template.description ? (
-            <Text style={[styles.description, { color: colors.gray[500] }]} numberOfLines={2}>
+            <Text style={[styles.description, { color: palette.textMuted }]} numberOfLines={2}>
               {template.description}
             </Text>
           ) : null}
         </View>
         {onDelete && (
           <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
-            <MaterialCommunityIcons name="delete-outline" size={20} color={colors.danger} />
+            <MaterialCommunityIcons name="delete-outline" size={20} color={palette.danger} />
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={[styles.footer, { borderTopColor: colors.gray[100] }]}>
+      <View style={[styles.footer, { borderTopColor: palette.border }]}>
         <View style={styles.typeBadge}>
           <MaterialCommunityIcons
             name={template.template_type === 'item' ? 'package-variant' : 'checkbox-marked'}
             size={14}
-            color={colors.secondary}
+            color={palette.violet}
           />
-          <Text style={[styles.typeText, { color: colors.secondary }]}>
+          <Text style={[styles.typeText, { color: palette.violet }]}>
             {template.template_type === 'item' ? '物品' : '待办'}
           </Text>
         </View>
         <View style={styles.usageBadge}>
-          <MaterialCommunityIcons name="play-circle-outline" size={14} color={colors.gray[400]} />
-          <Text style={[styles.usageText, { color: colors.gray[400] }]}>
+          <MaterialCommunityIcons name="play-circle-outline" size={14} color={palette.textMuted} />
+          <Text style={[styles.usageText, { color: palette.textMuted }]}>
             使用 {template.usage_count} 次
           </Text>
         </View>
         {onUse && (
           <TouchableOpacity
-            style={[styles.useBtn, { backgroundColor: colors.primaryLight }]}
+            style={[styles.useBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
             onPress={onUse}
           >
-            <MaterialCommunityIcons name="plus-circle" size={16} color={colors.primary} />
-            <Text style={[styles.useBtnText, { color: colors.primary }]}>使用</Text>
+            <MaterialCommunityIcons name="plus-circle" size={16} color={palette.orange} />
+            <Text style={[styles.useBtnText, { color: palette.orange }]}>使用</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -79,9 +80,9 @@ export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCar
 const styles = StyleSheet.create({
   card: {
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...shadows.sm,
   },
   header: {
     flexDirection: 'row',
@@ -92,6 +93,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -142,6 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
   },
   useBtnText: {
     fontSize: fontSize.xs,

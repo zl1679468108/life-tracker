@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input, Button, ImagePicker, FormSection, DatePicker, ReminderToggle } from '../../components/ui';
+import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { scanBarcode, validateBarcode } from '../../lib/barcode';
@@ -135,17 +135,7 @@ export default function CreateItemScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: isEdit ? '编辑物品' : '添加物品',
-      headerRight: () => (
-        <View style={{ flexShrink: 0 }}>
-          <Button
-            title="保存"
-            onPress={handleSubmit}
-            variant="primary"
-            size="sm"
-            loading={loading}
-          />
-        </View>
-      ),
+      headerRight: undefined,
     });
   }, [navigation, name, loading, handleSubmit, router, isEdit]);
 
@@ -383,6 +373,13 @@ export default function CreateItemScreen() {
               />
             </View>
           )}
+
+          <FormActions
+            onCancel={() => router.back()}
+            onSubmit={handleSubmit}
+            submitLabel={isEdit ? '保存修改' : '保存'}
+            loading={loading}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />

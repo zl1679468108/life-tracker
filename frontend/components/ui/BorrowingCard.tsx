@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../hooks/useThemeColors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors } from '../../stores/themeStore';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import type { LifeBorrowing } from '../../types';
 
 interface BorrowingCardProps {
@@ -13,11 +13,12 @@ interface BorrowingCardProps {
 
 export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardProps) {
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   const statusConfig = {
-    borrowed: { label: '借出中', color: colors.warning, bgColor: colors.warningLight, icon: 'arrow-right-bold-circle' },
-    returned: { label: '已归还', color: colors.success, bgColor: colors.successLight, icon: 'check-circle' },
-    overdue: { label: '已逾期', color: colors.danger, bgColor: colors.dangerLight, icon: 'alert-circle' },
+    borrowed: { label: '借出中', color: palette.warning, bgColor: palette.surfaceSoft, icon: 'arrow-right-bold-circle' },
+    returned: { label: '已归还', color: palette.success, bgColor: palette.surfaceSoft, icon: 'check-circle' },
+    overdue: { label: '已逾期', color: palette.danger, bgColor: palette.surfaceSoft, icon: 'alert-circle' },
   };
 
   const status = statusConfig[borrowing.status];
@@ -42,7 +43,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: colors.white }]}
+      style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -53,27 +54,27 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
         </View>
         {borrowing.status !== 'returned' && onReturn && (
           <TouchableOpacity
-            style={[styles.returnBtn, { backgroundColor: colors.successLight }]}
+            style={[styles.returnBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
             onPress={onReturn}
           >
-            <MaterialCommunityIcons name="check" size={16} color={colors.success} />
-            <Text style={[styles.returnBtnText, { color: colors.success }]}>归还</Text>
+            <MaterialCommunityIcons name="check" size={16} color={palette.success} />
+            <Text style={[styles.returnBtnText, { color: palette.success }]}>归还</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.body}>
         <View style={styles.borrowerInfo}>
-          <MaterialCommunityIcons name="account" size={18} color={colors.gray[500]} />
-          <Text style={[styles.borrowerName, { color: colors.gray[800] }]}>
+          <MaterialCommunityIcons name="account" size={18} color={palette.textMuted} />
+          <Text style={[styles.borrowerName, { color: palette.text }]}>
             {borrowing.borrower_name}
           </Text>
         </View>
 
         {borrowing.item_name && (
           <View style={styles.itemInfo}>
-            <MaterialCommunityIcons name="package-variant" size={18} color={colors.gray[500]} />
-            <Text style={[styles.itemName, { color: colors.gray[600] }]} numberOfLines={1}>
+            <MaterialCommunityIcons name="package-variant" size={18} color={palette.textMuted} />
+            <Text style={[styles.itemName, { color: palette.textSecondary }]} numberOfLines={1}>
               {borrowing.item_name}
             </Text>
           </View>
@@ -81,22 +82,22 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
 
         <View style={styles.dateRow}>
           <View style={styles.dateItem}>
-            <Text style={[styles.dateLabel, { color: colors.gray[400] }]}>借出</Text>
-            <Text style={[styles.dateValue, { color: colors.gray[700] }]}>
+            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>借出</Text>
+            <Text style={[styles.dateValue, { color: palette.textSecondary }]}>
               {new Date(borrowing.borrow_date).toLocaleDateString('zh-CN')}
             </Text>
           </View>
           <View style={styles.dateDivider} />
           <View style={styles.dateItem}>
-            <Text style={[styles.dateLabel, { color: colors.gray[400] }]}>状态</Text>
-            <Text style={[styles.dateValue, { color: borrowing.status === 'overdue' ? colors.danger : colors.gray[700] }]}>
+            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>状态</Text>
+            <Text style={[styles.dateValue, { color: borrowing.status === 'overdue' ? palette.danger : palette.textSecondary }]}>
               {getDaysInfo()}
             </Text>
           </View>
         </View>
 
         {borrowing.notes && (
-          <Text style={[styles.notes, { color: colors.gray[500] }]} numberOfLines={2}>
+          <Text style={[styles.notes, { color: palette.textMuted }]} numberOfLines={2}>
             {borrowing.notes}
           </Text>
         )}
@@ -108,6 +109,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
 const styles = StyleSheet.create({
   container: {
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
@@ -123,6 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     gap: 4,
   },
   statusText: {
@@ -135,6 +138,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
     gap: 2,
   },
   returnBtnText: {
@@ -180,7 +184,7 @@ const styles = StyleSheet.create({
   dateDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#DDE5F0',
     marginHorizontal: spacing.md,
   },
   notes: {
