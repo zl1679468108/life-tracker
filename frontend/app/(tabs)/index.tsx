@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { AppHeader } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
 import { useItemStore } from '../../stores/itemStore';
@@ -25,7 +26,7 @@ export default function HomeScreen() {
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { items, fetchItems, error: itemsError } = useItemStore();
   const { todos, fetchTodos, toggleComplete, error: todosError } = useTodoStore();
-  const { getUnreadCount, loadReadIds, loaded, pushTrigger } = useNotificationStore();
+  const { getUnreadCount, loadReadIds, loaded, pushTrigger, refreshNotifications } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -38,12 +39,21 @@ export default function HomeScreen() {
     .sort((a, b) => Number(a.completed) - Number(b.completed))
     .slice(0, 3);
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
+
   useEffect(() => {
     fetchItems();
     fetchTodos();
     loadReadIds();
     api.items.getExpiring(30).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      refreshNotifications();
+    }
+  }, [loaded, items.length, todos.length, pushTrigger]);
 
   useEffect(() => {
     if (loaded && unreadCount > 0) {
@@ -86,14 +96,24 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} />}
       >
-        <View style={styles.header}>
+        <AppHeader
+          title="今日总览"
+          actions={[
+            { icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) },
+          ]}
+        />
+
+        <View style={styles.greetingBlock}>
           <View>
-            <Text style={[styles.title, { color: palette.text }]}>今日总览</Text>
+            <Text style={[styles.greetingTitle, { color: palette.text }]}>{greeting}</Text>
+            <Text style={[styles.greetingDesc, { color: palette.textMuted }]}>今天也要加油哦</Text>
           </View>
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
             activeOpacity={0.78}
             onPress={() => router.push('/settings/notifications')}
+            accessibilityRole="button"
+            accessibilityLabel="通知中心"
           >
             <Animated.View style={{ transform: [{ rotate }] }}>
               <MaterialCommunityIcons name="bell-outline" size={22} color={palette.textSecondary} />
@@ -102,18 +122,9 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.search, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-          onPress={() => setSearchVisible(true)}
-          activeOpacity={0.82}
-        >
-          <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
-          <Text style={[styles.searchText, { color: palette.textMuted }]}>搜索物品或待办</Text>
-        </TouchableOpacity>
-
         <View style={styles.stats}>
-          <Stat label="物品总数" value={items.length} palette={palette} />
-          <Stat label="待办未完成" value={pendingTodos} palette={palette} />
+          <Stat label="物品总数" value={items.length} palette={palette} onPress={() => router.push('/item/list')} />
+          <Stat label="待办未完成" value={pendingTodos} palette={palette} onPress={() => router.push('/todo/list')} />
           <Stat label="已完成" value={completedTodos} palette={palette} />
         </View>
 
@@ -183,13 +194,29 @@ export default function HomeScreen() {
   );
 }
 
-function Stat({ label, value, palette }: { label: string; value: number; palette: typeof appDesign.dark }) {
+function Stat({
+  label,
+  value,
+  palette,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  palette: typeof appDesign.dark;
+  onPress?: () => void;
+}) {
+  const Wrapper = onPress ? TouchableOpacity : View;
   return (
-    <View style={[styles.statCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <Wrapper
+      style={[styles.statCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.82 : 1}
+      accessibilityRole={onPress ? 'button' : undefined}
+    >
       <Text style={[styles.statLabel, { color: palette.textMuted }]}>{label}</Text>
       <Text style={[styles.statValue, { color: palette.text }]}>{value}</Text>
-      <Text style={[styles.statMeta, { color: palette.textMuted }]}>较上周 +6</Text>
-    </View>
+      <Text style={[styles.statMeta, { color: palette.textMuted }]}>{onPress ? '点击查看' : '今日记录'}</Text>
+    </Wrapper>
   );
 }
 
@@ -202,16 +229,21 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingBottom: 112,
   },
-  header: {
+  greetingBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
   },
-  title: {
-    fontSize: 22,
-    lineHeight: 30,
+  greetingTitle: {
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: fontWeight.bold,
+  },
+  greetingDesc: {
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    marginTop: 2,
   },
   iconButton: {
     width: 44,
@@ -228,19 +260,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  search: {
-    height: 44,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  searchText: {
-    fontSize: fontSize.base,
   },
   stats: {
     flexDirection: 'row',

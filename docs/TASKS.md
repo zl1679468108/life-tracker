@@ -113,19 +113,19 @@
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T75.11 | P0 | 审计现有路由与 PRD 入口矩阵 | frontend/navigation | todo | 对照 PRD §3.5、§3.6，列出缺失、重复、废弃入口 |
+| T75.11 | P0 | 审计现有路由与 PRD 入口矩阵 | frontend/navigation | done | 2026-06-28 已对照 PRD §3.5、§3.6 核对工作台和我的外层入口；`settings/shares` 注册但重定向，不再作为独立入口 |
 | T75.12 | P0 | 注册 v1.4.1 所需 Stack.Screen | frontend/navigation | done | 2026-06-28 分类、位置、模板、借用、日历、统计、通知、数据、资产、小组件、账号、密码、主题、语言、反馈及 auth 子页已注册 |
 | T75.13 | P0 | 工作台入口按交互地图重排 | frontend/workbench | done | 2026-06-28 已移除工作台“我的”和独立共享管理入口，保留核心/管理/生活记录/数据与提醒分组 |
 | T75.14 | P0 | 我的页入口按 PRD 外层平铺 | frontend/profile | done | 2026-06-28 我的页外层保留账号与安全、偏好设置、数据与支持，移除标题副文案 |
-| T75.15 | P1 | 历史详情路由兼容降级 | frontend/navigation | todo | `/item/[id]`、`/todo/[id]` 复用编辑页或只读摘要 Sheet，不新增详情页视觉 |
+| T75.15 | P1 | 历史详情路由兼容降级 | frontend/navigation | done | 2026-06-28 `/item/[id]`、`/todo/[id]` 均直接复用 create/edit 页面，Stack 标题为编辑语义，不新增详情页视觉 |
 | T75.16 | P1 | 全局搜索入口收口 | frontend/search | done | 2026-06-28 首页/工作台标题栏搜索进入 `GlobalSearch`，支持物品、待办和工作台功能入口 |
 
 ### 首页与核心业务页
 
 | ID | 优先级 | 任务 | 模块 | 状态 | 备注 |
 |---|---|---|---|---|---|
-| T75.17 | P0 | 首页按第 1 排第 1 列还原 | frontend/home | todo | 今日总览、搜索/通知、3 个统计卡、2 个快捷动作、最近 3 条待办 |
-| T75.18 | P0 | 首页通知入口联动通知中心 | frontend/home | todo | 未读红点、铃铛抖动、点击进入 `/settings/notifications` |
+| T75.17 | P0 | 首页按第 1 排第 1 列还原 | frontend/home | done | 2026-06-28 首页已对齐今日总览、标题栏搜索、问候语、3 个统计卡、2 个快捷动作、最近 3 条待办和下拉刷新 |
+| T75.18 | P0 | 首页通知入口联动通知中心 | frontend/home | done | 2026-06-28 首页通知铃铛支持未读红点、推送触发抖动、点击进入 `/settings/notifications` |
 | T75.19 | P0 | 物品列表按交互地图还原 | frontend/items | todo | 标题栏搜索/新增、筛选 chips、列表卡、左滑删除、下拉刷新、批量删除确认 |
 | T75.20 | P0 | 物品新增页按通用表单还原 | frontend/items | todo | 名称、分类、位置、图片、描述、AI 识别上下文、底部取消/保存 |
 | T75.21 | P0 | 物品编辑页按通用表单还原 | frontend/items | todo | 复用新增结构，支持保存修改、共享入口、借用入口、价值上下文、只读摘要判断 |
@@ -299,8 +299,8 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 100 |
-| todo | 45 |
+| done | 104 |
+| todo | 41 |
 | in_progress | 0 |
 | blocked | 0 |
 
