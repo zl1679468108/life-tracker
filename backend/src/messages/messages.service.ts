@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
+import { SUPABASE_ADMIN_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
 import { EventsGateway } from '../common/events/events.gateway';
 
@@ -24,7 +24,7 @@ type FriendshipStatus = 'pending' | 'accepted' | 'rejected';
 @Injectable()
 export class MessagesService {
   constructor(
-    @Inject(SUPABASE_CLIENT) private supabase: SupabaseClient,
+    @Inject(SUPABASE_ADMIN_CLIENT) private supabase: SupabaseClient,
     private readonly eventsGateway: EventsGateway,
   ) {}
 

@@ -1,13 +1,13 @@
 import { Injectable, Inject, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
+import { SUPABASE_ADMIN_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
 import { MessagesService } from '../messages/messages.service';
 
 @Injectable()
 export class SharesService {
   constructor(
-    @Inject(SUPABASE_CLIENT) private supabase: SupabaseClient,
+    @Inject(SUPABASE_ADMIN_CLIENT) private supabase: SupabaseClient,
     private readonly messagesService: MessagesService,
   ) {}
 
@@ -165,12 +165,26 @@ export class SharesService {
     permission: 'view' | 'edit';
   }) {
     // 验证资源所有权
-    const table = data.resource_type === 'item' ? 'life_items' : 'life_todos';
-    const { data: resource } = await this.supabase
-      .from(table)
-      .select('user_id, name, title')
-      .eq('id', data.resource_id)
-      .single();
+    const resourceQuery = data.resource_type === 'item'
+      ? this.supabase
+          .from('life_items')
+          .select('user_id, name')
+          .eq('id', data.resource_id)
+          .single()
+      : this.supabase
+          .from('life_todos')
+          .select('user_id, title')
+          .eq('id', data.resource_id)
+          .single();
+
+    const { data: resource, error: resourceError } = await resourceQuery;
+
+    if (resourceError) {
+      if (resourceError.code === 'PGRST116') {
+        throw new NotFoundException('资源不存在');
+      }
+      throw new InternalServerErrorException(resourceError.message);
+    }
 
     if (!resource || resource.user_id !== data.owner_id) {
       throw new BadRequestException('您不是该资源的所有者');

@@ -14,8 +14,20 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
+  private createAnonClient() {
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY');
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+
   async signIn(email: string, password: string) {
-    const { data, error } = await this.adminClient.auth.signInWithPassword({
+    const client = this.createAnonClient();
+    const { data, error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -165,7 +177,8 @@ export class AuthService {
     }
 
     // 使用用户的邮箱和当前密码尝试登录，验证密码是否正确
-    const { error: signInError } = await this.adminClient.auth.signInWithPassword({
+    const client = this.createAnonClient();
+    const { error: signInError } = await client.auth.signInWithPassword({
       email: userData.user.email!,
       password: currentPassword,
     });
