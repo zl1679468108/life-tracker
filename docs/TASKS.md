@@ -40,7 +40,7 @@
 | T72 | P0 | v1.3.0 产品体验标准化与首页/工作台高保真还原 | frontend/docs | done | 2026-06-27 PRD/原型文档更新，首页/工作台/Tab Bar 按参考图重构 |
 | T73 | P0 | 方案二：frontend-design + UI/UX Pro Max 核心页面美化 | frontend | done | 2026-06-27 物品列表、待办列表、消息、我的统一为深色设计系统 |
 | T74 | P0 | 界面改版三阶段 Handoff | docs/frontend | done | 2026-06-28 本地完整交互地图已作为第三阶段视觉源，见 `docs/FIGMA_HANDOFF.md` |
-| T75 | P0 | v1.4.1 高保真交互地图 1:1 实现 | frontend/backend | todo | 以 `docs/design/lifetracker-v1.4-complete-interaction-map.html?v=20260628-5` 和 PRD v1.4.1 为准 |
+| T75 | P0 | v1.4.1 高保真交互地图 1:1 实现 | frontend/backend | blocked | 2026-06-28 主要实现和本地构建验证完成；关键接口 curl、Web 登录态截图、Android 冒烟需外部 token/设备/迁移环境 |
 
 ## v1.1.0 导航重构任务分解
 
@@ -73,7 +73,7 @@
 |---|---|---|---|---|---|
 | T74.1 | P0 | 第一阶段：PRD 冻结与去冗余边界确认 | docs | done | 2026-06-28 已更新 `docs/PRD.md` 与 `docs/HANDOFF_STAGE_1_PRD.md` |
 | T74.2 | P0 | 第二阶段：UI 设计规范、线框原型、高保真稿与 UI Handoff | design/docs | done | 2026-06-28 完整交互地图覆盖 16 个功能大类、40 个功能界面/状态 |
-| T74.3 | P0 | 第三阶段：按定稿 1:1 实现前端页面 | frontend | todo | 任务拆入 T75；按完整交互地图逐屏实现，不新增产品范围 |
+| T74.3 | P0 | 第三阶段：按定稿 1:1 实现前端页面 | frontend | done | 2026-06-28 T75 页面与交互实现已完成，剩余外部验收项在 T75.57-T75.59 跟踪 |
 
 ## v1.4.1 高保真交互地图 1:1 实现
 
@@ -189,10 +189,10 @@
 | T75.54 | P0 | 跑前端 TypeScript 检查 | frontend/testing | done | 2026-06-28 `cd frontend && npx tsc --noEmit` 通过；最近验证同日通过 |
 | T75.55 | P0 | 跑后端构建检查 | backend/testing | done | 2026-06-28 `cd backend && npm run build` 通过 |
 | T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | done | 2026-06-28 `cd frontend && npm run build:web` 通过；最近验证同日通过 |
-| T75.57 | P0 | 关键接口 curl 验证 | backend/testing | todo | 好友申请、好友列表、共享权限、消息卡片、通知深链 |
-| T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | todo | 对比首页、工作台、物品、待办、消息、我的、低频模块深浅色 |
-| T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | todo | 导航、键盘、SafeArea、左滑、弹窗、通知降级 |
-| T75.60 | P1 | 更新任务完成记录和版本信息 | docs/frontend | todo | 完成后记录日期、验证命令、版本号和已知风险 |
+| T75.57 | P0 | 关键接口 curl 验证 | backend/testing | blocked | 需可用 Supabase 迁移环境和认证 token；本地已通过 `cd backend && npm run build` |
+| T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | blocked | 需可登录 Web 会话和稳定测试数据；本地已通过 `cd frontend && npm run build:web` |
+| T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | blocked | 需 Android development build/设备；当前未连接设备，JS/TS 与 Web 构建已通过 |
+| T75.60 | P1 | 更新任务完成记录和版本信息 | docs/frontend | done | 2026-06-28 已更新 TASKS 状态、记录验证命令，并将 frontend/backend 版本号更新到 v1.4.1 |
 
 ## 技术债与质量
 
@@ -299,10 +299,10 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 139 |
-| todo | 6 |
+| done | 141 |
+| todo | 0 |
 | in_progress | 0 |
-| blocked | 0 |
+| blocked | 4 |
 
 ## v1.2.0 导航精简与消息模块重构
 
