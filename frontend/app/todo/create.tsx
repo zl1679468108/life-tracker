@@ -5,9 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useShareStore } from '../../stores/shareStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FormActions, Input, ImagePicker, DatePicker } from '../../components/ui';
+import { FormActions, Input, ImagePicker, DatePicker, ShareDialog } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { uploadImages } from '../../lib/upload';
@@ -18,6 +19,14 @@ export default function CreateTodoScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { todos, addTodo, updateTodo, loading } = useTodoStore();
   const { categories, fetchCategories, addCategory } = useCategoryStore();
+  const {
+    resourceShares,
+    loading: sharesLoading,
+    fetchResourceShares,
+    createShare,
+    updateShare,
+    deleteShare,
+  } = useShareStore();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const [title, setTitle] = useState('');
@@ -27,8 +36,10 @@ export default function CreateTodoScreen() {
   const [dueDate, setDueDate] = useState('');
   const [reminderDate, setReminderDate] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [completed, setCompleted] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; category?: string; description?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   // 分类选择弹窗
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -54,6 +65,12 @@ export default function CreateTodoScreen() {
   }, []);
 
   useEffect(() => {
+    if (isEdit && params.id) {
+      fetchResourceShares('todo', params.id);
+    }
+  }, [isEdit, params.id]);
+
+  useEffect(() => {
     if (isEdit && todos.length > 0) {
       const todo = todos.find((t) => t.id === params.id);
       if (todo) {
@@ -62,6 +79,7 @@ export default function CreateTodoScreen() {
         setPriority(todo.priority as 1 | 2 | 3);
         setCategoryId(todo.category_id);
         setImages(todo.images || []);
+        setCompleted(todo.completed);
         if (todo.due_date) setDueDate(todo.due_date);
         if (todo.reminder_date) setReminderDate(todo.reminder_date);
       }
@@ -121,6 +139,7 @@ export default function CreateTodoScreen() {
         description: description.trim() || undefined,
         priority,
         user_id: user.id,
+        completed: isEdit ? completed : false,
       };
       if (categoryId) todoData.category_id = categoryId;
       if (dueDate) todoData.due_date = dueDate;
@@ -130,7 +149,7 @@ export default function CreateTodoScreen() {
       if (isEdit && params.id) {
         await updateTodo(params.id, todoData);
       } else {
-        await addTodo({ ...todoData, completed: false });
+        await addTodo(todoData);
       }
       setToastVisible(true);
       setTimeout(() => {
@@ -277,6 +296,40 @@ export default function CreateTodoScreen() {
             minDate={new Date()}
           />
 
+          {isEdit && params.id && (
+            <View style={styles.contextActions}>
+              <TouchableOpacity
+                style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => setCompleted((value) => !value)}
+                activeOpacity={0.82}
+              >
+                <MaterialCommunityIcons
+                  name={completed ? 'check-circle' : 'check-circle-outline'}
+                  size={22}
+                  color={completed ? palette.success : palette.textMuted}
+                />
+                <View style={styles.contextActionText}>
+                  <Text style={[styles.contextActionTitle, { color: palette.text }]}>完成状态</Text>
+                  <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>
+                    {completed ? '已完成，保存后同步状态' : '未完成，点击切换为已完成'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => setShowShareDialog(true)}
+                activeOpacity={0.82}
+              >
+                <MaterialCommunityIcons name="share-variant-outline" size={20} color={palette.violet} />
+                <View style={styles.contextActionText}>
+                  <Text style={[styles.contextActionTitle, { color: palette.text }]}>共享设置</Text>
+                  <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>给好友授权查看或编辑</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <FormActions
             onCancel={() => router.back()}
             onSubmit={handleSubmit}
@@ -285,6 +338,29 @@ export default function CreateTodoScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isEdit && params.id && (
+        <ShareDialog
+          visible={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          resourceType="todo"
+          resourceId={params.id}
+          shares={resourceShares}
+          loading={sharesLoading}
+          onShare={async (email, permission) => {
+            await createShare({ resource_type: 'todo', resource_id: params.id!, shared_with_email: email, permission });
+            await fetchResourceShares('todo', params.id!);
+          }}
+          onUpdatePermission={async (shareId, permission) => {
+            await updateShare(shareId, { permission });
+            await fetchResourceShares('todo', params.id!);
+          }}
+          onDeleteShare={async (shareId) => {
+            await deleteShare(shareId);
+            await fetchResourceShares('todo', params.id!);
+          }}
+        />
+      )}
 
       {/* 分类选择弹窗 */}
       <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
@@ -407,6 +483,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.medium,
     marginTop: spacing.sm,
+  },
+  contextActions: {
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  contextAction: {
+    minHeight: 64,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  contextActionText: {
+    flex: 1,
+  },
+  contextActionTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semiBold,
+  },
+  contextActionDesc: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
   },
   pickerOverlay: {
     flex: 1,

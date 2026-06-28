@@ -44,6 +44,7 @@ export default function ItemListScreen() {
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
   const [refreshing, setRefreshing] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'time' | 'name' | 'category'>('time');
@@ -190,31 +191,51 @@ export default function ItemListScreen() {
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
               <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={18} color={palette.textSecondary} />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, searchActive && { borderColor: palette.orange }]}
+              onPress={() => {
+                setSearchActive((active) => {
+                  const next = !active;
+                  if (!next) setSearchQuery('');
+                  setTimeout(() => {
+                    if (next) searchInputRef.current?.focus();
+                  }, 0);
+                  return next;
+                });
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="搜索物品"
+            >
+              <MaterialCommunityIcons name={searchActive ? 'close' : 'magnify'} size={18} color={searchActive ? palette.orange : palette.textSecondary} />
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
               <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
-        <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
-          <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? palette.orange : palette.textMuted} />
-          <TextInput
-            ref={searchInputRef}
-            style={[styles.searchInput, { color: palette.text }]}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="搜索物品名称..."
-            placeholderTextColor={palette.textMuted}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            returnKeyType="search"
-            autoCorrect={false}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}>
-              <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
+        {searchActive && (
+          <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
+            <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? palette.orange : palette.textMuted} />
+            <TextInput
+              ref={searchInputRef}
+              style={[styles.searchInput, { color: palette.text }]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="搜索物品名称..."
+              placeholderTextColor={palette.textMuted}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}>
+                <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
       <View style={styles.chipsContainer}>
         {categoryFilters.map((cat) => (

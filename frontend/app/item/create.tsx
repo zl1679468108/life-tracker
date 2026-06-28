@@ -7,9 +7,10 @@ import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useTemplateStore } from '../../stores/templateStore';
+import { useShareStore } from '../../stores/shareStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle } from '../../components/ui';
+import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle, ShareDialog } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { scanBarcode, validateBarcode } from '../../lib/barcode';
@@ -22,6 +23,14 @@ export default function CreateItemScreen() {
   const { categories: customCategories, fetchCategories } = useCategoryStore();
   const { locations: customLocations, fetchLocations } = useLocationStore();
   const { templates: itemTemplates, fetchTemplates: fetchItemTemplates } = useTemplateStore();
+  const {
+    resourceShares,
+    loading: sharesLoading,
+    fetchResourceShares,
+    createShare,
+    updateShare,
+    deleteShare,
+  } = useShareStore();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -39,6 +48,7 @@ export default function CreateItemScreen() {
   const [currentValue, setCurrentValue] = useState('');
   const [depreciationRate, setDepreciationRate] = useState('0');
   const [showValueSection, setShowValueSection] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -49,6 +59,12 @@ export default function CreateItemScreen() {
     fetchLocations();
     fetchItemTemplates('item');
   }, []);
+
+  useEffect(() => {
+    if (isEdit && params.id) {
+      fetchResourceShares('item', params.id);
+    }
+  }, [isEdit, params.id]);
 
   useEffect(() => {
     if (isEdit && items.length > 0) {
@@ -374,6 +390,35 @@ export default function CreateItemScreen() {
             </View>
           )}
 
+          {isEdit && params.id && (
+            <View style={styles.contextActions}>
+              <TouchableOpacity
+                style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => setShowShareDialog(true)}
+                activeOpacity={0.82}
+              >
+                <MaterialCommunityIcons name="share-variant-outline" size={20} color={palette.violet} />
+                <View style={styles.contextActionText}>
+                  <Text style={[styles.contextActionTitle, { color: palette.text }]}>共享设置</Text>
+                  <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>给好友授权查看或编辑</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => router.push(`/settings/borrowings?itemId=${params.id}`)}
+                activeOpacity={0.82}
+              >
+                <MaterialCommunityIcons name="account-arrow-right-outline" size={20} color={palette.success} />
+                <View style={styles.contextActionText}>
+                  <Text style={[styles.contextActionTitle, { color: palette.text }]}>借用记录</Text>
+                  <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>查看或新增该物品借用</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <FormActions
             onCancel={() => router.back()}
             onSubmit={handleSubmit}
@@ -382,6 +427,28 @@ export default function CreateItemScreen() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      {isEdit && params.id && (
+        <ShareDialog
+          visible={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          resourceType="item"
+          resourceId={params.id}
+          shares={resourceShares}
+          loading={sharesLoading}
+          onShare={async (email, permission) => {
+            await createShare({ resource_type: 'item', resource_id: params.id!, shared_with_email: email, permission });
+            await fetchResourceShares('item', params.id!);
+          }}
+          onUpdatePermission={async (shareId, permission) => {
+            await updateShare(shareId, { permission });
+            await fetchResourceShares('item', params.id!);
+          }}
+          onDeleteShare={async (shareId) => {
+            await deleteShare(shareId);
+            await fetchResourceShares('item', params.id!);
+          }}
+        />
+      )}
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />
     </View>
   );
@@ -472,5 +539,30 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginTop: spacing.sm,
     ...shadows.sm,
+  },
+  contextActions: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  contextAction: {
+    minHeight: 64,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    ...shadows.sm,
+  },
+  contextActionText: {
+    flex: 1,
+  },
+  contextActionTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semiBold,
+  },
+  contextActionDesc: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
   },
 });

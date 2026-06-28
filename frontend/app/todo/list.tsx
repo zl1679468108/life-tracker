@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, RefreshControl, SafeAreaView } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, RefreshControl, SafeAreaView, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
@@ -24,6 +24,10 @@ export default function TodoListScreen() {
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dragEnabled, setDragEnabled] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     fetchTodos();
@@ -39,6 +43,10 @@ export default function TodoListScreen() {
     if (filter === 'pending') return !t.completed;
     if (filter === 'completed') return t.completed;
     return true;
+  }).filter((t) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return t.title.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q);
   }).sort((a, b) => {
     if (sortBy === 'priority') return b.priority - a.priority;
     if (sortBy === 'title') return a.title.localeCompare(b.title);
@@ -154,6 +162,24 @@ export default function TodoListScreen() {
                   color={dragEnabled ? palette.orange : palette.textSecondary}
                 />
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, searchActive && { borderColor: palette.orange }]}
+                onPress={() => {
+                  setSearchActive((active) => {
+                    const next = !active;
+                    if (!next) setSearchQuery('');
+                    setTimeout(() => {
+                      if (next) searchInputRef.current?.focus();
+                    }, 0);
+                    return next;
+                  });
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="搜索待办"
+              >
+                <MaterialCommunityIcons name={searchActive ? 'close' : 'magnify'} size={18} color={searchActive ? palette.orange : palette.textSecondary} />
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
                 <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
               </TouchableOpacity>
@@ -172,6 +198,28 @@ export default function TodoListScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          {searchActive && (
+            <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
+              <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? palette.orange : palette.textMuted} />
+              <TextInput
+                ref={searchInputRef}
+                style={[styles.searchInput, { color: palette.text }]}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="搜索待办标题..."
+                placeholderTextColor={palette.textMuted}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                returnKeyType="search"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}>
+                  <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -288,6 +336,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 4,
     marginBottom: spacing.lg,
+  },
+  searchBox: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: fontSize.lg,
+    padding: 0,
   },
   filterTab: {
     flex: 1,
