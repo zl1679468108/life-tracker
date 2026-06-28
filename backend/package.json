@@ -6,7 +6,8 @@
     "build": "npx nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main"
+    "start:prod": "node dist/main",
+    "qa:v141-social": "node ../scripts/qa/v141-social-flow.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
