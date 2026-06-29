@@ -86,6 +86,22 @@ export default function MessagesScreen() {
   const [friends, setFriends] = useState<LifeFriend[]>([]);
   const [friendRequests, setFriendRequests] = useState<LifeFriend[]>([]);
   const [requestMessage, setRequestMessage] = useState('');
+  const [filter, setFilter] = useState<'all' | 'friends' | 'system'>('all');
+
+  const filteredConversations = conversations.filter((conv) => {
+    if (filter === 'all') return true;
+    const messageType = conv.last_message?.type || conv.last_message_type;
+    if (filter === 'system') return messageType === 'system';
+    return messageType !== 'system';
+  });
+
+  const counts = {
+    all: conversations.length,
+    friends: conversations.filter((conv) => (conv.last_message?.type || conv.last_message_type) !== 'system').length,
+    system: conversations.filter((conv) => (conv.last_message?.type || conv.last_message_type) === 'system').length,
+  };
+  const unreadTotal = conversations.reduce((sum, conv) => sum + (conv.unread_count ?? 0), 0);
+  const incomingRequests = friendRequests.filter((r) => r.direction === 'incoming');
 
   useEffect(() => {
     fetchConversations();
@@ -258,8 +274,12 @@ export default function MessagesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} colors={[palette.orange]} />}
         >
           <View style={styles.header}>
-            <View>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>好友 / 系统通知 / 未读</Text>
               <Text style={[styles.title, { color: palette.text }]}>消息</Text>
+              <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+                集中查看好友对话、系统通知和协作分享消息。
+              </Text>
             </View>
             <TouchableOpacity
               style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
@@ -270,9 +290,49 @@ export default function MessagesScreen() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.metricsRow}>
+            <View style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.metricValue, { color: palette.text }]}>{counts.all}</Text>
+              <Text style={[styles.metricLabel, { color: palette.textMuted }]}>全部对话</Text>
+            </View>
+            <View style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.metricValue, { color: palette.text }]}>{counts.friends}</Text>
+              <Text style={[styles.metricLabel, { color: palette.textMuted }]}>好友消息</Text>
+            </View>
+            <View style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.metricValue, { color: palette.orange }]}>{unreadTotal}</Text>
+              <Text style={[styles.metricLabel, { color: palette.textMuted }]}>未读数</Text>
+            </View>
+          </View>
+
           <View style={[styles.searchBar, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
             <Text style={[styles.searchText, { color: palette.textMuted }]}>搜索对话</Text>
+          </View>
+
+          <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            {([
+              ['all', '全部'],
+              ['friends', '好友'],
+              ['system', '系统'],
+            ] as const).map(([key, label]) => {
+              const active = filter === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.filterTab, active && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                  onPress={() => setFilter(key)}
+                  activeOpacity={0.82}
+                >
+                  <Text style={[styles.filterLabel, { color: active ? palette.text : palette.textMuted }]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.filterCount, { color: active ? palette.orange : palette.textMuted }]}>
+                    {counts[key]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {error && conversations.length === 0 ? (
@@ -281,18 +341,22 @@ export default function MessagesScreen() {
               <Text style={[styles.emptyTitle, { color: palette.text }]}>消息加载失败</Text>
               <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>{error}</Text>
             </View>
-          ) : conversations.length === 0 ? (
+          ) : filteredConversations.length === 0 ? (
             <View style={[styles.emptyPanel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <MaterialCommunityIcons name="message-text-outline" size={30} color={palette.textMuted} />
-              <Text style={[styles.emptyTitle, { color: palette.text }]}>暂无对话</Text>
-              <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>分享物品或待办时会自动创建对话，也可以主动发起新对话。</Text>
-              <TouchableOpacity style={[styles.primaryButton, { backgroundColor: palette.orange }]} onPress={() => setShowNewChat(true)} activeOpacity={0.84}>
-                <Text style={styles.primaryButtonText}>发起对话</Text>
-              </TouchableOpacity>
+              <Text style={[styles.emptyTitle, { color: palette.text }]}>{conversations.length === 0 ? '暂无对话' : '当前筛选下暂无消息'}</Text>
+              <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>
+                {conversations.length === 0 ? '分享物品或待办时会自动创建对话，也可以主动发起新对话。' : '切换分段或添加好友后再回来看看。'}
+              </Text>
+              {conversations.length === 0 && (
+                <TouchableOpacity style={[styles.primaryButton, { backgroundColor: palette.orange }]} onPress={() => setShowNewChat(true)} activeOpacity={0.84}>
+                  <Text style={styles.primaryButtonText}>发起对话</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View style={styles.list}>
-              {conversations.map((conv) => {
+              {filteredConversations.map((conv) => {
                 const otherUser = conv.other_user;
                 const lastMsg = conv.last_message;
                 const hasUnread = (conv.unread_count ?? 0) > 0;
@@ -337,7 +401,10 @@ export default function MessagesScreen() {
             <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSheet} />
             <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '好友列表'}</Text>
+                <View style={styles.sheetHeaderCopy}>
+                  <Text style={[styles.sheetEyebrow, { color: palette.textSecondary }]}>消息协作</Text>
+                  <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '好友列表'}</Text>
+                </View>
                 <TouchableOpacity style={styles.closeButton} onPress={closeSheet}>
                   <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
                 </TouchableOpacity>
@@ -418,25 +485,49 @@ export default function MessagesScreen() {
                 </>
               ) : friendsLoading ? (
                 <SheetStatus palette={palette} text="加载中..." />
-              ) : friends.length === 0 && friendRequests.filter((r) => r.direction === 'incoming').length === 0 ? (
+              ) : friends.length === 0 && incomingRequests.length === 0 ? (
                 <SheetStatus palette={palette} text="暂无已通过好友，先发送好友申请" icon="account-group-outline" />
               ) : (
                 <ScrollView style={styles.resultList} nestedScrollEnabled>
-                  {friendRequests.filter((r) => r.direction === 'incoming').map((r) => (
-                    <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                      <AvatarWord name={r.friend.display_name} palette={palette} />
-                      <View style={styles.userText}>
-                        <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
-                        <Text style={[styles.userDesc, { color: palette.textMuted }]}>{r.request_message || '请求添加你为好友'}</Text>
+                  {incomingRequests.length > 0 && (
+                    <View style={styles.sheetSection}>
+                      <View style={styles.sectionHeaderRow}>
+                        <Text style={[styles.sectionTitle, { color: palette.text }]}>待处理申请</Text>
+                        <View style={[styles.sectionBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                          <Text style={[styles.sectionBadgeText, { color: palette.orange }]}>{incomingRequests.length}</Text>
+                        </View>
                       </View>
-                      <TouchableOpacity onPress={() => handleRespondRequest(r.id, 'reject')} style={styles.requestIconBtn}>
-                        <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleRespondRequest(r.id, 'accept')} style={styles.requestIconBtn}>
-                        <MaterialCommunityIcons name="check" size={18} color={palette.success} />
-                      </TouchableOpacity>
+                      {incomingRequests.map((r) => (
+                        <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+                          <AvatarWord name={r.friend.display_name} palette={palette} />
+                          <View style={styles.userText}>
+                            <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
+                            <Text style={[styles.userDesc, { color: palette.textMuted }]}>{r.request_message || '请求添加你为好友'}</Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleRespondRequest(r.id, 'reject')}
+                            style={[styles.requestIconBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                          >
+                            <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleRespondRequest(r.id, 'accept')}
+                            style={[styles.requestIconBtn, { backgroundColor: `${palette.success}16` }]}
+                          >
+                            <MaterialCommunityIcons name="check" size={18} color={palette.success} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
                     </View>
-                  ))}
+                  )}
+                  {friends.length > 0 && (
+                    <View style={styles.sheetSection}>
+                      <View style={styles.sectionHeaderRow}>
+                        <Text style={[styles.sectionTitle, { color: palette.text }]}>可发起对话的好友</Text>
+                        <Text style={[styles.sectionHint, { color: palette.textMuted }]}>左滑可删除</Text>
+                      </View>
+                    </View>
+                  )}
                   {friends.map((f) => (
                     <SwipeableRow key={f.id} onDelete={() => handleDeleteFriend(f)}>
                       <UserPickRow
@@ -446,9 +537,10 @@ export default function MessagesScreen() {
                         selected={selectedUserId === f.friend.id}
                         palette={palette}
                         onPress={() => setSelectedUserId(f.friend.id)}
+                        pinned={Boolean(f.pinned)}
                         trailing={
                           <TouchableOpacity
-                            style={styles.requestIconBtn}
+                            style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
                             onPress={() => handleTogglePin(f)}
                             activeOpacity={0.78}
                           >
@@ -471,7 +563,13 @@ export default function MessagesScreen() {
                 disabled={!selectedUserId || creating}
                 activeOpacity={0.84}
               >
-                {creating ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.createText}>{newChatMode === 'search' ? '发送申请' : '发起对话'}</Text>}
+                {creating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.createText, !selectedUserId && { color: palette.textMuted }]}>
+                    {newChatMode === 'search' ? '发送申请' : '发起对话'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -497,6 +595,7 @@ function UserPickRow({
   selected,
   palette,
   onPress,
+  pinned = false,
   trailing,
 }: {
   id: string;
@@ -505,6 +604,7 @@ function UserPickRow({
   selected: boolean;
   palette: Palette;
   onPress: () => void;
+  pinned?: boolean;
   trailing?: React.ReactNode;
 }) {
   return (
@@ -516,7 +616,17 @@ function UserPickRow({
     >
       <AvatarWord name={name} palette={palette} />
       <View style={styles.userText}>
-        <Text style={[styles.userName, { color: palette.text }]}>{name || '未知用户'}</Text>
+        <View style={styles.userNameRow}>
+          <Text style={[styles.userName, { color: palette.text }]} numberOfLines={1}>
+            {name || '未知用户'}
+          </Text>
+          {pinned && (
+            <View style={[styles.pinnedBadge, { backgroundColor: `${palette.warning}16` }]}>
+              <MaterialCommunityIcons name="star" size={12} color={palette.warning} />
+              <Text style={[styles.pinnedBadgeText, { color: palette.warning }]}>置顶</Text>
+            </View>
+          )}
+        </View>
         {!!desc && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{desc}</Text>}
       </View>
       {trailing}
@@ -545,6 +655,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: spacing.md,
+  },
   title: {
     fontSize: 22,
     lineHeight: 30,
@@ -553,6 +668,36 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: fontSize.base,
     lineHeight: 20,
+    marginTop: 2,
+  },
+  eyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 2,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  metricCard: {
+    flex: 1,
+    minHeight: 72,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+  },
+  metricValue: {
+    fontSize: fontSize['2xl'],
+    lineHeight: 24,
+    fontWeight: fontWeight.bold,
+  },
+  metricLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     marginTop: 2,
   },
   iconButton: {
@@ -572,6 +717,34 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.lg,
+  },
+  filterTabs: {
+    minHeight: 48,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    padding: 4,
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: spacing.lg,
+  },
+  filterTab: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  filterLabel: {
+    fontSize: fontSize.base,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+  },
+  filterCount: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
   },
   searchText: {
     fontSize: fontSize.base,
@@ -704,9 +877,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  sheetHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sheetEyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 2,
+  },
   sheetTitle: {
-    fontSize: fontSize['4xl'],
-    lineHeight: 26,
+    fontSize: fontSize['2xl'],
+    lineHeight: 28,
     fontWeight: fontWeight.bold,
   },
   closeButton: {
@@ -757,6 +940,38 @@ const styles = StyleSheet.create({
   resultList: {
     maxHeight: 280,
   },
+  sheetSection: {
+    marginBottom: spacing.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
+  },
+  sectionHint: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+  },
+  sectionBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  sectionBadgeText: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    fontWeight: fontWeight.bold,
+  },
   userRow: {
     minHeight: 68,
     borderWidth: 1,
@@ -781,6 +996,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -793,10 +1009,28 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: fontWeight.semiBold,
   },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   userDesc: {
     fontSize: fontSize.sm,
     lineHeight: 18,
     marginTop: 1,
+  },
+  pinnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    height: 20,
+    borderRadius: 10,
+  },
+  pinnedBadgeText: {
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: fontWeight.bold,
   },
   sheetStatus: {
     minHeight: 132,

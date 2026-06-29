@@ -1,25 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../stores/themeStore';
-import { useMessageStore } from '../../stores/messageStore';
-import { useConversationStore } from '../../stores/conversationStore';
-import { socketService } from '../../lib/socket';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { EmptyState } from '../../components/ui';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { socketService } from '../../lib/socket';
+import { useConversationStore } from '../../stores/conversationStore';
+import { useMessageStore } from '../../stores/messageStore';
+import { useColors } from '../../stores/themeStore';
 import { useTodoStore } from '../../stores/todoStore';
+import type { Message } from '../../types';
+
+type Palette = typeof appDesign.dark;
 
 function formatMessageTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -30,13 +33,38 @@ function formatMessageTime(dateStr: string) {
   const isYesterday = date.toDateString() === yesterday.toDateString();
 
   if (isToday) return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  if (isYesterday) return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) + ' ' +
-    date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  if (isYesterday) return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+  return `${date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-function ResourceCard({ message, onToggleComplete }: { message: any; onToggleComplete?: () => void }) {
-  const colors = useColors();
+function formatRelativeTime(dateStr?: string) {
+  if (!dateStr) return '刚刚活跃';
+  const date = new Date(dateStr);
+  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMins < 1) return '刚刚活跃';
+  if (diffMins < 60) return `${diffMins} 分钟前`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} 小时前`;
+  return `${Math.floor(diffHours / 24)} 天前`;
+}
+
+function AvatarWord({ name, palette }: { name?: string; palette: Palette }) {
+  return (
+    <View style={[styles.avatar, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+      <Text style={[styles.avatarText, { color: palette.orange }]}>{(name || '友').slice(0, 1).toUpperCase()}</Text>
+    </View>
+  );
+}
+
+function ResourceCard({
+  message,
+  palette,
+  onToggleComplete,
+}: {
+  message: Message;
+  palette: Palette;
+  onToggleComplete?: () => void;
+}) {
   const router = useRouter();
   const { card_data } = message || {};
   const isItem = message?.type === 'item';
@@ -44,107 +72,119 @@ function ResourceCard({ message, onToggleComplete }: { message: any; onToggleCom
   if (!card_data?.resource_id) return null;
 
   return (
-    <View style={styles.resourceCard}>
+    <View style={[styles.resourceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
       <TouchableOpacity
-        style={styles.resourceCardHeader}
+        style={styles.resourceHeader}
         onPress={() => {
           Keyboard.dismiss();
           router.push(isItem ? `/item/${card_data.resource_id}` : `/todo/${card_data.resource_id}`);
         }}
-        activeOpacity={0.7}
+        activeOpacity={0.82}
       >
-        <View style={[styles.resourceIcon, { backgroundColor: isItem ? colors.primaryLight : colors.successLight }]}>
+        <View
+          style={[
+            styles.resourceIcon,
+            { backgroundColor: isItem ? `${palette.orange}18` : `${palette.success}18`, borderColor: palette.border },
+          ]}
+        >
           <MaterialCommunityIcons
-            name={isItem ? 'package-variant' : 'check-circle'}
-            size={20}
-            color={isItem ? colors.primary : colors.success}
+            name={isItem ? 'package-variant-closed' : 'check-circle-outline'}
+            size={18}
+            color={isItem ? palette.orange : palette.success}
           />
         </View>
-        <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <Text style={[styles.resourceName, { color: colors.gray[800] }]} numberOfLines={1}>
+        <View style={styles.resourceCopy}>
+          <Text style={[styles.resourceName, { color: palette.text }]} numberOfLines={1}>
             {card_data.name || (isItem ? '物品' : '待办')}
           </Text>
-          {card_data.location && (
-            <Text style={[styles.resourceMeta, { color: colors.gray[400] }]}>
-              {card_data.location}{isItem ? ' · 点击查看详情' : ''}
-            </Text>
-          )}
-          {!card_data.location && (
-            <Text style={[styles.resourceMeta, { color: colors.gray[400] }]}>
-              点击查看详情
-            </Text>
-          )}
+          <Text style={[styles.resourceMeta, { color: palette.textMuted }]} numberOfLines={1}>
+            {card_data.location || '点击查看详情'}
+          </Text>
         </View>
-        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[400]} />
+        <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
       </TouchableOpacity>
-      {onToggleComplete && (
-        <TouchableOpacity
-          style={[styles.completeBtn, { backgroundColor: colors.success }]}
-          onPress={onToggleComplete}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="check" size={16} color={colors.white} />
-          <Text style={[styles.completeBtnText, { color: colors.white }]}>标记完成</Text>
+
+      {onToggleComplete ? (
+        <TouchableOpacity style={[styles.completeButton, { backgroundColor: palette.success }]} onPress={onToggleComplete} activeOpacity={0.82}>
+          <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
+          <Text style={styles.completeButtonText}>标记完成</Text>
         </TouchableOpacity>
-      )}
+      ) : null}
     </View>
   );
 }
 
-function MessageBubble({ message, isOwn }: { message: any; isOwn: boolean }) {
-  const colors = useColors();
+function MessageBubble({
+  message,
+  isOwn,
+  palette,
+}: {
+  message: Message;
+  isOwn: boolean;
+  palette: Palette;
+}) {
   const { type, content, card_data } = message;
 
-  // 系统消息
   if (type === 'system') {
     return (
       <View style={styles.systemMessage}>
-        <Text style={[styles.systemText, { color: colors.gray[400] }]}>{content || '系统通知'}</Text>
-      </View>
-    );
-  }
-
-  // 卡片消息（分享时自动创建的）
-  if ((type === 'item' || type === 'todo') && card_data?.resource_id) {
-    return (
-      <View style={isOwn ? styles.ownBubbleRight : styles.otherBubbleLeft}>
-        <View style={[styles.cardMessage, { backgroundColor: colors.white }]}>
-          <ResourceCard
-            message={{ type, card_data }}
-            onToggleComplete={type === 'todo' ? async () => {
-              try {
-                await useTodoStore.getState().toggleComplete(card_data.resource_id);
-              } catch { /* ignore */ }
-            } : undefined}
-          />
-          {content && (
-            <Text style={[styles.cardText, { color: colors.gray[600], fontSize: fontSize.sm, marginTop: spacing.sm }]}>
-              {content}
-            </Text>
-          )}
+        <View style={[styles.systemBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <Text style={[styles.systemText, { color: palette.textMuted }]}>{content || '系统通知'}</Text>
         </View>
       </View>
     );
   }
 
-  // 文字消息
+  if ((type === 'item' || type === 'todo') && card_data?.resource_id) {
+    return (
+      <View style={[styles.messageRow, isOwn ? styles.messageRowOwn : styles.messageRowOther]}>
+        <View
+          style={[
+            styles.cardBubble,
+            {
+              backgroundColor: isOwn ? '#FFF4EC' : palette.surface,
+              borderColor: isOwn ? palette.orange : palette.border,
+            },
+          ]}
+        >
+          <ResourceCard
+            message={message}
+            palette={palette}
+            onToggleComplete={
+              type === 'todo'
+                ? async () => {
+                    try {
+                      await useTodoStore.getState().toggleComplete(card_data.resource_id);
+                    } catch {
+                      // ignore
+                    }
+                  }
+                : undefined
+            }
+          />
+          {content ? <Text style={[styles.cardText, { color: palette.textSecondary }]}>{content}</Text> : null}
+          <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatMessageTime(message.created_at)}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={isOwn ? styles.ownBubbleRight : styles.otherBubbleLeft}>
-      <View style={[
-        styles.textBubble,
-        { backgroundColor: isOwn ? colors.primary : colors.white },
-        !isOwn && { borderColor: colors.gray[200] },
-      ]}>
-        <Text style={[
-          styles.textMessage,
-          { color: isOwn ? colors.white : colors.gray[800] },
-        ]} selectable>
+    <View style={[styles.messageRow, isOwn ? styles.messageRowOwn : styles.messageRowOther]}>
+      <View
+        style={[
+          styles.textBubble,
+          {
+            backgroundColor: isOwn ? palette.orange : palette.surface,
+            borderColor: isOwn ? palette.orange : palette.border,
+          },
+        ]}
+      >
+        <Text style={[styles.messageText, { color: isOwn ? '#FFFFFF' : palette.text }]} selectable>
           {content || '(空消息)'}
         </Text>
       </View>
-      <Text style={[styles.msgTime, { color: colors.gray[400], fontSize: fontSize.xs }]}>
-        {formatMessageTime(message.created_at)}
-      </Text>
+      <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatMessageTime(message.created_at)}</Text>
     </View>
   );
 }
@@ -153,30 +193,29 @@ export default function MessageDetailScreen() {
   const router = useRouter();
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { messages, loading, fetchMessages, sendMessage, setCurrentConversation, clearMessages } = useMessageStore();
   const { conversations, fetchConversations } = useConversationStore();
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // 找到当前对话信息
-  const currentConv = conversations.find(c => c.id === conversationId);
+  const currentConv = conversations.find((c) => c.id === conversationId);
+  const peerName = currentConv?.other_user?.display_name || '对话';
+  const activityText = useMemo(() => formatRelativeTime(currentConv?.last_message_at), [currentConv?.last_message_at]);
 
   useEffect(() => {
     setCurrentConversation(conversationId || null);
     fetchMessages(conversationId || '');
     fetchConversations();
 
-    // 监听 WebSocket 新消息事件（实时推送）
-    const handleMessageCreated = (message: any) => {
+    const handleMessageCreated = (message: Message) => {
       const convId = conversationId || '';
-      // 只处理当前对话的消息
       if (message.conversation_id === convId) {
         useMessageStore.getState().addRemoteMessage(message);
       }
     };
 
-    const handleConversationUpdated = (conversation: any) => {
-      // 更新对话列表
+    const handleConversationUpdated = (conversation: { id: string }) => {
       if (conversation.id === conversationId) {
         useConversationStore.getState().fetchConversations();
       }
@@ -185,7 +224,6 @@ export default function MessageDetailScreen() {
     socketService.onMessageCreated(handleMessageCreated);
     socketService.onConversationUpdated(handleConversationUpdated);
 
-    // 监听键盘弹出
     const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
     });
@@ -198,103 +236,119 @@ export default function MessageDetailScreen() {
   }, [conversationId]);
 
   const handleSend = async () => {
-    if (!inputText.trim() || loading) return;
+    if (!inputText.trim() || loading || !conversationId) return;
     const text = inputText.trim();
     setInputText('');
-    Keyboard.dismiss();
-
-    await sendMessage(conversationId!, {
-      type: 'text',
-      content: text,
-    });
-
-    // 滚动到底部
+    await sendMessage(conversationId, { type: 'text', content: text });
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
   if (loading && messages.length === 0) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.gray[50] }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: palette.bg }]}>
+        <ActivityIndicator size="large" color={palette.orange} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.gray[50] }}>
-      {/* 顶部导航 */}
-      <View style={[styles.navBar, { backgroundColor: colors.white, borderBottomColor: colors.gray[200] }]}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={colors.gray[800]} />
+    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+      <View style={[styles.topBar, { backgroundColor: palette.bg, borderBottomColor: palette.border }]}>
+        <TouchableOpacity
+          style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+          onPress={() => router.back()}
+          activeOpacity={0.82}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={20} color={palette.text} />
         </TouchableOpacity>
-        <Text style={[styles.navTitle, { color: colors.gray[800] }]}>
-          {currentConv?.other_user?.display_name || '对话'}
-        </Text>
-        <View style={{ width: 40 }} />
+
+        <View style={styles.topBarTitle}>
+          <Text style={[styles.topBarName, { color: palette.text }]} numberOfLines={1}>
+            {peerName}
+          </Text>
+          <Text style={[styles.topBarMeta, { color: palette.textMuted }]} numberOfLines={1}>
+            {activityText}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+          activeOpacity={0.82}
+          onPress={() => Keyboard.dismiss()}
+        >
+          <MaterialCommunityIcons name="dots-horizontal" size={20} color={palette.textSecondary} />
+        </TouchableOpacity>
       </View>
 
-      {/* 消息列表 */}
+      <View style={styles.hero}>
+        <AvatarWord name={peerName} palette={palette} />
+        <Text style={[styles.heroTitle, { color: palette.text }]} numberOfLines={1}>
+          与 {peerName} 的对话
+        </Text>
+        <Text style={[styles.heroMeta, { color: palette.textSecondary }]}>
+          这里会同步展示文本消息、物品分享和待办协作卡片。
+        </Text>
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.messageList}
         contentContainerStyle={styles.messageListContent}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        keyboardShouldPersistTaps="handled"
       >
         {messages.length === 0 ? (
           <EmptyState
             icon="message-text-outline"
             title="暂无消息"
-            description="分享物品或待办时会自动创建对话\n这里是你们的聊天室"
+            description="分享物品或待办时会自动创建对话，这里就是你们后续协作的聊天区。"
+            style={styles.emptyState}
           />
         ) : (
-          messages.map((msg: any) => {
-            // 判断是否是自己发的消息
+          messages.map((msg) => {
             const otherUserId = currentConv?.other_user?.user_id;
             const isCurrentUser = otherUserId ? msg.sender_id !== otherUserId : false;
-            return (
-              <MessageBubble key={msg.id} message={msg} isOwn={isCurrentUser} />
-            );
+            return <MessageBubble key={msg.id} message={msg} isOwn={isCurrentUser} palette={palette} />;
           })
         )}
       </ScrollView>
 
-      {/* 输入框 */}
-      <KeyboardAvoidingView
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        behavior="padding"
-      >
-        <View style={[styles.inputBar, { backgroundColor: colors.white, borderTopColor: colors.gray[200] }]}>
-          <TouchableOpacity
-            style={styles.quickShareBtn}
-            activeOpacity={0.7}
-            onPress={() => {
-              // TODO: 打开快速分享面板（从物品/待办列表选择）
-            }}
-          >
-            <MaterialCommunityIcons name="plus" size={22} color={colors.gray[500]} />
-          </TouchableOpacity>
-          <TextInput
-            style={[styles.input, { color: colors.gray[800 ], borderColor: colors.gray[200] }]}
-            placeholder="输入消息..."
-            placeholderTextColor={colors.gray[400]}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-            onSubmitEditing={handleSend}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, (!inputText.trim() || loading) && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || loading}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons
-              name="send"
-              size={20}
-              color={inputText.trim() && !loading ? colors.white : colors.gray[400]}
+      <KeyboardAvoidingView keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} behavior="padding">
+        <View style={[styles.composerWrap, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
+          <View style={[styles.composer, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <TouchableOpacity
+              style={[styles.quickAction, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+              activeOpacity={0.82}
+              onPress={() => Keyboard.dismiss()}
+            >
+              <MaterialCommunityIcons name="plus" size={18} color={palette.textMuted} />
+            </TouchableOpacity>
+            <TextInput
+              style={[styles.input, { color: palette.text }]}
+              placeholder="输入消息..."
+              placeholderTextColor={palette.textDisabled}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              onSubmitEditing={handleSend}
             />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: inputText.trim() && !loading ? palette.orange : palette.surfaceSoft, borderColor: palette.border },
+              ]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || loading}
+              activeOpacity={0.82}
+            >
+              <MaterialCommunityIcons
+                name="send"
+                size={18}
+                color={inputText.trim() && !loading ? '#FFFFFF' : palette.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -302,55 +356,135 @@ export default function MessageDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navBar: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
   },
-  navTitle: {
+  topBarTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  topBarName: {
     fontSize: fontSize.lg,
+    lineHeight: 22,
     fontWeight: fontWeight.semiBold,
+  },
+  topBarMeta: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hero: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: fontSize.xl,
+    lineHeight: 22,
+    fontWeight: fontWeight.bold,
+  },
+  heroTitle: {
+    fontSize: fontSize['2xl'],
+    lineHeight: 28,
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.md,
+  },
+  heroMeta: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 4,
   },
   messageList: {
     flex: 1,
   },
   messageListContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
     gap: spacing.md,
   },
-  ownBubbleRight: {
-    alignItems: 'flex-end',
-    maxWidth: '80%',
+  emptyState: {
+    minHeight: 360,
   },
-  otherBubbleLeft: {
-    alignItems: 'flex-start',
+  systemMessage: {
+    alignItems: 'center',
+  },
+  systemBadge: {
     maxWidth: '80%',
+    borderWidth: 1,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  systemText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  messageRow: {
+    maxWidth: '82%',
+  },
+  messageRowOwn: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  messageRowOther: {
+    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
   },
   textBubble: {
+    borderWidth: 1,
+    borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    maxWidth: '100%',
   },
-  textMessage: {
+  messageText: {
     fontSize: fontSize.base,
     lineHeight: 20,
   },
-  resourceCard: {
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
+  cardBubble: {
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderRadius: borderRadius.xl,
+    padding: spacing.sm,
   },
-  resourceCardHeader: {
+  resourceCard: {
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+  },
+  resourceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -358,86 +492,91 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  resourceCopy: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: spacing.sm,
+  },
   resourceName: {
     fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
+    lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
   },
   resourceMeta: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
   },
-  cardMessage: {
-    borderRadius: borderRadius.lg,
-    padding: spacing.sm,
-    borderWidth: 1,
-  },
-  cardText: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  completeBtn: {
+  completeButton: {
+    marginTop: spacing.sm,
+    minHeight: 36,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+  },
+  cardText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     marginTop: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
-    backgroundColor: '#10B981',
+    paddingHorizontal: spacing.xs,
   },
-  completeBtnText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-  },
-  systemMessage: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  systemText: {
+  timeText: {
     fontSize: fontSize.xs,
+    lineHeight: 16,
+    marginTop: 6,
   },
-  msgTime: {
-    marginTop: 2,
-    textAlign: 'right',
+  composerWrap: {
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
   },
-  inputBar: {
+  composer: {
+    minHeight: 56,
+    borderWidth: 1,
+    borderRadius: borderRadius.full,
+    paddingLeft: spacing.sm,
+    paddingRight: 6,
+    paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     gap: spacing.sm,
-    borderTopWidth: 1,
   },
-  quickShareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+  quickAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
   input: {
     flex: 1,
-    minHeight: 36,
-    maxHeight: 100,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    minHeight: 40,
+    maxHeight: 120,
     fontSize: fontSize.base,
     lineHeight: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FF6B35',
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    opacity: 0.5,
   },
 });
