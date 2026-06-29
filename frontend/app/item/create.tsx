@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Keyboard, Modal } from 'react-native';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
@@ -13,6 +13,7 @@ import { useColors } from '../../stores/themeStore';
 import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle, ShareDialog } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
+import { api } from '../../lib/api';
 import { scanBarcode, validateBarcode } from '../../lib/barcode';
 
 export default function CreateItemScreen() {
@@ -51,6 +52,9 @@ export default function CreateItemScreen() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
+  const [prefillAttempted, setPrefillAttempted] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const isEdit = !!params.id;
 
@@ -67,31 +71,58 @@ export default function CreateItemScreen() {
   }, [isEdit, params.id]);
 
   useEffect(() => {
-    if (isEdit && items.length > 0) {
-      const item = items.find((i) => i.id === params.id);
-      if (item) {
-        setName(item.name);
-        setDescription(item.description || '');
-        setCategory(item.category_id || '');
-        setLocation(item.location_id || '');
-        setImages(item.images || []);
-        setBarcode(item.barcode || '');
-        setExpiryDate(item.expiry_date || '');
-        setReminderEnabled(item.reminder_enabled || false);
-        setReminderDaysBefore(item.reminder_days_before || 7);
-        if (item.purchase_price) setPurchasePrice(String(item.purchase_price));
-        if (item.purchase_date) setPurchaseDate(item.purchase_date);
-        if (item.current_value) setCurrentValue(String(item.current_value));
-        if (item.depreciation_rate) setDepreciationRate(String(item.depreciation_rate));
-        if (item.purchase_price || item.current_value) setShowValueSection(true);
-      }
+    const hydrateItem = (item: any) => {
+      setName(item.name);
+      setDescription(item.description || '');
+      setCategory(item.category_id || '');
+      setLocation(item.location_id || '');
+      setImages(item.images || []);
+      setBarcode(item.barcode || '');
+      setExpiryDate(item.expiry_date || '');
+      setReminderEnabled(item.reminder_enabled || false);
+      setReminderDaysBefore(item.reminder_days_before || 7);
+      setPurchasePrice(item.purchase_price != null ? String(item.purchase_price) : '');
+      setPurchaseDate(item.purchase_date || '');
+      setCurrentValue(item.current_value != null ? String(item.current_value) : '');
+      setDepreciationRate(item.depreciation_rate != null ? String(item.depreciation_rate) : '0');
+      setShowValueSection(Boolean(item.purchase_price || item.current_value || item.depreciation_rate));
+    };
+
+    if (!isEdit || !params.id || prefillAttempted) return;
+
+    const cachedItem = items.find((i) => i.id === params.id);
+    if (cachedItem) {
+      hydrateItem(cachedItem);
+      setPrefillAttempted(true);
+      return;
     }
-  }, [isEdit, params.id, items]);
+
+    let cancelled = false;
+    (async () => {
+      const response = await api.items.get(params.id!);
+      if (!cancelled && response?.data) {
+        hydrateItem(response.data);
+      }
+      if (!cancelled) {
+        setPrefillAttempted(true);
+      }
+    })().catch(() => {
+      if (!cancelled) {
+        setPrefillAttempted(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, params.id, items, prefillAttempted]);
 
   const allCategories = customCategories
     .filter((c) => c.type === 'item')
     .map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'tag' }));
   const allLocations = customLocations.map((l) => ({ id: l.id, name: l.name, icon: l.icon || 'map-marker' }));
+  const selectedCategory = allCategories.find((item) => item.id === category);
+  const selectedLocation = allLocations.find((item) => item.id === location);
 
   const validate = (): boolean => {
     const newErrors: { name?: string; category?: string; location?: string } = {};
@@ -181,7 +212,6 @@ export default function CreateItemScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {/* 从模板创建 */}
           {!isEdit && itemTemplates.length > 0 && (
             <TouchableOpacity
               style={[styles.templateBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
@@ -216,135 +246,121 @@ export default function CreateItemScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <Input
-            label="物品名称"
-            value={name}
-            onChangeText={(t) => { setName(t); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
-            placeholder="例如：MacBook Pro"
-            leftIcon="tag"
-            returnKeyType="next"
-            required
-            error={errors.name}
-          />
-
-          <FormSection label="分类" required error={errors.category}>
-            <View style={styles.optionGrid}>
-              {allCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.optionItem,
-                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
-                    category === cat.id && {
-                      backgroundColor: palette.surface,
-                      borderColor: palette.orange,
-                    }
-                  ]}
-                  onPress={() => { setCategory(cat.id); if (errors.category) setErrors((e) => ({ ...e, category: undefined })); }}
-                >
-                  <MaterialCommunityIcons
-                    name={cat.icon as any}
-                    size={20}
-                    color={category === cat.id ? palette.orange : palette.textMuted}
-                  />
-                  <Text style={[
-                    styles.optionText,
-                    { color: palette.textMuted },
-                    category === cat.id && { color: palette.orange }
-                  ]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </FormSection>
-
-          <FormSection label="存放位置" required error={errors.location}>
-            <View style={styles.optionGrid}>
-              {allLocations.map((loc) => (
-                <TouchableOpacity
-                  key={loc.id}
-                  style={[
-                    styles.optionItem,
-                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
-                    location === loc.id && {
-                      backgroundColor: palette.surface,
-                      borderColor: palette.orange,
-                    }
-                  ]}
-                  onPress={() => { setLocation(loc.id); if (errors.location) setErrors((e) => ({ ...e, location: undefined })); }}
-                >
-                  <MaterialCommunityIcons
-                    name={loc.icon as any}
-                    size={20}
-                    color={location === loc.id ? palette.orange : palette.textMuted}
-                  />
-                  <Text style={[
-                    styles.optionText,
-                    { color: palette.textMuted },
-                    location === loc.id && { color: palette.orange }
-                  ]}>
-                    {loc.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </FormSection>
-
-          <FormSection label="图片">
-            <ImagePicker
-              images={images}
-              onImagesChange={setImages}
-              maxImages={5}
+          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
+            <Input
+              label="物品名称"
+              value={name}
+              onChangeText={(t) => { setName(t); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
+              placeholder="例如：露营装备箱"
+              leftIcon="tag"
+              returnKeyType="next"
+              required
+              error={errors.name}
+              style={styles.compactInput}
             />
-          </FormSection>
 
-          <Input
-            label="条形码/二维码"
-            value={barcode}
-            onChangeText={setBarcode}
-            placeholder="扫码或手动输入"
-            leftIcon="barcode-scan"
-            rightIcon="barcode-scan"
-            onRightIconPress={async () => {
-              const code = await scanBarcode();
-              if (code) {
-                if (validateBarcode(code)) {
-                  setBarcode(code);
-                } else {
-                  showAlert('提示', '条形码格式无效');
+            <FormSection label="分类" required error={errors.category} density="compact">
+              <TouchableOpacity
+                style={[styles.selectorRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+                onPress={() => setShowCategoryPicker(true)}
+                activeOpacity={0.82}
+              >
+                <View style={styles.selectorLeft}>
+                  <View style={[styles.selectorIcon, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                    <MaterialCommunityIcons name={(selectedCategory?.icon || 'tag') as any} size={18} color={selectedCategory ? palette.orange : palette.textMuted} />
+                  </View>
+                  <View style={styles.selectorCopy}>
+                    <Text style={[styles.selectorValue, { color: selectedCategory ? palette.text : palette.textMuted }]}>
+                      {selectedCategory?.name || '选择分类'}
+                    </Text>
+                    <Text style={[styles.selectorHint, { color: palette.textMuted }]}>用于归类和筛选物品</Text>
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+            </FormSection>
+
+            <FormSection label="存放位置" required error={errors.location} density="compact">
+              <TouchableOpacity
+                style={[styles.selectorRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+                onPress={() => setShowLocationPicker(true)}
+                activeOpacity={0.82}
+              >
+                <View style={styles.selectorLeft}>
+                  <View style={[styles.selectorIcon, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                    <MaterialCommunityIcons name={(selectedLocation?.icon || 'map-marker-outline') as any} size={18} color={selectedLocation ? palette.orange : palette.textMuted} />
+                  </View>
+                  <View style={styles.selectorCopy}>
+                    <Text style={[styles.selectorValue, { color: selectedLocation ? palette.text : palette.textMuted }]}>
+                      {selectedLocation?.name || '选择存放位置'}
+                    </Text>
+                    <Text style={[styles.selectorHint, { color: palette.textMuted }]}>编辑页和列表页会展示该位置</Text>
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+            </FormSection>
+
+            <Input
+              label="描述"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="记录品牌、数量、保质期等信息"
+              multiline
+              numberOfLines={3}
+              style={styles.compactInput}
+            />
+          </View>
+
+          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>附加信息</Text>
+            <FormSection label="图片" density="compact">
+              <ImagePicker
+                images={images}
+                onImagesChange={setImages}
+                maxImages={5}
+              />
+            </FormSection>
+
+            <Input
+              label="条形码/二维码"
+              value={barcode}
+              onChangeText={setBarcode}
+              placeholder="扫码或手动输入"
+              leftIcon="barcode-scan"
+              rightIcon="barcode-scan"
+              onRightIconPress={async () => {
+                const code = await scanBarcode();
+                if (code) {
+                  if (validateBarcode(code)) {
+                    setBarcode(code);
+                  } else {
+                    showAlert('提示', '条形码格式无效');
+                  }
                 }
-              }
-            }}
-          />
-
-          <DatePicker
-            label="保质期/过期时间"
-            value={expiryDate}
-            onChange={setExpiryDate}
-            icon="calendar-clock"
-            placeholder="选择过期日期"
-          />
-
-          {expiryDate ? (
-            <ReminderToggle
-              enabled={reminderEnabled}
-              daysBefore={reminderDaysBefore}
-              onToggle={setReminderEnabled}
-              onDaysChange={setReminderDaysBefore}
+              }}
+              style={styles.compactInput}
             />
-          ) : null}
 
-          <Input
-            label="描述"
-            value={description}
-            onChangeText={setDescription}
-            placeholder="添加物品描述..."
-            multiline
-            numberOfLines={3}
-          />
+            <DatePicker
+              label="保质期/过期时间"
+              value={expiryDate}
+              onChange={setExpiryDate}
+              icon="calendar-clock"
+              placeholder="选择过期日期"
+            />
 
-          {/* T47: 价值信息 */}
+            {expiryDate ? (
+              <ReminderToggle
+                enabled={reminderEnabled}
+                daysBefore={reminderDaysBefore}
+                onToggle={setReminderEnabled}
+                onDaysChange={setReminderDaysBefore}
+              />
+            ) : null}
+          </View>
+
           <TouchableOpacity
             style={[styles.valueToggle, { backgroundColor: palette.surface, borderColor: palette.border }]}
             onPress={() => setShowValueSection(!showValueSection)}
@@ -356,6 +372,7 @@ export default function CreateItemScreen() {
 
           {showValueSection && (
             <View style={[styles.valueSection, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>价值追踪</Text>
               <Input
                 label="购买价格"
                 value={purchasePrice}
@@ -363,6 +380,7 @@ export default function CreateItemScreen() {
                 placeholder="0.00"
                 leftIcon="cash"
                 keyboardType="numeric"
+                style={styles.compactInput}
               />
               <DatePicker
                 label="购买日期"
@@ -378,6 +396,7 @@ export default function CreateItemScreen() {
                 placeholder="0.00"
                 leftIcon="cash-marker"
                 keyboardType="numeric"
+                style={styles.compactInput}
               />
               <Input
                 label="年折旧率 (%)"
@@ -386,6 +405,7 @@ export default function CreateItemScreen() {
                 placeholder="0"
                 leftIcon="percent"
                 keyboardType="numeric"
+                style={styles.compactInput}
               />
             </View>
           )}
@@ -419,13 +439,18 @@ export default function CreateItemScreen() {
             </View>
           )}
 
-          <FormActions
-            onCancel={() => router.back()}
-            onSubmit={handleSubmit}
-            submitLabel={isEdit ? '保存修改' : '保存'}
-            loading={loading}
-          />
         </ScrollView>
+        <View style={[styles.stickyActionsShell, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
+          <View style={[styles.stickyActionsCard, { backgroundColor: palette.bgElevated, borderColor: palette.border }]}>
+            <FormActions
+              onCancel={() => router.back()}
+              onSubmit={handleSubmit}
+              submitLabel={isEdit ? '保存修改' : '保存'}
+              loading={loading}
+              style={styles.stickyActions}
+            />
+          </View>
+        </View>
       </KeyboardAvoidingView>
       {isEdit && params.id && (
         <ShareDialog
@@ -449,6 +474,64 @@ export default function CreateItemScreen() {
           }}
         />
       )}
+      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowCategoryPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择分类</Text>
+            <ScrollView style={styles.pickerList}>
+              {allCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.pickerItem, category === cat.id && { backgroundColor: palette.surfaceSoft }]}
+                  onPress={() => {
+                    setCategory(cat.id);
+                    if (errors.category) setErrors((e) => ({ ...e, category: undefined }));
+                    setShowCategoryPicker(false);
+                  }}
+                >
+                  <View style={styles.pickerItemLeft}>
+                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                      <MaterialCommunityIcons name={cat.icon as any} size={18} color={palette.orange} />
+                    </View>
+                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{cat.name}</Text>
+                  </View>
+                  {category === cat.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+      <Modal visible={showLocationPicker} transparent animationType="fade" onRequestClose={() => setShowLocationPicker(false)}>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowLocationPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择位置</Text>
+            <ScrollView style={styles.pickerList}>
+              {allLocations.map((loc) => (
+                <TouchableOpacity
+                  key={loc.id}
+                  style={[styles.pickerItem, location === loc.id && { backgroundColor: palette.surfaceSoft }]}
+                  onPress={() => {
+                    setLocation(loc.id);
+                    if (errors.location) setErrors((e) => ({ ...e, location: undefined }));
+                    setShowLocationPicker(false);
+                  }}
+                >
+                  <View style={styles.pickerItemLeft}>
+                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                      <MaterialCommunityIcons name={loc.icon as any} size={18} color={palette.orange} />
+                    </View>
+                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{loc.name}</Text>
+                  </View>
+                  {location === loc.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />
     </View>
   );
@@ -467,40 +550,68 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 144,
   },
-  optionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  formCard: {
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
   },
-  optionItem: {
+  cardEyebrow: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.sm,
+  },
+  compactInput: {
+    minHeight: 44,
+  },
+  selectorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
-  optionActive: {
-    borderWidth: 1,
+  selectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
   },
-  optionText: {
+  selectorIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectorCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  selectorValue: {
     fontSize: fontSize.base,
-  },
-  optionTextActive: {
     fontWeight: fontWeight.medium,
+  },
+  selectorHint: {
+    fontSize: fontSize.sm,
+    marginTop: 1,
   },
   templateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   templateBtnText: {
     fontSize: fontSize.base,
@@ -522,7 +633,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     marginTop: spacing.md,
@@ -538,11 +650,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     marginTop: spacing.sm,
+    marginBottom: spacing.sm,
     ...shadows.sm,
   },
   contextActions: {
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   contextAction: {
     minHeight: 64,
@@ -564,5 +678,76 @@ const styles = StyleSheet.create({
   contextActionDesc: {
     fontSize: fontSize.sm,
     marginTop: 2,
+  },
+  stickyActionsShell: {
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  stickyActionsCard: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+    ...shadows.sm,
+  },
+  stickyActions: {
+    marginTop: spacing.sm,
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    borderTopLeftRadius: borderRadius['2xl'],
+    borderTopRightRadius: borderRadius['2xl'],
+    padding: spacing.xl,
+    paddingBottom: 40,
+    maxHeight: '70%',
+    borderWidth: 1,
+  },
+  pickerHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  pickerTitle: {
+    fontSize: fontSize['4xl'],
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.lg,
+  },
+  pickerList: {
+    maxHeight: 320,
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs,
+  },
+  pickerItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+    minWidth: 0,
+  },
+  pickerItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemName: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.medium,
+    flexShrink: 1,
   },
 });

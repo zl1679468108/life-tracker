@@ -7,16 +7,17 @@ interface FormSectionProps {
   label: string;
   required?: boolean;
   error?: string;
+  density?: 'default' | 'compact';
   children: React.ReactNode;
 }
 
-export function FormSection({ label, required, error, children }: FormSectionProps) {
+export function FormSection({ label, required, error, density = 'default', children }: FormSectionProps) {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   
   return (
-    <View style={styles.section}>
-      <Text style={[styles.label, { color: palette.textSecondary }]}>
+    <View style={[styles.section, density === 'compact' && styles.sectionCompact]}>
+      <Text style={[styles.label, density === 'compact' && styles.labelCompact, { color: palette.textSecondary }]}>
         {label}
         {required && <Text style={[styles.required, { color: palette.danger }]}> *</Text>}
       </Text>
@@ -30,10 +31,16 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.xl,
   },
+  sectionCompact: {
+    marginBottom: spacing.lg,
+  },
   label: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.semiBold,
     marginBottom: spacing.md,
+  },
+  labelCompact: {
+    marginBottom: spacing.sm,
   },
   required: {},
   errorText: {
