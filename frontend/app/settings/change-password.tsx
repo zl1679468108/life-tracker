@@ -1,18 +1,59 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { Toast } from '../../components/Toast';
+import { AppScreen, FormActions } from '../../components/ui';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
-import { Toast } from '../../components/Toast';
-import { showAlert } from '../../lib/alert';
+
+function PasswordField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry,
+  onToggleSecure,
+  palette,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  secureTextEntry: boolean;
+  onToggleSecure: () => void;
+  palette: typeof appDesign.dark;
+}) {
+  return (
+    <View style={[styles.fieldCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <Text style={[styles.fieldLabel, { color: palette.textSecondary }]}>{label}</Text>
+      <View style={[styles.inputWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+        <TextInput
+          style={[styles.input, { color: palette.text }]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={palette.textDisabled}
+          secureTextEntry={secureTextEntry}
+        />
+        <TouchableOpacity style={styles.eyeButton} onPress={onToggleSecure} activeOpacity={0.76}>
+          <MaterialCommunityIcons
+            name={secureTextEntry ? 'eye-outline' : 'eye-off-outline'}
+            size={18}
+            color={palette.textMuted}
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { changePassword } = useAuthStore();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,12 +79,10 @@ export default function ChangePasswordScreen() {
   };
 
   const handleSave = async () => {
-    // 验证输入
     if (!currentPassword.trim()) {
       showToast('请输入当前密码', 'error');
       return;
     }
-
     if (!newPassword.trim()) {
       showToast('请输入新密码', 'error');
       return;
@@ -54,12 +93,10 @@ export default function ChangePasswordScreen() {
       showToast(passwordError, 'error');
       return;
     }
-
     if (newPassword !== confirmPassword) {
       showToast('两次输入的密码不一致', 'error');
       return;
     }
-
     if (currentPassword === newPassword) {
       showToast('新密码不能与当前密码相同', 'error');
       return;
@@ -69,8 +106,6 @@ export default function ChangePasswordScreen() {
     try {
       await changePassword(currentPassword, newPassword);
       showToast('密码修改成功，请重新登录', 'success');
-      
-      // 延迟后跳转到登录页
       setTimeout(() => {
         router.replace('/auth/login');
       }, 1500);
@@ -83,102 +118,58 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: palette.bg }]}>
+      <AppScreen contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>账号安全</Text>
+          <Text style={[styles.title, { color: palette.text }]}>修改密码</Text>
+          <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+            更新登录密码后，当前会话将跳回登录页，方便重新校验身份。
+          </Text>
+        </View>
+
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.gray[400] }]}>修改密码</Text>
-          <View style={[styles.sectionCard, { backgroundColor: colors.white }]}>
-            {/* 当前密码 */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.gray[700] }]}>当前密码</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.gray[50], borderColor: colors.gray[200] }]}>
-                <TextInput
-                  style={[styles.input, { color: colors.gray[800] }]}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="输入当前密码"
-                  placeholderTextColor={colors.gray[400]}
-                  secureTextEntry={!showCurrentPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  <MaterialCommunityIcons
-                    name={showCurrentPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.gray[400]}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* 新密码 */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.gray[700] }]}>新密码</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.gray[50], borderColor: colors.gray[200] }]}>
-                <TextInput
-                  style={[styles.input, { color: colors.gray[800] }]}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="输入新密码（至少6位）"
-                  placeholderTextColor={colors.gray[400]}
-                  secureTextEntry={!showNewPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowNewPassword(!showNewPassword)}
-                >
-                  <MaterialCommunityIcons
-                    name={showNewPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.gray[400]}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* 确认新密码 */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.gray[700] }]}>确认新密码</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.gray[50], borderColor: colors.gray[200] }]}>
-                <TextInput
-                  style={[styles.input, { color: colors.gray[800] }]}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="再次输入新密码"
-                  placeholderTextColor={colors.gray[400]}
-                  secureTextEntry={!showConfirmPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <MaterialCommunityIcons
-                    name={showConfirmPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={colors.gray[400]}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+          <PasswordField
+            label="当前密码"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="输入当前密码"
+            secureTextEntry={!showCurrentPassword}
+            onToggleSecure={() => setShowCurrentPassword(!showCurrentPassword)}
+            palette={palette}
+          />
+          <PasswordField
+            label="新密码"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="输入新密码（至少 6 位）"
+            secureTextEntry={!showNewPassword}
+            onToggleSecure={() => setShowNewPassword(!showNewPassword)}
+            palette={palette}
+          />
+          <PasswordField
+            label="确认新密码"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="再次输入新密码"
+            secureTextEntry={!showConfirmPassword}
+            onToggleSecure={() => setShowConfirmPassword(!showConfirmPassword)}
+            palette={palette}
+          />
         </View>
+      </AppScreen>
 
-        <View style={styles.actions}>
-          <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.gray[100] }]} onPress={() => router.back()} activeOpacity={0.7}>
-            <Text style={[styles.cancelBtnText, { color: colors.gray[600] }]}>取消</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.saveBtn, { backgroundColor: colors.primary }]} 
-            onPress={handleSave} 
-            activeOpacity={0.7}
-            disabled={saving}
-          >
-            <Text style={styles.saveBtnText}>{saving ? '保存中...' : '保存'}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <View style={[styles.bottomBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
+        <FormActions
+          onCancel={() => router.back()}
+          onSubmit={handleSave}
+          submitLabel={saving ? '保存中...' : '保存'}
+          cancelLabel="取消"
+          loading={false}
+          disabled={saving}
+          style={styles.formActions}
+        />
+      </View>
 
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
     </View>
@@ -190,71 +181,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 20,
+    paddingBottom: 132,
+  },
+  header: {
+    marginBottom: spacing.xl,
+  },
+  eyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.sm,
+  },
+  title: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: fontWeight.bold,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: fontSize.base,
+    lineHeight: 22,
   },
   section: {
     marginBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
   },
-  sectionTitle: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.sm,
-  },
-  sectionCard: {
+  fieldCard: {
+    borderWidth: 1,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    ...shadows.sm,
-  },
-  inputGroup: {
-    marginBottom: spacing.lg,
-  },
-  inputLabel: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
+    padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  inputWrapper: {
+  fieldLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.medium,
+    marginBottom: 8,
+  },
+  inputWrap: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
   },
   input: {
     flex: 1,
     fontSize: fontSize.base,
-    padding: spacing.md,
+    lineHeight: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   eyeButton: {
-    padding: spacing.md,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.md,
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    borderTopWidth: 1,
   },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-  },
-  cancelBtnText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.medium,
-  },
-  saveBtn: {
-    flex: 1,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-  },
-  saveBtnText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.semiBold,
+  formActions: {
+    marginTop: 0,
   },
 });

@@ -220,10 +220,10 @@
 | T76.3 | P0 | 首页按交互地图重做层级与信息密度 | frontend/home | todo | 当前首页统计卡、快捷操作、最近待办的结构和留白均偏离 `home-overview` |
 | T76.4 | P0 | 工作台入口卡片与管理分组按交互地图收敛 | frontend/workbench | todo | 当前入口卡高度、图标容器、描述层级、列表分组密度不足 |
 | T76.5 | P0 | 消息列表/好友/聊天三页按第 5 排重新对齐 | frontend/messages | todo | 需同时覆盖列表态、添加好友态、好友操作态、聊天态 |
-| T76.6 | P0 | 我的外层页与账号/主题页按第 6 排统一 | frontend/profile/settings | todo | 当前资料卡、分组标题、列表项密度仍偏旧版设置页风格 |
+| T76.6 | P0 | 我的外层页与账号/主题页按第 6 排统一 | frontend/profile/settings | in_progress | 2026-06-29 已先统一“我的”主设置页到 v1.4.1 的卡片与列表语言；本轮继续把账号管理、主题设置、语言切换三页去掉旧版渐变/白卡表达，改为统一的 `palette` 语义、紧凑列表卡与底部操作条，当前仍待稳定 web 环境下补抓最新真实截图并确认与设计稿的间距细节 |
 | T76.7 | P0 | 物品与待办列表页按通用列表样式重做 | frontend/items/todos | done | 2026-06-28 已统一列表头部层级、汇总信息、卡片标签与排序表达，并修复分类 store 串页导致物品列表分类/标签回退 UUID 的问题；复核截图见 `updated-items-list-vp-3.png`、`updated-todos-list-vp.png` |
 | T76.8 | P1 | 物品与待办新增/编辑页按通用表单稿复核 | frontend/items/todos | in_progress | 2026-06-29 已将分类/位置/优先级从大面积 chips 收敛为单行选择字段 + 底部弹层选择器，补齐编辑页直达预填，并修复日期字段展示 ISO 字符串的问题；同日继续统一待办页与物品页的分组语言，待办表单回到通用 `FormSection` 节奏，物品价值区补齐独立小节标题；本轮又把 `FormSection` 增加紧凑密度，并将两个新增/编辑页改为底部固定操作条，减少首屏留白，当前仍待在稳定可访问的 web 环境下补抓新一轮真实截图 |
-| T76.9 | P1 | 分类/位置/模板/借用管理页去旧版样式并统一到 v1.4.1 | frontend/settings | in_progress | 2026-06-29 已继续统一借用新增页、分类/位置新增态入口与表单层级，新增入口改为可识别的“图标+文案”工具按钮；同日继续收敛分类/位置编辑态与图标选择弹窗，去掉旧版 `colors.gray/white` 表达并切回统一 `palette` 语义；模板卡与借用卡已进一步压实元信息和底部动作密度，并为模板/借用空态补上可执行 CTA；当前仍待补模板/借用最新截图并收尾编辑态与首屏密度 |
+| T76.9 | P1 | 分类/位置/模板/借用管理页去旧版样式并统一到 v1.4.1 | frontend/settings | in_progress | 2026-06-29 已继续统一借用新增页、分类/位置新增态入口与表单层级，新增入口改为可识别的“图标+文案”工具按钮；同日继续收敛分类/位置编辑态与图标选择弹窗，去掉旧版 `colors.gray/white` 表达并切回统一 `palette` 语义；模板卡与借用卡已进一步压实元信息和底部动作密度，并为模板/借用空态补上可执行 CTA；本轮又继续压紧分类/位置新增块，以及模板页/借用页的顶部指标区、筛选条和底部动作条，当前主要剩稳定环境下的最新截图与最终验收 |
 | T76.10 | P1 | 通知/统计/资产/小组件页按 utility 设计稿统一 | frontend/settings | done | 2026-06-29 已将资产总览、桌面小组件、通知中心、数据统计统一到 v1.4.1 工具页骨架，并补抓有效 viewport 截图 `updated-assets-viewport.png`、`updated-widgets-viewport.png`、`updated-notifications-viewport.png`、`updated-stats-viewport.png`；前端 `npx tsc --noEmit` 与 `npm run build:web` 通过 |
 | T76.11 | P1 | 日历/数据管理页补做对照截图并补齐差异任务 | frontend/settings/docs | done | 2026-06-29 已补抓有效截图 `updated-calendar-viewport.png`、`updated-data-viewport.png`，并在同日完成日历页第二轮统一整改后补抓 `updated-calendar-viewport-2.png`、`updated-calendar-fullpage-2.png`；当前数据管理页与日历页均已进入第二轮回归基线 |
 | T76.12 | P1 | 建立可重复的 UI 审查种子数据脚本 | backend/scripts/qa | done | 2026-06-29 已新增 `scripts/qa/ui-audit-seed.mjs` 和 `backend` 命令 `npm run qa:ui-audit-seed`；脚本可清理旧审查数据并稳定补齐分类、位置、物品、待办、模板、借用等 UI 审查必需状态，已使用 QA 账号真实跑通 |

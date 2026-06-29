@@ -1,193 +1,218 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useThemeStore, useColors } from '../../stores/themeStore';
+import { AppScreen } from '../../components/ui';
+import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, useThemeStore } from '../../stores/themeStore';
 
 type ThemeOption = {
   mode: 'light' | 'dark' | 'system';
   label: string;
-  icon: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   description: string;
 };
 
 const themeOptions: ThemeOption[] = [
-  {
-    mode: 'light',
-    label: '浅色模式',
-    icon: 'white-balance-sunny',
-    description: '始终使用浅色主题',
-  },
-  {
-    mode: 'dark',
-    label: '深色模式',
-    icon: 'moon-waning-crescent',
-    description: '始终使用深色主题',
-  },
-  {
-    mode: 'system',
-    label: '跟随系统',
-    icon: 'theme-light-dark',
-    description: '自动跟随系统设置',
-  },
+  { mode: 'light', label: '浅色模式', icon: 'white-balance-sunny', description: '始终使用浅色主题' },
+  { mode: 'dark', label: '深色模式', icon: 'moon-waning-crescent', description: '始终使用深色主题' },
+  { mode: 'system', label: '跟随系统', icon: 'theme-light-dark', description: '自动跟随系统设置' },
 ];
 
 export default function ThemeSettingsScreen() {
   const { themeMode, setThemeMode } = useThemeStore();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.gray[900] }]}>主题设置</Text>
-        
-        <View style={styles.optionsContainer}>
-          {themeOptions.map((option) => {
-            const isSelected = themeMode === option.mode;
-            
-            return (
-              <TouchableOpacity
-                key={option.mode}
-                style={[
-                  styles.optionCard,
-                  {
-                    backgroundColor: colors.white,
-                    borderColor: isSelected ? colors.primary : colors.gray[200],
-                    borderWidth: isSelected ? 2 : 1,
-                  },
-                ]}
-                onPress={() => setThemeMode(option.mode)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.optionHeader}>
-                  <View
-                    style={[
-                      styles.iconContainer,
-                      {
-                        backgroundColor: isSelected
-                          ? colors.primaryLight
-                          : colors.gray[100],
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={option.icon as any}
-                      size={24}
-                      color={isSelected ? colors.primary : colors.gray[600]}
-                    />
-                  </View>
-                  
-                  {isSelected && (
-                    <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
-                      <MaterialCommunityIcons name="check" size={16} color={colors.white} />
-                    </View>
-                  )}
-                </View>
-                
-                <Text style={[styles.optionLabel, { color: colors.gray[900] }]}>
-                  {option.label}
-                </Text>
-                <Text style={[styles.optionDescription, { color: colors.gray[500] }]}>
-                  {option.description}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <View style={[styles.previewCard, { backgroundColor: colors.white, ...shadows.sm }]}>
-          <Text style={[styles.previewTitle, { color: colors.gray[900] }]}>预览</Text>
-          
-          <View style={styles.previewContent}>
-            <View style={[styles.previewItem, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.previewText, { color: colors.white }]}>主要按钮</Text>
-            </View>
-            
-            <View style={[styles.previewItem, { backgroundColor: colors.gray[100] }]}>
-              <Text style={[styles.previewText, { color: colors.gray[900] }]}>次要按钮</Text>
-            </View>
-            
-            <View style={[styles.previewItem, { backgroundColor: colors.success }]}>
-              <Text style={[styles.previewText, { color: colors.white }]}>成功状态</Text>
-            </View>
+    <AppScreen contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>偏好设置</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.title, { color: palette.text }]}>主题设置</Text>
+            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+              统一控制应用外观，在浅色、深色和跟随系统之间快速切换。
+            </Text>
+          </View>
+          <View style={[styles.badge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            <Text style={[styles.badgeValue, { color: palette.text }]}>
+              {themeMode === 'light' ? '浅色' : themeMode === 'dark' ? '深色' : '系统'}
+            </Text>
+            <Text style={[styles.badgeLabel, { color: palette.textMuted }]}>当前主题</Text>
           </View>
         </View>
       </View>
-    </ScrollView>
+
+      <View style={styles.section}>
+        {themeOptions.map((option) => {
+          const selected = themeMode === option.mode;
+          return (
+            <TouchableOpacity
+              key={option.mode}
+              style={[
+                styles.optionCard,
+                {
+                  backgroundColor: selected ? '#FFF4EC' : palette.surface,
+                  borderColor: selected ? palette.orange : palette.border,
+                },
+              ]}
+              onPress={() => setThemeMode(option.mode)}
+              activeOpacity={0.82}
+            >
+              <View style={[styles.optionIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name={option.icon} size={20} color={selected ? palette.orange : palette.textSecondary} />
+              </View>
+              <View style={styles.optionText}>
+                <Text style={[styles.optionLabel, { color: palette.text }]}>{option.label}</Text>
+                <Text style={[styles.optionDescription, { color: palette.textMuted }]}>{option.description}</Text>
+              </View>
+              {selected ? (
+                <View style={[styles.checkWrap, { backgroundColor: palette.orange }]}>
+                  <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
+                </View>
+              ) : (
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={[styles.previewCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <Text style={[styles.previewTitle, { color: palette.text }]}>界面预览</Text>
+        <View style={styles.previewGrid}>
+          <View style={[styles.previewChip, { backgroundColor: palette.orange }]}>
+            <Text style={styles.previewChipText}>主操作</Text>
+          </View>
+          <View style={[styles.previewChip, { backgroundColor: palette.surfaceSoft, borderColor: palette.border, borderWidth: 1 }]}>
+            <Text style={[styles.previewChipText, { color: palette.text }]}>次要信息</Text>
+          </View>
+          <View style={[styles.previewChip, { backgroundColor: palette.success }]}>
+            <Text style={styles.previewChipText}>成功状态</Text>
+          </View>
+        </View>
+      </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  content: {
+    paddingBottom: 112,
+  },
+  header: {
+    marginBottom: spacing.xl,
+  },
+  eyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.sm,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  headerCopy: {
     flex: 1,
   },
-  content: {
-    padding: spacing.lg,
-  },
   title: {
-    fontSize: fontSize['2xl'],
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: fontWeight.bold,
-    marginBottom: spacing.lg,
+    marginBottom: 6,
   },
-  optionsContainer: {
-    gap: spacing.md,
+  subtitle: {
+    fontSize: fontSize.base,
+    lineHeight: 22,
+  },
+  badge: {
+    minWidth: 92,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  badgeValue: {
+    fontSize: fontSize.xl,
+    lineHeight: 22,
+    fontWeight: fontWeight.semiBold,
+  },
+  badgeLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  section: {
     marginBottom: spacing.xl,
   },
   optionCard: {
-    padding: spacing.lg,
+    minHeight: 76,
+    borderWidth: 1,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.sm,
-  },
-  optionHeader: {
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.md,
     marginBottom: spacing.sm,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
+  optionIcon: {
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkmark: {
+  optionText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  optionLabel: {
+    fontSize: fontSize.xl,
+    lineHeight: 22,
+    fontWeight: fontWeight.semiBold,
+  },
+  optionDescription: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  checkWrap: {
     width: 24,
     height: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionLabel: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.xs,
-  },
-  optionDescription: {
-    fontSize: fontSize.sm,
-    lineHeight: 20,
-  },
   previewCard: {
+    borderWidth: 1,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
   },
   previewTitle: {
     fontSize: fontSize.lg,
+    lineHeight: 22,
     fontWeight: fontWeight.semiBold,
     marginBottom: spacing.md,
   },
-  previewContent: {
+  previewGrid: {
     flexDirection: 'row',
-    gap: spacing.sm,
     flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  previewItem: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+  previewChip: {
+    minHeight: 40,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  previewText: {
+  previewChipText: {
+    color: '#FFFFFF',
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
   },
 });
