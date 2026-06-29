@@ -218,7 +218,7 @@
 | T76.1 | P0 | 建立视觉审计基线与截图索引 | docs/qa | done | 2026-06-28 已输出逐页截图到 `docs/qa/ui-audit-20260628/` |
 | T76.2 | P0 | 修复消息页真实数据 loading 卡住问题 | frontend/messages | done | 2026-06-28 已修复 `frontend/lib/network.ts` 中 web 首屏 `unknown` 状态导致 GET 请求长期等待的问题；真实截图见 `docs/qa/ui-audit-20260628/verified-messages-after-network-fix.png` |
 | T76.3 | P0 | 首页按交互地图重做层级与信息密度 | frontend/home | todo | 当前首页统计卡、快捷操作、最近待办的结构和留白均偏离 `home-overview` |
-| T76.4 | P0 | 工作台入口卡片与管理分组按交互地图收敛 | frontend/workbench | todo | 当前入口卡高度、图标容器、描述层级、列表分组密度不足 |
+| T76.4 | P0 | 工作台入口卡片与管理分组按交互地图收敛 | frontend/workbench | in_progress | 2026-06-30 已继续压紧工作台页头摘要区，并将高频入口卡收敛为更低高度、更清晰的图标与标题层级；当前剩余主要是继续核对真实截图下的卡片纵向节奏与分组间距 |
 | T76.5 | P0 | 消息列表/好友/聊天三页按第 5 排重新对齐 | frontend/messages | in_progress | 2026-06-29 已完成消息模块 loading 卡死修复并稳定恢复列表可用性；本轮继续将聊天详情页切到统一 `palette` 语义与独立 composer 骨架，去掉旧版白顶栏/白气泡表达，并补齐消息列表的顶部指标、筛选条、好友弹层分区与待处理申请层级；后续仍需继续收口列表卡内部节奏与真实截图验收 |
 | T76.6 | P0 | 我的外层页与账号/主题页按第 6 排统一 | frontend/profile/settings | in_progress | 2026-06-29 已先统一“我的”主设置页到 v1.4.1 的卡片与列表语言；本轮继续把账号管理、主题设置、语言切换三页去掉旧版渐变/白卡表达，改为统一的 `palette` 语义、紧凑列表卡与底部操作条，当前仍待稳定 web 环境下补抓最新真实截图并确认与设计稿的间距细节 |
 | T76.7 | P0 | 物品与待办列表页按通用列表样式重做 | frontend/items/todos | done | 2026-06-28 已统一列表头部层级、汇总信息、卡片标签与排序表达，并修复分类 store 串页导致物品列表分类/标签回退 UUID 的问题；复核截图见 `updated-items-list-vp-3.png`、`updated-todos-list-vp.png` |

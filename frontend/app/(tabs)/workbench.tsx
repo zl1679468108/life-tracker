@@ -61,26 +61,54 @@ export default function WorkbenchScreen() {
     <AppScreen>
       <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
 
+      <View style={styles.heroBlock}>
+        <Text style={[styles.heroEyebrow, { color: palette.textSecondary }]}>管理与操作</Text>
+        <View style={styles.heroRow}>
+          <View style={styles.heroCopy}>
+            <Text style={[styles.heroTitle, { color: palette.text }]}>全量入口</Text>
+            <Text style={[styles.heroDesc, { color: palette.textMuted }]}>高频操作优先，低频管理按分组收口。</Text>
+          </View>
+          <View style={[styles.heroBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            <Text style={[styles.heroBadgeValue, { color: palette.text }]}>{core.length + groups.reduce((sum, group) => sum + group.entries.length, 0)}</Text>
+            <Text style={[styles.heroBadgeLabel, { color: palette.textMuted }]}>功能入口</Text>
+          </View>
+        </View>
+      </View>
+
       <View style={styles.coreGrid}>
-        {core.map((entry) => (
+        {core.map((entry, index) => (
           <TouchableOpacity
             key={entry.title}
-            style={[styles.coreCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+            style={[
+              styles.coreCard,
+              index === core.length - 1 && core.length % 2 === 1 && styles.coreCardWide,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
             onPress={() => go(entry.route)}
             activeOpacity={0.82}
           >
-            <View style={[styles.coreIcon, { backgroundColor: entry.color }]}>
-              <MaterialCommunityIcons name={entry.icon} size={23} color="#FFFFFF" />
+            <View style={styles.coreCardTop}>
+              <View style={[styles.coreIcon, { backgroundColor: `${entry.color}16`, borderColor: `${entry.color}2E` }]}>
+                <MaterialCommunityIcons name={entry.icon} size={20} color={entry.color} />
+              </View>
+              <MaterialCommunityIcons name="arrow-top-right" size={18} color={palette.textMuted} />
             </View>
-            <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
-            <Text style={[styles.coreDesc, { color: palette.textMuted }]}>{entry.desc}</Text>
+            <View style={styles.coreText}>
+              <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
+              <Text style={[styles.coreDesc, { color: palette.textMuted }]}>{entry.desc}</Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
 
       {groups.map((group) => (
         <View key={group.title} style={styles.group}>
-          <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
+          <View style={styles.groupHeader}>
+            <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
+            <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.groupBadgeText, { color: palette.textMuted }]}>{group.entries.length}</Text>
+            </View>
+          </View>
           {group.entries.map((entry) => (
             <AppListRow
               key={entry.title}
@@ -99,6 +127,50 @@ export default function WorkbenchScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroBlock: {
+    marginBottom: spacing.lg,
+  },
+  heroEyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.sm,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  heroCopy: {
+    flex: 1,
+  },
+  heroTitle: {
+    fontSize: fontSize['3xl'],
+    lineHeight: 26,
+    fontWeight: fontWeight.bold,
+  },
+  heroDesc: {
+    marginTop: spacing.xs,
+    fontSize: fontSize.base,
+    lineHeight: 20,
+  },
+  heroBadge: {
+    minWidth: 88,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  heroBadgeValue: {
+    fontSize: fontSize['2xl'],
+    lineHeight: 24,
+    fontWeight: fontWeight.bold,
+  },
+  heroBadgeLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
   coreGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -107,24 +179,36 @@ const styles = StyleSheet.create({
   },
   coreCard: {
     width: '48.6%',
-    minHeight: 132,
+    minHeight: 120,
     borderWidth: 1,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    padding: spacing.md,
+    justifyContent: 'flex-start',
+  },
+  coreCardWide: {
+    width: '100%',
+  },
+  coreCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   coreIcon: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  coreText: {
+    marginTop: spacing.md,
+    gap: 4,
+  },
   coreTitle: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
-    marginTop: spacing.sm,
+    fontSize: fontSize.xl,
+    lineHeight: 22,
+    fontWeight: fontWeight.semiBold,
   },
   coreDesc: {
     fontSize: fontSize.sm,
@@ -133,10 +217,29 @@ const styles = StyleSheet.create({
   group: {
     marginBottom: spacing.xl,
   },
-  groupTitle: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
+  },
+  groupTitle: {
+    fontSize: fontSize.lg,
+    lineHeight: 22,
+    fontWeight: fontWeight.semiBold,
+  },
+  groupBadge: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  groupBadgeText: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    fontWeight: fontWeight.semiBold,
   },
 });
