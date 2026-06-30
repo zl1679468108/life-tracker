@@ -7,6 +7,7 @@ class NetworkMonitor {
   private listeners: NetworkListener[] = [];
   private currentStatus: NetworkStatus = 'unknown';
   private checkInterval: ReturnType<typeof setInterval> | null = null;
+  private started = false;
 
   constructor() {
     this.startMonitoring();
@@ -16,12 +17,15 @@ class NetworkMonitor {
    * 开始监控网络状态
    */
   private startMonitoring() {
+    if (this.started) return;
+
     // Web 端使用 navigator.onLine
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined') {
         window.addEventListener('online', this.handleOnline);
         window.addEventListener('offline', this.handleOffline);
         this.currentStatus = navigator.onLine ? 'online' : 'offline';
+        this.started = true;
       }
     } else {
       // 原生平台定期检测网络状态
@@ -29,6 +33,17 @@ class NetworkMonitor {
         this.checkNetworkStatus();
       }, 5000);
       this.checkNetworkStatus();
+      this.started = true;
+    }
+  }
+
+  /**
+   * Web 静态渲染阶段可能在没有 window 的情况下初始化单例。
+   * 真正进入浏览器后再次访问时，补做一次启动，避免状态永久停留在 unknown。
+   */
+  private ensureMonitoring() {
+    if (Platform.OS === 'web' && !this.started && typeof window !== 'undefined') {
+      this.startMonitoring();
     }
   }
 
@@ -89,6 +104,7 @@ class NetworkMonitor {
    * 添加网络状态监听器
    */
   addListener(listener: NetworkListener): () => void {
+    this.ensureMonitoring();
     this.listeners.push(listener);
     // 立即通知当前状态
     listener(this.currentStatus);
@@ -103,6 +119,7 @@ class NetworkMonitor {
    * 获取当前网络状态
    */
   getStatus(): NetworkStatus {
+    this.ensureMonitoring();
     return this.currentStatus;
   }
 
@@ -110,7 +127,10 @@ class NetworkMonitor {
    * 是否在线
    */
   isOnline(): boolean {
-    return this.currentStatus === 'online';
+    this.ensureMonitoring();
+    // unknown 更接近“尚未确认”而不是“确认离线”，
+    // 对请求层按在线处理可避免首屏在 web 静态渲染后无限等待网络恢复。
+    return this.currentStatus !== 'offline';
   }
 
   /**

@@ -23,13 +23,16 @@ export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCar
     <TouchableOpacity
       style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.92}
     >
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-          <MaterialCommunityIcons name={iconName as any} size={24} color={iconColor} />
+          <MaterialCommunityIcons name={iconName as any} size={20} color={iconColor} />
         </View>
         <View style={styles.info}>
+          <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>
+            {template.template_type === 'item' ? '物品模板' : '待办模板'}
+          </Text>
           <Text style={[styles.name, { color: palette.text }]} numberOfLines={1}>
             {template.name}
           </Text>
@@ -46,22 +49,29 @@ export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCar
         )}
       </View>
 
-      <View style={[styles.footer, { borderTopColor: palette.border }]}>
-        <View style={styles.typeBadge}>
+      <View style={styles.metaRow}>
+        <View style={[styles.metaBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
           <MaterialCommunityIcons
-            name={template.template_type === 'item' ? 'package-variant' : 'checkbox-marked'}
+            name={template.template_type === 'item' ? 'package-variant-closed' : 'checkbox-marked-circle-outline'}
             size={14}
             color={palette.violet}
           />
-          <Text style={[styles.typeText, { color: palette.violet }]}>
-            {template.template_type === 'item' ? '物品' : '待办'}
+          <Text style={[styles.metaText, { color: palette.violet }]}>
+            {template.template_type === 'item' ? '物品流程' : '待办流程'}
           </Text>
         </View>
-        <View style={styles.usageBadge}>
-          <MaterialCommunityIcons name="play-circle-outline" size={14} color={palette.textMuted} />
-          <Text style={[styles.usageText, { color: palette.textMuted }]}>
-            使用 {template.usage_count} 次
+        <View style={[styles.metaBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="history" size={14} color={palette.textMuted} />
+          <Text style={[styles.metaText, { color: palette.textMuted }]}>
+            已套用 {template.usage_count} 次
           </Text>
+        </View>
+      </View>
+
+      <View style={[styles.footer, { borderTopColor: palette.border }]}>
+        <View style={styles.footerHint}>
+          <MaterialCommunityIcons name="flash-outline" size={14} color={palette.textMuted} />
+          <Text style={[styles.footerHintText, { color: palette.textMuted }]}>一键生成并进入编辑</Text>
         </View>
         {onUse && (
           <TouchableOpacity
@@ -79,19 +89,20 @@ export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCar
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 10,
+    marginBottom: spacing.xs,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    alignItems: 'flex-start',
+    gap: spacing.xs,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -100,13 +111,37 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  eyebrow: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 2,
+  },
   name: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.semiBold,
   },
   description: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     marginTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  metaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 3,
+  },
+  metaText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
   },
   deleteBtn: {
     padding: spacing.xs,
@@ -114,35 +149,26 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
     borderTopWidth: 1,
     gap: spacing.sm,
   },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  typeText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-  },
-  usageBadge: {
+  footerHint: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     flex: 1,
   },
-  usageText: {
+  footerHintText: {
     fontSize: fontSize.xs,
   },
   useBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 3,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
   },

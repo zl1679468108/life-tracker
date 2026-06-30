@@ -38,6 +38,11 @@ export default function HomeScreen() {
   const recentTodos = [...todos]
     .sort((a, b) => Number(a.completed) - Number(b.completed))
     .slice(0, 3);
+  const recentTodoCountLabel = `${recentTodos.length} 条`;
+  const quickActions = [
+    { title: '添加物品', icon: 'plus', color: palette.orange, route: '/item/create' as const, hint: '记录新物品' },
+    { title: '添加待办', icon: 'check', color: palette.violet, route: '/todo/create' as const, hint: '安排今天事项' },
+  ];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
@@ -104,9 +109,17 @@ export default function HomeScreen() {
         />
 
         <View style={styles.greetingBlock}>
-          <View>
-            <Text style={[styles.greetingTitle, { color: palette.text }]}>{greeting}</Text>
-            <Text style={[styles.greetingDesc, { color: palette.textMuted }]}>今天也要加油哦</Text>
+          <View style={styles.greetingCopy}>
+            <View style={styles.greetingRow}>
+              <View style={styles.greetingText}>
+                <Text style={[styles.greetingTitle, { color: palette.text }]}>{greeting}</Text>
+                <Text style={[styles.greetingDesc, { color: palette.textMuted }]}>今天也要加油哦</Text>
+              </View>
+              <View style={[styles.greetingBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <Text style={[styles.greetingBadgeValue, { color: palette.orange }]}>{pendingTodos}</Text>
+                <Text style={[styles.greetingBadgeLabel, { color: palette.textMuted }]}>待完成</Text>
+              </View>
+            </View>
           </View>
           <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
@@ -123,34 +136,47 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.stats}>
-          <Stat label="物品总数" value={items.length} palette={palette} onPress={() => router.push('/item/list')} />
-          <Stat label="待办未完成" value={pendingTodos} palette={palette} onPress={() => router.push('/todo/list')} />
-          <Stat label="已完成" value={completedTodos} palette={palette} />
+          <Stat label="物品总数" value={items.length} palette={palette} meta="管理中" onPress={() => router.push('/item/list')} />
+          <Stat label="待办未完成" value={pendingTodos} palette={palette} meta="优先处理" onPress={() => router.push('/todo/list')} tone="accent" />
+          <Stat label="已完成" value={completedTodos} palette={palette} meta="今日记录" />
         </View>
 
-        <View style={styles.quickGrid}>
-          <TouchableOpacity
-            style={[styles.quickCard, { backgroundColor: palette.orange }]}
-            onPress={() => router.push('/item/create')}
-            activeOpacity={0.84}
-          >
-            <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
-            <Text style={styles.quickTitle}>添加物品</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickCard, { backgroundColor: palette.violet }]}
-            onPress={() => router.push('/todo/create')}
-            activeOpacity={0.84}
-          >
-            <MaterialCommunityIcons name="check" size={26} color="#FFFFFF" />
-            <Text style={styles.quickTitle}>添加待办</Text>
-          </TouchableOpacity>
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>快捷操作</Text>
+          </View>
+          <View style={styles.quickGrid}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.title}
+                style={[styles.quickCard, { backgroundColor: action.color }]}
+                onPress={() => router.push(action.route)}
+                activeOpacity={0.84}
+              >
+                <View style={styles.quickCardTop}>
+                  <View style={styles.quickIconWrap}>
+                    <MaterialCommunityIcons name={action.icon as any} size={22} color="#FFFFFF" />
+                  </View>
+                  <MaterialCommunityIcons name="arrow-top-right" size={18} color="rgba(255,255,255,0.86)" />
+                </View>
+                <View style={styles.quickCardText}>
+                  <Text style={styles.quickTitle}>{action.title}</Text>
+                  <Text style={styles.quickHint}>{action.hint}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {recentTodos.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHead}>
-              <Text style={[styles.sectionTitle, { color: palette.text }]}>最近待办</Text>
+              <View style={styles.sectionHeadMain}>
+                <Text style={[styles.sectionTitle, { color: palette.text }]}>最近待办</Text>
+                <View style={[styles.sectionCountBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <Text style={[styles.sectionCountText, { color: palette.textMuted }]}>{recentTodoCountLabel}</Text>
+                </View>
+              </View>
               <TouchableOpacity onPress={() => router.push('/todo/list')} activeOpacity={0.75}>
                 <Text style={[styles.sectionLink, { color: palette.orange }]}>查看全部</Text>
               </TouchableOpacity>
@@ -180,10 +206,16 @@ export default function HomeScreen() {
                   >
                     {todo.title}
                   </Text>
-                  <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={1}>
-                    {todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置日期'} · {priorityText(todo.priority)}
-                  </Text>
+                  <View style={styles.todoMetaRow}>
+                    <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={1}>
+                      {todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置日期'}
+                    </Text>
+                    <View style={[styles.todoPriorityBadge, { backgroundColor: palette.surfaceSoft }]}>
+                      <Text style={[styles.todoPriorityText, { color: palette.textSecondary }]}>{priorityText(todo.priority)}</Text>
+                    </View>
+                  </View>
                 </View>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
             ))}
           </View>
@@ -198,24 +230,35 @@ function Stat({
   label,
   value,
   palette,
+  meta,
   onPress,
+  tone = 'default',
 }: {
   label: string;
   value: number;
   palette: typeof appDesign.dark;
+  meta: string;
   onPress?: () => void;
+  tone?: 'default' | 'accent';
 }) {
   const Wrapper = onPress ? TouchableOpacity : View;
+  const isAccent = tone === 'accent';
   return (
     <Wrapper
-      style={[styles.statCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      style={[
+        styles.statCard,
+        {
+          backgroundColor: isAccent ? '#FFF4EC' : palette.surface,
+          borderColor: isAccent ? palette.orange : palette.border,
+        },
+      ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.82 : 1}
       accessibilityRole={onPress ? 'button' : undefined}
     >
       <Text style={[styles.statLabel, { color: palette.textMuted }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: palette.text }]}>{value}</Text>
-      <Text style={[styles.statMeta, { color: palette.textMuted }]}>{onPress ? '点击查看' : '今日记录'}</Text>
+      <Text style={[styles.statValue, { color: isAccent ? palette.orange : palette.text }]}>{value}</Text>
+      <Text style={[styles.statMeta, { color: palette.textMuted }]}>{meta}</Text>
     </Wrapper>
   );
 }
@@ -226,23 +269,52 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: 112,
   },
   greetingBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  greetingCopy: {
+    flex: 1,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  greetingText: {
+    flex: 1,
   },
   greetingTitle: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: fontWeight.bold,
   },
   greetingDesc: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 1,
+  },
+  greetingBadge: {
+    minWidth: 70,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+  },
+  greetingBadgeValue: {
+    fontSize: fontSize['2xl'],
+    lineHeight: 24,
+    fontWeight: fontWeight.bold,
+  },
+  greetingBadgeLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     marginTop: 2,
   },
   iconButton: {
@@ -264,14 +336,15 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   statCard: {
     flex: 1,
-    minHeight: 112,
+    minHeight: 80,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     justifyContent: 'space-between',
   },
   statLabel: {
@@ -279,8 +352,8 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   statValue: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: fontWeight.extraBold,
   },
   statMeta: {
@@ -290,23 +363,45 @@ const styles = StyleSheet.create({
   quickGrid: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
   },
   quickCard: {
     flex: 1,
-    minHeight: 92,
-    borderRadius: borderRadius.xl,
-    padding: spacing.md,
+    minHeight: 78,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     justifyContent: 'space-between',
+  },
+  quickCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickCardText: {
+    gap: 2,
   },
   quickTitle: {
     color: '#FFFFFF',
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.bold,
   },
+  quickHint: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+  },
   section: {
-    marginTop: spacing.sm,
+    marginTop: 2,
+    marginBottom: spacing.md,
   },
   sectionHead: {
     flexDirection: 'row',
@@ -314,10 +409,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
+  sectionHeadMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   sectionTitle: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
+  },
+  sectionCountBadge: {
+    borderWidth: 1,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  sectionCountText: {
+    fontSize: fontSize.xs,
+    lineHeight: 14,
+    fontWeight: fontWeight.semiBold,
   },
   sectionLink: {
     fontSize: fontSize.sm,
@@ -325,14 +436,15 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   todoRow: {
-    minHeight: 66,
+    minHeight: 58,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: 8,
   },
   checkbox: {
     width: 24,
@@ -346,13 +458,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   todoTitle: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
+  todoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 3,
+  },
   todoDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 1,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
+  },
+  todoPriorityBadge: {
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  todoPriorityText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: fontWeight.semiBold,
   },
 });

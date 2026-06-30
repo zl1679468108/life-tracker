@@ -45,7 +45,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
     <TouchableOpacity
       style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.92}
     >
       <View style={styles.header}>
         <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
@@ -64,6 +64,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
       </View>
 
       <View style={styles.body}>
+        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>借用记录</Text>
         <View style={styles.borrowerInfo}>
           <MaterialCommunityIcons name="account" size={18} color={palette.textMuted} />
           <Text style={[styles.borrowerName, { color: palette.text }]}>
@@ -80,17 +81,17 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
           </View>
         )}
 
-        <View style={styles.dateRow}>
-          <View style={styles.dateItem}>
-            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>借出</Text>
-            <Text style={[styles.dateValue, { color: palette.textSecondary }]}>
+        <View style={[styles.summaryGrid, { borderTopColor: palette.border, borderBottomColor: palette.border }]}>
+          <View style={styles.summaryCell}>
+            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>借出日期</Text>
+            <Text style={[styles.summaryValue, { color: palette.text }]}>
               {new Date(borrowing.borrow_date).toLocaleDateString('zh-CN')}
             </Text>
           </View>
-          <View style={styles.dateDivider} />
-          <View style={styles.dateItem}>
-            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>状态</Text>
-            <Text style={[styles.dateValue, { color: borrowing.status === 'overdue' ? palette.danger : palette.textSecondary }]}>
+          <View style={[styles.summaryDivider, { backgroundColor: palette.border }]} />
+          <View style={styles.summaryCell}>
+            <Text style={[styles.dateLabel, { color: palette.textMuted }]}>归还进度</Text>
+            <Text style={[styles.summaryValue, { color: borrowing.status === 'overdue' ? palette.danger : palette.text }]}>
               {getDaysInfo()}
             </Text>
           </View>
@@ -146,6 +147,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   body: {},
+  eyebrow: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.xs,
+  },
   borrowerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,8 +159,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   borrowerName: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.semiBold,
   },
   itemInfo: {
     flexDirection: 'row',
@@ -165,31 +171,32 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: fontSize.base,
   },
-  dateRow: {
+  summaryGrid: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
   },
-  dateItem: {
+  summaryCell: {
     flex: 1,
   },
   dateLabel: {
     fontSize: fontSize.xs,
     marginBottom: 2,
   },
-  dateValue: {
+  summaryValue: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.semiBold,
   },
-  dateDivider: {
+  summaryDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: '#DDE5F0',
+    height: 28,
     marginHorizontal: spacing.md,
   },
   notes: {
     fontSize: fontSize.sm,
     marginTop: spacing.sm,
-    fontStyle: 'italic',
   },
 });

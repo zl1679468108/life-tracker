@@ -180,7 +180,6 @@ export default function AccountScreen() {
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.heroBlock}>
-          <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>账号资料</Text>
           <View style={styles.heroRow}>
             <TouchableOpacity
               style={[styles.avatarWrap, { backgroundColor: palette.surface, borderColor: palette.border }]}
@@ -292,17 +291,11 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
     paddingBottom: 132,
   },
   heroBlock: {
-    marginBottom: spacing.xl,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   heroRow: {
     flexDirection: 'row',
@@ -310,30 +303,30 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   avatarWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
   },
   avatarFallback: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 28,
+    lineHeight: 32,
     fontWeight: fontWeight.bold,
   },
   avatarBadge: {
@@ -352,14 +345,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   heroName: {
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize['2xl'],
     lineHeight: 24,
     fontWeight: fontWeight.bold,
   },
   heroEmail: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    marginTop: 4,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: 2,
   },
   heroBadge: {
     alignSelf: 'flex-start',
@@ -375,35 +368,35 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: fontSize.lg,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   fieldCard: {
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
   },
   fieldLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     fontWeight: fontWeight.medium,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   fieldValue: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   fieldInput: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
     paddingVertical: 0,
   },
@@ -421,7 +414,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   primaryAction: {
-    minHeight: 52,
+    minHeight: 48,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -430,8 +423,8 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: '#FFFFFF',
-    fontSize: fontSize.base,
-    lineHeight: 20,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     fontWeight: fontWeight.semiBold,
   },
 });

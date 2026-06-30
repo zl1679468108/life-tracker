@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import appConfig from '../../app.json';
 import { Toast } from '../../components/Toast';
 import { AppHeader, AppListRow, AppScreen } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
@@ -24,6 +25,7 @@ type MineEntry = {
   onPress?: () => void;
   loading?: boolean;
   readonly?: boolean;
+  metaText?: string;
 };
 
 function MineRow({ entry, palette, onPress }: { entry: MineEntry; palette: Palette; onPress: () => void }) {
@@ -39,8 +41,8 @@ function MineRow({ entry, palette, onPress }: { entry: MineEntry; palette: Palet
       meta={
         entry.loading ? (
           <ActivityIndicator size="small" color={palette.orange} />
-        ) : entry.readonly ? (
-          <Text style={[styles.readonlyText, { color: palette.textMuted }]}>v1.2.0</Text>
+        ) : entry.readonly && entry.metaText ? (
+          <Text style={[styles.readonlyText, { color: palette.textMuted }]}>{entry.metaText}</Text>
         ) : undefined
       }
     />
@@ -59,6 +61,10 @@ export default function SettingsScreen() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const profileName = profile?.display_name || user?.email?.split('@')[0] || t('settings.profile');
+  const profileEmail = user?.email || t('auth.login');
+  const profileId = user?.id ? `ID ${user.id.slice(0, 4)}` : 'ID ----';
+  const appVersion = appConfig.expo.version;
 
   useEffect(() => {
     initCachedAvatar();
@@ -143,7 +149,7 @@ export default function SettingsScreen() {
         },
         { title: '数据管理', desc: '备份、恢复、导入、导出', icon: 'database-outline', route: '/settings/data', tone: 'violet' },
         { title: '反馈建议', desc: '提交问题或产品建议', icon: 'message-alert-outline', route: '/settings/feedback', tone: 'warning' },
-        { title: '版本信息', desc: '当前应用版本', icon: 'information-outline', readonly: true },
+        { title: '版本信息', desc: '当前应用版本', icon: 'information-outline', readonly: true, metaText: `v${appVersion}` },
       ],
     },
   ];
@@ -168,11 +174,16 @@ export default function SettingsScreen() {
         )}
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
-            {profile?.display_name || user?.email?.split('@')[0] || t('settings.profile')}
+            {profileName}
           </Text>
-          <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
-            {user?.email || t('auth.login')}
-          </Text>
+          <View style={styles.profileMetaRow}>
+            <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
+              {profileEmail}
+            </Text>
+            <View style={[styles.profileBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.profileBadgeText, { color: palette.orange }]}>{profileId}</Text>
+            </View>
+          </View>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
       </TouchableOpacity>
@@ -197,31 +208,32 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   profileCard: {
-    minHeight: 104,
+    minHeight: 84,
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   avatarFallback: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 26,
     fontWeight: fontWeight.bold,
   },
   profileInfo: {
@@ -229,27 +241,46 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   profileName: {
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize.xl,
     lineHeight: 24,
     fontWeight: fontWeight.bold,
+  },
+  profileMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
   },
   profileEmail: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    marginTop: 2,
+    flex: 1,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+  },
+  profileBadge: {
+    minHeight: 24,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileBadgeText: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    fontWeight: fontWeight.semiBold,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
-    marginBottom: spacing.sm,
-  },
-  readonlyText: {
     fontSize: fontSize.base,
     lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 8,
+  },
+  readonlyText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     fontWeight: fontWeight.medium,
   },
 });

@@ -4,10 +4,11 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocationStore } from '../../stores/locationStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
+import { FormActions } from '../../components/ui';
 import { LifeLocation } from '../../types';
 import { useTranslation } from '../../lib/i18n';
 
@@ -53,6 +54,7 @@ const buildLocationTree = (locations: LifeLocation[]): LifeLocation[] => {
 export default function LocationManageScreen() {
   const router = useRouter();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
   const { locations, fetchLocations, addLocation, updateLocation, deleteLocation } = useLocationStore();
   const [showAdd, setShowAdd] = useState(false);
@@ -146,18 +148,16 @@ export default function LocationManageScreen() {
   const renderLocationItem = (loc: LifeLocation & { children?: LifeLocation[] }, depth: number = 0) => {
     const indent = depth * 20;
     const displayRow = (
-      <View style={[styles.lmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
-        <LinearGradient
-          colors={[colors.success, colors.success + '80']}
-          style={styles.lmIconWrap}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={colors.white} />
-        </LinearGradient>
-        <Text style={[styles.lmItemName, { color: colors.gray[800] }]}>{loc.name}</Text>
+      <View style={[styles.lmItem, { marginLeft: indent, backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={[styles.lmIconWrapPlain, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={palette.violet} />
+        </View>
+        <View style={styles.lmItemCopy}>
+          <Text style={[styles.lmItemEyebrow, { color: palette.textSecondary }]}>位置节点</Text>
+          <Text style={[styles.lmItemName, { color: palette.text }]}>{loc.name}</Text>
+        </View>
         <TouchableOpacity style={styles.lmEditBtn} onPress={() => handleStartEdit(loc)}>
-          <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
+          <MaterialCommunityIcons name="pencil-outline" size={18} color={palette.textMuted} />
         </TouchableOpacity>
       </View>
     );
@@ -165,27 +165,27 @@ export default function LocationManageScreen() {
     return (
       <View key={loc.id}>
         {editingId === loc.id ? (
-          <View style={[styles.lmAddForm, { marginLeft: indent, backgroundColor: colors.white, borderColor: colors.gray[100] }]}>
+          <View style={[styles.lmAddForm, { marginLeft: indent, backgroundColor: palette.surface, borderColor: palette.border }]}>
             <TextInput
-              style={[styles.lmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
+              style={[styles.lmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
               value={editName}
               onChangeText={setEditName}
               placeholder={t('locations.name')}
-              placeholderTextColor={colors.gray[400]}
+              placeholderTextColor={palette.textMuted}
             />
-            <TouchableOpacity style={[styles.lmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('edit')}>
-              <View style={[styles.lmIconPreview, { backgroundColor: colors.primary + '20' }]}>
-                <MaterialCommunityIcons name={editIcon as any} size={22} color={colors.primary} />
+            <TouchableOpacity style={[styles.lmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('edit')}>
+              <View style={[styles.lmIconPreview, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name={editIcon as any} size={22} color={palette.violet} />
               </View>
-              <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
+              <Text style={[styles.lmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
             </TouchableOpacity>
             <View style={styles.lmEditActions}>
-              <TouchableOpacity style={[styles.lmCancelBtn, { backgroundColor: colors.gray[100] }]} onPress={handleCancelEdit}>
-                <Text style={[styles.lmCancelBtnText, { color: colors.gray[600] }]}>{t('common.cancel')}</Text>
+              <TouchableOpacity style={[styles.lmCancelBtn, { backgroundColor: palette.surfaceSoft }]} onPress={handleCancelEdit}>
+                <Text style={[styles.lmCancelBtnText, { color: palette.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.lmSaveBtn} onPress={handleSaveEdit}>
-                <Text style={styles.lmSaveBtnText}>{t('common.save')}</Text>
+              <TouchableOpacity style={[styles.lmSaveBtn, { backgroundColor: palette.orange, shadowColor: palette.orange }]} onPress={handleSaveEdit}>
+                <Text style={[styles.lmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -204,24 +204,33 @@ export default function LocationManageScreen() {
   };
 
   return (
-    <View style={[styles.lmContainer, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={[styles.lmContainer, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.lmContent}>
+    <View style={[styles.lmContainer, { backgroundColor: palette.bg }]}>
+      <ScrollView style={[styles.lmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.lmContent}>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.title, { color: palette.text }]}>位置管理</Text>
+            </View>
+            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.summaryValue, { color: palette.text }]}>{locations.length}</Text>
+              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>个位置</Text>
+            </View>
+          </View>
+        </View>
 
         {/* 系统预设 */}
         <View style={styles.lmSection}>
-          <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>{t('locations.systemPreset')}</Text>
+          <Text style={[styles.lmSectionTitle, { color: palette.textSecondary }]}>{t('locations.systemPreset')}</Text>
           {systemLocations.map((loc) => (
-            <View key={loc.id} style={[styles.lmItem, { backgroundColor: colors.white }]}>
-              <LinearGradient
-                colors={[colors.secondary, colors.secondary + '80']}
-                style={styles.lmIconWrap}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={colors.white} />
-              </LinearGradient>
-              <Text style={[styles.lmItemName, { color: colors.gray[800] }]}>{loc.name}</Text>
-              <Text style={[styles.lmSystemBadge, { color: colors.gray[400], backgroundColor: colors.gray[100] }]}>{t('locations.systemPreset')}</Text>
+            <View key={loc.id} style={[styles.lmItem, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={[styles.lmIconWrapPlain, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name={(loc.icon || 'map-marker') as any} size={20} color={palette.violet} />
+              </View>
+              <View style={styles.lmItemCopy}>
+                <Text style={[styles.lmItemEyebrow, { color: palette.textSecondary }]}>{t('locations.systemPreset')}</Text>
+                <Text style={[styles.lmItemName, { color: palette.text }]}>{loc.name}</Text>
+              </View>
+              <Text style={[styles.lmSystemBadge, { color: palette.textMuted, backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>{t('locations.systemPreset')}</Text>
             </View>
           ))}
         </View>
@@ -229,44 +238,49 @@ export default function LocationManageScreen() {
         {/* 自定义位置 */}
         <View style={styles.lmSection}>
           <View style={styles.lmSectionHeader}>
-            <Text style={[styles.lmSectionTitle, { color: colors.gray[400] }]}>{t('locations.custom')}</Text>
-            <TouchableOpacity style={[styles.lmAddBtn, { backgroundColor: colors.primaryLight }]} onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}>
-              <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={20} color={colors.primary} />
+            <Text style={[styles.lmSectionTitle, { color: palette.textSecondary }]}>{t('locations.custom')}</Text>
+            <TouchableOpacity
+              style={[styles.lmAddBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+              onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}
+              accessibilityRole="button"
+              accessibilityLabel={showAdd ? '收起新增位置' : '新增位置'}
+            >
+              <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={18} color={palette.orange} />
+              <Text style={[styles.lmAddBtnText, { color: palette.orange }]}>{showAdd ? '收起' : '新增位置'}</Text>
             </TouchableOpacity>
           </View>
 
           {showAdd && (
-            <View style={[styles.lmAddForm, { backgroundColor: colors.white, borderColor: colors.gray[100] }]}>
+            <View style={[styles.lmAddForm, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.lmFormEyebrow, { color: palette.textSecondary }]}>新增位置</Text>
               <TextInput
-                style={[styles.lmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
+                style={[styles.lmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
                 value={newName}
                 onChangeText={setNewName}
                 placeholder={newParentId ? `${t('locations.name')} (${t('locations.parent')})` : t('locations.name')}
-                placeholderTextColor={colors.gray[400]}
+                placeholderTextColor={palette.textMuted}
               />
-              <TouchableOpacity style={[styles.lmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('add')}>
-                <View style={[styles.lmIconPreview, { backgroundColor: colors.primary + '20' }]}>
-                  <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.primary} />
+              <TouchableOpacity style={[styles.lmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
+                <View style={[styles.lmIconPreview, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name={newIcon as any} size={22} color={palette.violet} />
                 </View>
-                <Text style={[styles.lmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
+                <Text style={[styles.lmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
               {newParentId && (
-                <View style={[styles.lmParentInfo, { backgroundColor: colors.gray[50] }]}>
-                  <MaterialCommunityIcons name="information-outline" size={16} color={colors.gray[500]} />
-                  <Text style={[styles.lmParentInfoText, { color: colors.gray[600] }]}> 
+                <View style={[styles.lmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
+                  <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
+                  <Text style={[styles.lmParentInfoText, { color: palette.textSecondary }]}> 
                     {`${t('locations.parent')}: ${locations.find(l => l.id === newParentId)?.name || ''}`}
                   </Text>
                 </View>
               )}
-              <TouchableOpacity style={styles.lmSaveBtn} onPress={handleAdd} activeOpacity={0.8}>
-                <Text style={styles.lmSaveBtnText}>{t('common.save')}</Text>
-              </TouchableOpacity>
+              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} />
             </View>
           )}
 
           {locationTree.length === 0 && !showAdd ? (
-            <Text style={[styles.lmEmptyText, { color: colors.gray[400] }]}>{t('locations.empty')}</Text>
+            <Text style={[styles.lmEmptyText, { color: palette.textMuted }]}>{t('locations.empty')}</Text>
           ) : (
             locationTree.map((loc) => renderLocationItem(loc as LifeLocation & { children?: LifeLocation[] }))
           )}
@@ -275,25 +289,25 @@ export default function LocationManageScreen() {
 
       {/* 图标选择弹窗 */}
       <Modal visible={showIconPicker} transparent animationType="fade" onRequestClose={() => setShowIconPicker(false)}>
-        <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: colors.gray[200] }]} />
-            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>{t('common.add')}</Text>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择图标</Text>
             <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
               {iconOptions.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.pickerIconItem,
-                    { backgroundColor: colors.gray[100] },
-                    currentIcon === icon && { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary },
+                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+                    currentIcon === icon && { backgroundColor: palette.surface, borderWidth: 1.5, borderColor: palette.orange },
                   ]}
                   onPress={() => selectIcon(icon)}
                 >
                   <MaterialCommunityIcons
                     name={icon as any}
                     size={24}
-                    color={currentIcon === icon ? colors.primary : colors.gray[600]}
+                    color={currentIcon === icon ? palette.orange : palette.textSecondary}
                   />
                 </TouchableOpacity>
               ))}
@@ -307,37 +321,58 @@ export default function LocationManageScreen() {
 
 const styles = StyleSheet.create({
   lmContainer: { flex: 1 },
-  lmContent: { paddingBottom: 20 },
-  lmSection: { marginBottom: spacing.lg, paddingHorizontal: spacing.lg },
+  lmContent: { paddingBottom: 20, paddingTop: spacing.md },
+  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  headerCopy: { flex: 1 },
+  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
+  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 72, alignItems: 'flex-start' },
+  summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
+  summaryLabel: { fontSize: fontSize.xs, marginTop: 2 },
+  lmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   lmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  lmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
-  lmItem: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.sm, ...shadows.sm },
-  lmIconWrap: { width: 40, height: 40, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  lmItemName: { flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.medium },
-  lmSystemBadge: { fontSize: fontSize.sm, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.sm },
-  lmAddBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  lmAddForm: { borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.sm, ...shadows.sm },
-  lmInput: { borderWidth: 1, borderRadius: borderRadius.md, padding: spacing.lg, fontSize: fontSize.xl, marginBottom: spacing.md },
-  lmIconSelect: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md, gap: spacing.sm },
-  lmIconPreview: { width: 36, height: 36, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
-  lmIconSelectText: { flex: 1, fontSize: fontSize.base },
+  lmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },
+  lmItem: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 10, marginBottom: spacing.xs, ...shadows.sm },
+  lmIconWrap: { width: 36, height: 36, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  lmIconWrapPlain: { width: 36, height: 36, borderRadius: borderRadius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  lmItemCopy: { flex: 1 },
+  lmItemEyebrow: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, marginBottom: 2 },
+  lmItemName: { fontSize: fontSize.base, fontWeight: fontWeight.medium },
+  lmSystemBadge: { fontSize: fontSize.xs, paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: borderRadius.sm, borderWidth: 1 },
+  lmAddBtn: {
+    minHeight: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+  },
+  lmAddBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold },
+  lmAddForm: { borderRadius: borderRadius.md, padding: spacing.sm, marginBottom: spacing.xs, borderWidth: 1, ...shadows.sm },
+  lmFormEyebrow: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, marginBottom: spacing.xs },
+  lmInput: { borderWidth: 1, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: 9, fontSize: fontSize.base, marginBottom: spacing.xs },
+  lmIconSelect: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 8, marginBottom: spacing.xs, gap: spacing.xs },
+  lmIconPreview: { width: 32, height: 32, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  lmIconSelectText: { flex: 1, fontSize: fontSize.sm },
   lmAddChildBtn: { marginRight: spacing.sm },
-  childrenContainer: { marginLeft: spacing.md },
-  lmParentInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
-  lmParentInfoText: { flex: 1, fontSize: fontSize.sm },
-  lmEditBtn: { marginRight: spacing.sm },
-  lmEditActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  lmCancelBtn: { flex: 1, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  lmCancelBtnText: { fontSize: fontSize.xl, fontWeight: fontWeight.semiBold },
-  lmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 48, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
-  lmSaveBtnText: { fontSize: fontSize.xl, fontWeight: fontWeight.semiBold },
+  childrenContainer: { marginLeft: spacing.sm },
+  lmParentInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.sm, borderRadius: borderRadius.md, marginBottom: spacing.sm },
+  lmParentInfoText: { flex: 1, fontSize: fontSize.xs },
+  lmEditBtn: { marginRight: spacing.xs, padding: 4 },
+  lmEditActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  lmCancelBtn: { flex: 1, height: 40, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  lmCancelBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
+  lmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 40, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
+  lmSaveBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
   lmEmptyText: { fontSize: fontSize.base, textAlign: 'center', padding: spacing.xl },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%' },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%', borderWidth: 1 },
   pickerHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg },
   pickerScroll: { maxHeight: 400 },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pickerIconItem: { width: 48, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  pickerIconItem: { width: 48, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   pickerIconItemActive: {},
 });

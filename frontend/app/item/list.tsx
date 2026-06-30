@@ -28,14 +28,6 @@ export default function ItemListScreen() {
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
   const ALL_CATEGORY = 'ALL';
-  const categoryFilters = [
-    { id: ALL_CATEGORY, label: t('common.all') },
-    { id: 'electronics', label: '电子产品' },
-    { id: 'books', label: '书籍' },
-    { id: 'daily', label: '日用品' },
-    { id: 'clothes', label: '衣物' },
-    { id: 'other', label: '其他' },
-  ];
 
   const { items, loading, error: itemsError, fetchItems, deleteItem, clearError: clearItemsError } = useItemStore();
   const { categories: customCategories, fetchCategories } = useCategoryStore();
@@ -53,9 +45,17 @@ export default function ItemListScreen() {
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const allCategoriesForIcon = [
-    ...customCategories.filter((c) => c.type === 'item').map((c) => ({ id: c.id, name: c.name, icon: c.icon || 'tag' })),
+  const itemCategories = customCategories.filter((c) => c.type === 'item');
+  const categoryFilters = [
+    { id: ALL_CATEGORY, label: t('common.all') },
+    ...itemCategories.map((category) => ({ id: category.id, label: category.name })),
   ];
+
+  const allCategoriesForIcon = itemCategories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon || 'tag',
+  }));
 
   useEffect(() => {
     fetchItems();
@@ -65,9 +65,13 @@ export default function ItemListScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchItems();
+    await Promise.all([
+      fetchItems(),
+      fetchCategories('item', true),
+      fetchLocations(true),
+    ]);
     setRefreshing(false);
-  }, [fetchItems]);
+  }, [fetchItems, fetchCategories, fetchLocations]);
 
   const getCategoryIcon = (categoryId?: string): string => {
     if (!categoryId) return 'package-variant';
@@ -76,28 +80,29 @@ export default function ItemListScreen() {
   };
 
   const getCategoryName = (categoryId?: string): string => {
-    if (!categoryId) return '';
+    if (!categoryId) return '未分类';
     const cat = allCategoriesForIcon.find((c) => c.id === categoryId);
-    return cat?.name || categoryId;
+    return cat?.name || '未分类';
   };
 
   const getLocationName = (locationId?: string): string => {
-    if (!locationId) return '';
+    if (!locationId) return '未设置位置';
     const loc = customLocations.find((l) => l.id === locationId);
-    return loc?.name || locationId;
+    return loc?.name || '未设置位置';
   };
 
   const filtered = items.filter((i) => {
     const matchesSearch = i.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
       i.description?.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const selectedFilter = categoryFilters.find((f) => f.id === selectedCategory);
-    const matchesCategory = selectedCategory === ALL_CATEGORY || getCategoryName(i.category_id) === selectedFilter?.label;
+    const matchesCategory = selectedCategory === ALL_CATEGORY || i.category_id === selectedCategory;
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
-    if (sortBy === 'category') return (a.category_id || '').localeCompare(b.category_id || '');
+    if (sortBy === 'category') return getCategoryName(a.category_id).localeCompare(getCategoryName(b.category_id), 'zh-CN');
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+
+  const countLabel = batchMode ? `已选 ${selectedIds.size} / ${filtered.length}` : `共 ${filtered.length} 件`;
 
   const handleDeleteItem = (item: LifeItem) => {
     showAlert('确认删除', `删除物品"${item.name}"？此操作不可撤销`, [
@@ -132,6 +137,7 @@ export default function ItemListScreen() {
   const renderItem = useCallback(({ item }: { item: LifeItem }) => {
     const icon = getCategoryIcon(item.category_id);
     const isSelected = selectedIds.has(item.id);
+    const createdDate = new Date(item.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
     return (
       <SwipeableRow onDelete={() => handleDeleteItem(item)}>
         <TouchableOpacity
@@ -156,7 +162,10 @@ export default function ItemListScreen() {
             </View>
           )}
           <View style={styles.itemDetails}>
-            <Text style={[styles.itemName, { color: palette.text }]}>{item.name}</Text>
+            <View style={styles.itemHead}>
+              <Text style={[styles.itemName, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
+              <Text style={[styles.itemDate, { color: palette.textMuted }]}>{createdDate}</Text>
+            </View>
             {item.description && (
               <Text style={[styles.itemDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
@@ -173,6 +182,14 @@ export default function ItemListScreen() {
                   <Text style={[styles.tagText, { color: palette.violet }]}>{getCategoryName(item.category_id)}</Text>
                 </View>
               )}
+              {typeof item.current_value === 'number' && (
+                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name="cash-multiple" size={12} color={palette.success} />
+                  <Text style={[styles.tagText, { color: palette.success }]}>
+                    {(item.currency || 'CNY') === 'CNY' ? `¥${item.current_value}` : `${item.current_value} ${item.currency}`}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} style={{ marginTop: 4 }} />
@@ -185,9 +202,12 @@ export default function ItemListScreen() {
     <View>
       <View style={[styles.header, { backgroundColor: palette.bg }]}>
         <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: palette.text }]}>物品</Text>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>通用列表布局</Text>
+            <Text style={[styles.title, { color: palette.text }]}>物品</Text>
+          </View>
           <View style={styles.headerActions}>
-            <Text style={[styles.count, { color: palette.textMuted }]}>共 {items.length} 件</Text>
+            <Text style={[styles.count, { color: palette.textMuted }]}>{countLabel}</Text>
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
               <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={18} color={palette.textSecondary} />
             </TouchableOpacity>
@@ -335,8 +355,18 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.lg,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 2,
   },
   title: {
     fontSize: fontSize['7xl'],
@@ -393,10 +423,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: spacing.md,
   },
+  itemHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
   itemName: {
+    flex: 1,
     fontSize: fontSize.xl,
     fontWeight: fontWeight.semiBold,
-    marginBottom: 4,
+  },
+  itemDate: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
   },
   itemDesc: {
     fontSize: fontSize.base,
@@ -405,6 +445,7 @@ const styles = StyleSheet.create({
   itemTags: {
     flexDirection: 'row',
     gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   tag: {
     flexDirection: 'row',

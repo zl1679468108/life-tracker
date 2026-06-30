@@ -71,21 +71,22 @@ export function AppListRow({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 68,
+    minHeight: 60,
     borderWidth: 1,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: 10,
   },
   disabled: {
     opacity: 0.58,
   },
   mark: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -101,13 +102,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   description: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     marginTop: 1,
   },
   dot: {

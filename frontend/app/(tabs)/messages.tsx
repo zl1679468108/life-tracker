@@ -275,16 +275,15 @@ export default function MessagesScreen() {
         >
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>好友 / 系统通知 / 未读</Text>
               <Text style={[styles.title, { color: palette.text }]}>消息</Text>
-              <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-                集中查看好友对话、系统通知和协作分享消息。
-              </Text>
             </View>
             <TouchableOpacity
               style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
               onPress={() => setShowNewChat(true)}
               activeOpacity={0.82}
+              testID="messages-open-sheet"
+              accessibilityLabel="打开添加好友"
+              accessibilityRole="button"
             >
               <MaterialCommunityIcons name="message-plus-outline" size={21} color={palette.textSecondary} />
             </TouchableOpacity>
@@ -366,6 +365,9 @@ export default function MessagesScreen() {
                     style={[styles.row, { backgroundColor: palette.surface, borderColor: palette.border }]}
                     onPress={() => router.push(`/message/${conv.id}` as never)}
                     activeOpacity={0.82}
+                    testID={`conversation-row-${conv.id}`}
+                    accessibilityLabel={`打开对话 ${otherUser?.display_name || '未知用户'}`}
+                    accessibilityRole="button"
                   >
                     <AvatarWord name={otherUser?.display_name} palette={palette} />
                     <View style={styles.rowContent}>
@@ -418,6 +420,9 @@ export default function MessagesScreen() {
                     setSelectedUserId(null);
                   }}
                   activeOpacity={0.82}
+                  testID="messages-sheet-mode-search"
+                  accessibilityLabel="切换到添加好友"
+                  accessibilityRole="button"
                 >
                   <MaterialCommunityIcons name="magnify" size={16} color={newChatMode === 'search' ? palette.orange : palette.textMuted} />
                   <Text style={[styles.segmentText, { color: newChatMode === 'search' ? palette.text : palette.textMuted }]}>添加好友</Text>
@@ -426,6 +431,9 @@ export default function MessagesScreen() {
                   style={[styles.segmentItem, newChatMode === 'friends' && { backgroundColor: palette.surface, borderColor: palette.border }]}
                   onPress={openFriends}
                   activeOpacity={0.82}
+                  testID="messages-sheet-mode-friends"
+                  accessibilityLabel="切换到好友列表"
+                  accessibilityRole="button"
                 >
                   <MaterialCommunityIcons name="account-multiple-outline" size={16} color={newChatMode === 'friends' ? palette.orange : palette.textMuted} />
                   <Text style={[styles.segmentText, { color: newChatMode === 'friends' ? palette.text : palette.textMuted }]}>好友列表</Text>
@@ -444,6 +452,8 @@ export default function MessagesScreen() {
                       placeholderTextColor={palette.textMuted}
                       autoCapitalize="none"
                       autoCorrect={false}
+                      testID="messages-search-user-input"
+                      accessibilityLabel="搜索邮箱或用户名"
                     />
                     {searchQuery.length > 0 && (
                       <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -562,6 +572,9 @@ export default function MessagesScreen() {
                 onPress={newChatMode === 'search' ? handleSendFriendRequest : handleCreateChat}
                 disabled={!selectedUserId || creating}
                 activeOpacity={0.84}
+                testID={newChatMode === 'search' ? 'messages-send-request' : 'messages-start-chat'}
+                accessibilityLabel={newChatMode === 'search' ? '发送好友申请' : '发起好友对话'}
+                accessibilityRole="button"
               >
                 {creating ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -613,6 +626,9 @@ function UserPickRow({
       style={[styles.userRow, { borderColor: palette.border }, selected && { backgroundColor: palette.surfaceSoft }]}
       onPress={onPress}
       activeOpacity={0.82}
+      testID={`user-pick-row-${id}`}
+      accessibilityLabel={`选择用户 ${name || '未知用户'}`}
+      accessibilityRole="button"
     >
       <AvatarWord name={name} palette={palette} />
       <View style={styles.userText}>
@@ -646,48 +662,37 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.md,
     paddingBottom: 112,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   headerCopy: {
     flex: 1,
     minWidth: 0,
-    paddingRight: spacing.md,
+    paddingRight: spacing.sm,
   },
   title: {
-    fontSize: 22,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: fontWeight.bold,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    marginTop: 2,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: 2,
   },
   metricsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: 10,
   },
   metricCard: {
     flex: 1,
-    minHeight: 72,
+    minHeight: 60,
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 8,
     justifyContent: 'center',
   },
   metricValue: {
@@ -696,9 +701,9 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   metricLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 2,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
+    marginTop: 1,
   },
   iconButton: {
     width: 44,
@@ -709,27 +714,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchBar: {
-    height: 44,
+    height: 40,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   filterTabs: {
-    minHeight: 48,
+    minHeight: 42,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     padding: 4,
     flexDirection: 'row',
     gap: 4,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   filterTab: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 36,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -738,41 +743,42 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   filterLabel: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.sm,
     lineHeight: 18,
     fontWeight: fontWeight.semiBold,
   },
   filterCount: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
+    fontSize: fontSize.xs,
+    lineHeight: 14,
   },
   searchText: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
   },
   list: {
     gap: spacing.sm,
   },
   row: {
-    minHeight: 78,
+    minHeight: 70,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: fontSize['3xl'],
-    lineHeight: 24,
+    fontSize: fontSize['2xl'],
+    lineHeight: 22,
     fontWeight: fontWeight.bold,
   },
   rowContent: {
@@ -786,24 +792,24 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     flex: 1,
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   timeText: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
   },
   previewLine: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    marginTop: 3,
   },
   previewText: {
     flex: 1,
-    fontSize: fontSize.base,
-    lineHeight: 20,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
   },
   unreadBadge: {
     minWidth: 20,

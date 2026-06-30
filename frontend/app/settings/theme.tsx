@@ -26,13 +26,9 @@ export default function ThemeSettingsScreen() {
   return (
     <AppScreen contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>偏好设置</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>主题设置</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              统一控制应用外观，在浅色、深色和跟随系统之间快速切换。
-            </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <Text style={[styles.badgeValue, { color: palette.text }]}>
@@ -101,65 +97,55 @@ const styles = StyleSheet.create({
     paddingBottom: 112,
   },
   header: {
-    marginBottom: spacing.xl,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
   headerRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   headerCopy: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: fontSize['4xl'],
+    lineHeight: 30,
     fontWeight: fontWeight.bold,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    lineHeight: 22,
   },
   badge: {
-    minWidth: 92,
+    minWidth: 76,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   badgeValue: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   badgeLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     marginTop: 2,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   optionCard: {
-    minHeight: 76,
+    minHeight: 64,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   optionIcon: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -170,13 +156,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   optionLabel: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   optionDescription: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     marginTop: 2,
   },
   checkWrap: {
@@ -188,14 +174,14 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
   },
   previewTitle: {
-    fontSize: fontSize.lg,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   previewGrid: {
     flexDirection: 'row',
@@ -203,16 +189,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   previewChip: {
-    minHeight: 40,
+    minHeight: 34,
     borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   previewChipText: {
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     fontWeight: fontWeight.semiBold,
   },
 });

@@ -100,7 +100,9 @@ export default function RootLayout() {
     }
   }, [user, loading, loaded, segments]);
 
-  if (!loaded || loading) {
+  const inAuthGroup = segments[0] === 'auth';
+
+  if (!loaded || (loading && !inAuthGroup)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.gray[50] }}>
         <ActivityIndicator size="large" color={colors.primary} />

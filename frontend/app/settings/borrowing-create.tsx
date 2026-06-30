@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, TouchableOpacity, Text, Modal } from 'react-native';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
-import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input, Button, FormSection, DatePicker } from '../../components/ui';
+import { Input, FormSection, DatePicker, FormActions } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, TouchableOpacity } from 'react-native';
 
 export default function CreateBorrowingScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ itemId?: string }>();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { createBorrowing, loading } = useBorrowingStore();
-  const { items } = useItemStore();
+  const { items, fetchItems } = useItemStore();
 
   const [selectedItemId, setSelectedItemId] = useState(params.itemId || '');
   const [borrowerName, setBorrowerName] = useState('');
@@ -25,12 +25,14 @@ export default function CreateBorrowingScreen() {
   const [expectedReturnDate, setExpectedReturnDate] = useState('');
   const [notes, setNotes] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [showItemPicker, setShowItemPicker] = useState(false);
 
   useEffect(() => {
+    fetchItems();
     if (params.itemId) {
       setSelectedItemId(params.itemId);
     }
-  }, [params.itemId]);
+  }, [params.itemId, fetchItems]);
 
   const availableItems = items.filter((i) => !i.is_borrowed || !params.itemId);
 
@@ -69,122 +71,141 @@ export default function CreateBorrowingScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: '新增借用',
-      headerRight: () => (
-        <View style={{ flexShrink: 0 }}>
-          <Button
-            title="保存"
-            onPress={handleSubmit}
-            variant="primary"
-            size="sm"
-            loading={loading}
-          />
-        </View>
-      ),
+      headerRight: undefined,
     });
   }, [navigation, selectedItemId, borrowerName, loading, handleSubmit]);
 
   const selectedItem = items.find((i) => i.id === selectedItemId);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+    <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.gray[50] }]}
+        style={[styles.container, { backgroundColor: palette.bg }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          style={{ backgroundColor: colors.gray[50] }}
-          contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}
+          style={{ backgroundColor: palette.bg }}
+          contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {!params.itemId && (
-            <FormSection label="选择物品" required>
-              <View style={styles.itemGrid}>
-                {items.map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.itemOption,
-                      { backgroundColor: colors.gray[100] },
-                      selectedItemId === item.id && {
-                        backgroundColor: colors.primaryLight,
-                        borderColor: colors.primary,
-                        borderWidth: 1,
-                      },
-                      item.is_borrowed && { opacity: 0.5 },
-                    ]}
-                    onPress={() => !item.is_borrowed && setSelectedItemId(item.id)}
-                    disabled={item.is_borrowed}
-                  >
-                    <MaterialCommunityIcons
-                      name="package-variant"
-                      size={20}
-                      color={selectedItemId === item.id ? colors.primary : colors.gray[500]}
-                    />
-                    <Text
-                      style={[
-                        styles.itemOptionText,
-                        { color: colors.gray[600] },
-                        selectedItemId === item.id && { color: colors.primary },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.name}
+          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
+            <FormSection label="借出物品" required>
+              <TouchableOpacity
+                style={[styles.selectorRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+                onPress={() => {
+                  if (!params.itemId) setShowItemPicker(true);
+                }}
+                activeOpacity={params.itemId ? 1 : 0.82}
+              >
+                <View style={styles.selectorLeft}>
+                  <View style={[styles.selectorIcon, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                    <MaterialCommunityIcons name="package-variant" size={18} color={selectedItem ? palette.orange : palette.textMuted} />
+                  </View>
+                  <View style={styles.selectorCopy}>
+                    <Text style={[styles.selectorValue, { color: selectedItem ? palette.text : palette.textMuted }]}>
+                      {selectedItem?.name || '选择要借出的物品'}
                     </Text>
-                    {item.is_borrowed && (
-                      <Text style={[styles.borrowedText, { color: colors.warning }]}>已借出</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    <Text style={[styles.selectorHint, { color: palette.textMuted }]}>
+                      {params.itemId ? '从物品页上下文进入，已锁定当前物品' : '仅展示当前未借出的物品'}
+                    </Text>
+                  </View>
+                </View>
+                {!params.itemId && <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />}
+              </TouchableOpacity>
             </FormSection>
-          )}
 
-          {selectedItem && (
-            <View style={[styles.selectedItemCard, { backgroundColor: colors.primaryLight }]}>
-              <MaterialCommunityIcons name="package-variant" size={18} color={colors.primary} />
-              <Text style={[styles.selectedItemText, { color: colors.primary }]}>
-                借出物品：{selectedItem.name}
-              </Text>
-            </View>
-          )}
+            <Input
+              label="借用人姓名"
+              value={borrowerName}
+              onChangeText={setBorrowerName}
+              placeholder="例如：Lin"
+              leftIcon="account"
+              required
+            />
 
-          <Input
-            label="借用人姓名"
-            value={borrowerName}
-            onChangeText={setBorrowerName}
-            placeholder="例如：张三"
-            leftIcon="account"
-            required
-          />
+            <Input
+              label="联系方式"
+              value={borrowerContact}
+              onChangeText={setBorrowerContact}
+              placeholder="手机号 / 微信 / 邮箱"
+              leftIcon="phone"
+            />
 
-          <Input
-            label="联系方式（选填）"
-            value={borrowerContact}
-            onChangeText={setBorrowerContact}
-            placeholder="手机号/微信"
-            leftIcon="phone"
-          />
+            <DatePicker
+              label="预计归还时间"
+              value={expectedReturnDate}
+              onChange={setExpectedReturnDate}
+              icon="calendar"
+              placeholder="选择日期"
+              minDate={new Date()}
+            />
+          </View>
 
-          <DatePicker
-            label="预计归还时间（选填）"
-            value={expectedReturnDate}
-            onChange={setExpectedReturnDate}
-            icon="calendar"
-            placeholder="选择日期"
-            minDate={new Date()}
-          />
+          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>补充说明</Text>
+            <Input
+              label="备注"
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="例如：用于露营活动，归还前一天提醒我"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
 
-          <Input
-            label="备注（选填）"
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="添加备注信息..."
-            multiline
-            numberOfLines={3}
+          <FormActions
+            onCancel={() => router.back()}
+            onSubmit={handleSubmit}
+            submitLabel="保存"
+            loading={loading}
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal visible={showItemPicker} transparent animationType="fade" onRequestClose={() => setShowItemPicker(false)}>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowItemPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择物品</Text>
+            <ScrollView style={styles.pickerList}>
+              {items.map((item) => {
+                const disabled = item.is_borrowed;
+                const selected = selectedItemId === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.pickerItem, selected && { backgroundColor: palette.surfaceSoft }, disabled && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (disabled) return;
+                      setSelectedItemId(item.id);
+                      setShowItemPicker(false);
+                    }}
+                    disabled={disabled}
+                  >
+                    <View style={styles.pickerItemLeft}>
+                      <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                        <MaterialCommunityIcons name="package-variant" size={18} color={selected ? palette.orange : palette.textMuted} />
+                      </View>
+                      <View style={styles.pickerItemCopy}>
+                        <Text style={[styles.pickerItemName, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.pickerItemMeta, { color: disabled ? palette.warning : palette.textMuted }]}>
+                          {disabled ? '已借出，暂不可再次借出' : '可借出'}
+                        </Text>
+                      </View>
+                    </View>
+                    {selected ? (
+                      <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />
+                    ) : (
+                      <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
       <Toast visible={toastVisible} message="借用记录已创建" type="success" />
     </View>
   );
@@ -198,38 +219,112 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: 100,
   },
-  itemGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  itemOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  itemOptionText: {
-    fontSize: fontSize.base,
-    flexShrink: 1,
-  },
-  borrowedText: {
-    fontSize: fontSize.xs,
-    marginLeft: spacing.xs,
-  },
-  selectedItemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+  formCard: {
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
     marginBottom: spacing.md,
   },
-  selectedItemText: {
+  cardEyebrow: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.md,
+  },
+  selectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderWidth: 1.5,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  selectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  selectorIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectorCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  selectorValue: {
     fontSize: fontSize.base,
     fontWeight: fontWeight.medium,
+  },
+  selectorHint: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
+  },
+  pickerOverlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    borderTopLeftRadius: borderRadius['2xl'],
+    borderTopRightRadius: borderRadius['2xl'],
+    padding: spacing.xl,
+    paddingBottom: 40,
+    maxHeight: '70%',
+    borderWidth: 1,
+  },
+  pickerHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  pickerTitle: {
+    fontSize: fontSize['4xl'],
+    fontWeight: fontWeight.semiBold,
+    marginBottom: spacing.lg,
+  },
+  pickerList: {
+    maxHeight: 360,
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs,
+  },
+  pickerItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+    minWidth: 0,
+  },
+  pickerItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemCopy: {
+    flex: 1,
+  },
+  pickerItemName: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  pickerItemMeta: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
   },
 });

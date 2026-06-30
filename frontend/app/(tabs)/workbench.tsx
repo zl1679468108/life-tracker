@@ -62,11 +62,9 @@ export default function WorkbenchScreen() {
       <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
 
       <View style={styles.heroBlock}>
-        <Text style={[styles.heroEyebrow, { color: palette.textSecondary }]}>管理与操作</Text>
         <View style={styles.heroRow}>
           <View style={styles.heroCopy}>
             <Text style={[styles.heroTitle, { color: palette.text }]}>全量入口</Text>
-            <Text style={[styles.heroDesc, { color: palette.textMuted }]}>高频操作优先，低频管理按分组收口。</Text>
           </View>
           <View style={[styles.heroBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <Text style={[styles.heroBadgeValue, { color: palette.text }]}>{core.length + groups.reduce((sum, group) => sum + group.entries.length, 0)}</Text>
@@ -128,38 +126,27 @@ export default function WorkbenchScreen() {
 
 const styles = StyleSheet.create({
   heroBlock: {
-    marginBottom: spacing.lg,
-  },
-  heroEyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
     marginBottom: spacing.sm,
   },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   heroCopy: {
     flex: 1,
   },
   heroTitle: {
-    fontSize: fontSize['3xl'],
-    lineHeight: 26,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: fontWeight.bold,
   },
-  heroDesc: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.base,
-    lineHeight: 20,
-  },
   heroBadge: {
-    minWidth: 88,
+    minWidth: 72,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
   },
   heroBadgeValue: {
     fontSize: fontSize['2xl'],
@@ -175,14 +162,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
   },
   coreCard: {
     width: '48.6%',
-    minHeight: 120,
+    minHeight: 94,
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
     justifyContent: 'flex-start',
   },
   coreCardWide: {
@@ -194,48 +182,48 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   coreIcon: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   coreText: {
-    marginTop: spacing.md,
-    gap: 4,
+    marginTop: 10,
+    gap: 2,
   },
   coreTitle: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.lg,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   coreDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
   },
   group: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
   groupTitle: {
-    fontSize: fontSize.lg,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   groupBadge: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
   },
   groupBadgeText: {
     fontSize: fontSize.sm,

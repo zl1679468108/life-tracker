@@ -4,10 +4,10 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCategoryStore } from '../../stores/categoryStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
-import { ColorPicker } from '../../components/ui';
+import { ColorPicker, FormActions } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeCategory } from '../../types';
 import { useTranslation } from '../../lib/i18n';
@@ -59,6 +59,7 @@ const buildCategoryTree = (categories: LifeCategory[]): LifeCategory[] => {
 export default function CategoryManageScreen() {
   const router = useRouter();
   const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
   const { categories, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
   const [showAdd, setShowAdd] = useState(false);
@@ -184,22 +185,20 @@ export default function CategoryManageScreen() {
     const indent = depth * 20;
     
     const displayRow = (
-      <View style={[styles.cmItem, { marginLeft: indent, backgroundColor: colors.white }]}>
-        <LinearGradient
-          colors={[categoryColor, categoryColor + '80']}
-          style={styles.cmIconWrap}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={20} color={colors.white} />
-        </LinearGradient>
-        <Text style={[styles.cmItemName, { color: colors.gray[800] }]}>{cat.name}</Text>
-        <View style={[styles.cmTypeBadge, cat.type === 'item' ? { backgroundColor: colors.primary + '15' } : { backgroundColor: colors.success + '15' }]}>
-          <Text style={styles.cmTypeBadgeText}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
+      <View style={[styles.cmItem, { marginLeft: indent, backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={[styles.cmIconWrapPlain, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={20} color={categoryColor} />
+        </View>
+        <View style={styles.cmItemCopy}>
+          <Text style={[styles.cmItemEyebrow, { color: palette.textSecondary }]}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
+          <Text style={[styles.cmItemName, { color: palette.text }]}>{cat.name}</Text>
+        </View>
+        <View style={[styles.cmTypeBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <Text style={[styles.cmTypeBadgeText, { color: cat.type === 'item' ? palette.orange : palette.success }]}>{cat.type === 'item' ? t('categories.typeItem') : t('categories.typeTodo')}</Text>
         </View>
         {isCustom && (
           <TouchableOpacity style={styles.cmEditBtn} onPress={() => handleStartEdit(cat)}>
-            <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
+            <MaterialCommunityIcons name="pencil-outline" size={18} color={palette.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -208,16 +207,16 @@ export default function CategoryManageScreen() {
     return (
       <View key={cat.id}>
         {editingId === cat.id ? (
-          <View style={[styles.cmAddForm, { marginLeft: indent, backgroundColor: colors.white, borderColor: colors.gray[100] }]}>
+          <View style={[styles.cmAddForm, { marginLeft: indent, backgroundColor: palette.surface, borderColor: palette.border }]}>
             <TextInput
-              style={[styles.cmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
+              style={[styles.cmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
               value={editName}
               onChangeText={setEditName}
               placeholder={t('categories.name')}
-              placeholderTextColor={colors.gray[400]}
+              placeholderTextColor={palette.textMuted}
             />
             <View style={styles.cmIconColorRow}>
-              <TouchableOpacity style={[styles.cmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('edit')}>
+              <TouchableOpacity style={[styles.cmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('edit')}>
                 <LinearGradient
                   colors={[editColor || colors.success, (editColor || colors.success) + '80']}
                   style={styles.cmIconPreview}
@@ -226,20 +225,20 @@ export default function CategoryManageScreen() {
                 >
                   <MaterialCommunityIcons name={editIcon as any} size={22} color={colors.white} />
                 </LinearGradient>
-                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
+                <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.cmColorSelect, { borderColor: colors.gray[200] }]} onPress={() => openColorPicker('edit')}>
-                <View style={[styles.cmColorPreview, { backgroundColor: editColor || colors.success, borderColor: colors.gray[200] }]} />
-                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>{t('categories.color')}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
+              <TouchableOpacity style={[styles.cmColorSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openColorPicker('edit')}>
+                <View style={[styles.cmColorPreview, { backgroundColor: editColor || colors.success, borderColor: palette.border }]} />
+                <Text style={[styles.cmColorSelectText, { color: palette.textMuted }]}>{t('categories.color')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
             </View>
             <View style={styles.cmEditActions}>
-              <TouchableOpacity style={[styles.cmCancelBtn, { backgroundColor: colors.gray[100] }]} onPress={handleCancelEdit}>
-                <Text style={[styles.cmCancelBtnText, { color: colors.gray[600] }]}>{t('common.cancel')}</Text>
+              <TouchableOpacity style={[styles.cmCancelBtn, { backgroundColor: palette.surfaceSoft }]} onPress={handleCancelEdit}>
+                <Text style={[styles.cmCancelBtnText, { color: palette.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleSaveEdit}>
+              <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: palette.orange, shadowColor: palette.orange }]} onPress={handleSaveEdit}>
                 <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
@@ -261,101 +260,120 @@ export default function CategoryManageScreen() {
   };
 
   return (
-    <View style={[styles.cmContainer, { backgroundColor: colors.gray[50] }]}>
-      <ScrollView style={[styles.cmContainer, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.cmContent}>
+    <View style={[styles.cmContainer, { backgroundColor: palette.bg }]}>
+      <ScrollView style={[styles.cmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.cmContent}>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.title, { color: palette.text }]}>分类管理</Text>
+            </View>
+            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.summaryValue, { color: palette.text }]}>{categories.length}</Text>
+              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>个分类</Text>
+            </View>
+          </View>
+        </View>
 
         {/* 系统预设 */}
         <View style={styles.cmSection}>
-          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>{t('categories.systemPreset')}</Text>
+          <Text style={[styles.cmSectionTitle, { color: palette.textSecondary }]}>{t('categories.systemPreset')}</Text>
           {systemCategories.map((cat) => renderCategoryItem(cat, false))}
         </View>
 
         {/* 自定义分类 */}
         <View style={styles.cmSection}>
-        <View style={styles.cmSectionHeader}>
-          <Text style={[styles.cmSectionTitle, { color: colors.gray[400] }]}>{t('categories.custom')}</Text>
-          <TouchableOpacity style={[styles.cmAddBtn, { backgroundColor: colors.primaryLight }]} onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}>
-            <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={20} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {showAdd && (
-          <View style={[styles.cmAddForm, { backgroundColor: colors.white, borderColor: colors.gray[100] }]}>
-            <TextInput
-              style={[styles.cmInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
-              value={newName}
-              onChangeText={setNewName}
-              placeholder={newParentId ? `${t('categories.name')} (${t('locations.parent')})` : t('categories.name')}
-              placeholderTextColor={colors.gray[400]}
-            />
-            {/* 类型选择 */}
-            <View style={styles.cmTypeRow}>
-              {typeOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.cmTypeOption,
-                    { borderColor: colors.gray[200], backgroundColor: colors.gray[50] },
-                    newType === opt.value && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-                  ]}
-                  onPress={() => setNewType(opt.value)}
-                >
-                  <Text style={[
-                    styles.cmTypeOptionText,
-                    { color: colors.gray[500] },
-                    newType === opt.value && { color: colors.primary },
-                  ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.cmIconColorRow}>
-              <TouchableOpacity style={[styles.cmIconSelect, { borderColor: colors.gray[200] }]} onPress={() => openIconPicker('add')}>
-                <LinearGradient
-                  colors={[newColor, newColor + '80']}
-                  style={styles.cmIconPreview}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
-                </LinearGradient>
-                <Text style={[styles.cmIconSelectText, { color: colors.gray[500] }]}>{t('common.add')}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.cmColorSelect, { borderColor: colors.gray[200] }]} onPress={() => openColorPicker('add')}>
-                <View style={[styles.cmColorPreview, { backgroundColor: newColor, borderColor: colors.gray[200] }]} />
-                <Text style={[styles.cmColorSelectText, { color: colors.gray[500] }]}>{t('categories.color')}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.gray[400]} />
-              </TouchableOpacity>
-            </View>
-            {newParentId && (
-              <View style={[styles.cmParentInfo, { backgroundColor: colors.gray[50] }]}>
-                <MaterialCommunityIcons name="information-outline" size={16} color={colors.gray[500]} />
-                <Text style={[styles.cmParentInfoText, { color: colors.gray[600] }]}>
-                  {`${t('locations.parent')}: ${categories.find(c => c.id === newParentId)?.name || ''}`}
-                </Text>
-              </View>
-            )}
-            <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]} onPress={handleAdd} activeOpacity={0.8}>
-              <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
+          <View style={styles.cmSectionHeader}>
+            <Text style={[styles.cmSectionTitle, { color: palette.textSecondary }]}>{t('categories.custom')}</Text>
+            <TouchableOpacity
+              style={[styles.cmAddBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+              onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}
+              accessibilityRole="button"
+              accessibilityLabel={showAdd ? '收起新增分类' : '新增分类'}
+            >
+              <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={18} color={palette.orange} />
+              <Text style={[styles.cmAddBtnText, { color: palette.orange }]}>{showAdd ? '收起' : '新增分类'}</Text>
             </TouchableOpacity>
           </View>
-        )}
+
+          {showAdd && (
+            <View style={[styles.cmAddForm, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={[styles.cmFormEyebrow, { color: palette.textSecondary }]}>新增分类</Text>
+              <TextInput
+                style={[styles.cmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder={newParentId ? `${t('categories.name')} (${t('locations.parent')})` : t('categories.name')}
+                placeholderTextColor={palette.textMuted}
+              />
+              <View style={styles.cmTypeRow}>
+                {typeOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.cmTypeOption,
+                      { borderColor: palette.border, backgroundColor: palette.surfaceSoft },
+                      newType === opt.value && { borderColor: palette.orange, backgroundColor: palette.surface },
+                    ]}
+                    onPress={() => setNewType(opt.value)}
+                  >
+                    <Text style={[
+                      styles.cmTypeOptionText,
+                      { color: palette.textMuted },
+                      newType === opt.value && { color: palette.orange },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.cmIconColorRow}>
+                <TouchableOpacity style={[styles.cmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
+                  <LinearGradient
+                    colors={[newColor, newColor + '80']}
+                    style={styles.cmIconPreview}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
+                  </LinearGradient>
+                  <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.cmColorSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openColorPicker('add')}>
+                  <View style={[styles.cmColorPreview, { backgroundColor: newColor, borderColor: palette.border }]} />
+                  <Text style={[styles.cmColorSelectText, { color: palette.textMuted }]}>{t('categories.color')}</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
+                </TouchableOpacity>
+              </View>
+              {newParentId && (
+                <View style={[styles.cmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
+                  <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
+                  <Text style={[styles.cmParentInfoText, { color: palette.textSecondary }]}>
+                    {`${t('locations.parent')}: ${categories.find(c => c.id === newParentId)?.name || ''}`}
+                  </Text>
+                </View>
+              )}
+              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} />
+            </View>
+          )}
 
         {(itemCategoryTree.length === 0 && todoCategoryTree.length === 0 && !showAdd && editingId === null) ? (
-          <Text style={[styles.cmEmptyText, { color: colors.gray[400] }]}>{t('categories.empty')}</Text>
+          <Text style={[styles.cmEmptyText, { color: palette.textMuted }]}>{t('categories.empty')}</Text>
         ) : (
           <>
             {itemCategoryTree.length > 0 && (
               <View>
-                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>{t('categories.itemCategories')}</Text>
+                <Text style={[styles.cmSubTitle, { color: palette.textMuted }]}>
+                  {t('categories.itemCategories')} · {customItemCategories.length}
+                </Text>
                 {itemCategoryTree.map((cat) => renderCategoryItem(cat as LifeCategory & { children?: LifeCategory[] }, true))}
               </View>
             )}
             {todoCategoryTree.length > 0 && (
               <View>
-                <Text style={[styles.cmSubTitle, { color: colors.gray[500] }]}>{t('categories.todoCategories')}</Text>
+                <Text style={[styles.cmSubTitle, { color: palette.textMuted }]}>
+                  {t('categories.todoCategories')} · {customTodoCategories.length}
+                </Text>
                 {todoCategoryTree.map((cat) => renderCategoryItem(cat as LifeCategory & { children?: LifeCategory[] }, true))}
               </View>
             )}
@@ -366,25 +384,25 @@ export default function CategoryManageScreen() {
 
       {/* 图标选择弹窗 */}
       <Modal visible={showIconPicker} transparent animationType="fade" onRequestClose={() => setShowIconPicker(false)}>
-        <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: colors.gray[200] }]} />
-            <Text style={[styles.pickerTitle, { color: colors.gray[900] }]}>{t('common.add')}</Text>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择图标</Text>
             <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
               {iconOptions.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.pickerIconItem,
-                    { backgroundColor: colors.gray[100] },
-                    currentIcon === icon && { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary },
+                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+                    currentIcon === icon && { backgroundColor: palette.surface, borderWidth: 1.5, borderColor: palette.orange },
                   ]}
                   onPress={() => selectIcon(icon)}
                 >
                   <MaterialCommunityIcons
                     name={icon as any}
                     size={24}
-                    color={currentIcon === icon ? colors.primary : colors.gray[600]}
+                    color={currentIcon === icon ? palette.orange : palette.textSecondary}
                   />
                 </TouchableOpacity>
               ))}
@@ -406,45 +424,66 @@ export default function CategoryManageScreen() {
 
 const styles = StyleSheet.create({
   cmContainer: { flex: 1 },
-  cmContent: { paddingBottom: 20 },
-  cmSection: { marginBottom: spacing.lg, paddingHorizontal: spacing.lg },
+  cmContent: { paddingBottom: 20, paddingTop: spacing.md },
+  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  headerCopy: { flex: 1 },
+  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
+  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 72, alignItems: 'flex-start' },
+  summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
+  summaryLabel: { fontSize: fontSize.xs, marginTop: 2 },
+  cmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   cmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
-  cmSubTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, marginBottom: spacing.sm },
-  cmItem: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.sm, ...shadows.sm },
-  cmIconWrap: { width: 40, height: 40, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  cmItemName: { flex: 1, fontSize: fontSize.xl, fontWeight: fontWeight.medium },
-  cmTypeBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.sm, marginRight: spacing.sm },
+  cmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },
+  cmSubTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, marginBottom: spacing.xs, marginTop: spacing.xs },
+  cmItem: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 10, marginBottom: spacing.xs, ...shadows.sm },
+  cmIconWrap: { width: 36, height: 36, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  cmIconWrapPlain: { width: 36, height: 36, borderRadius: borderRadius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm },
+  cmItemCopy: { flex: 1 },
+  cmItemEyebrow: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, marginBottom: 2 },
+  cmItemName: { fontSize: fontSize.base, fontWeight: fontWeight.medium },
+  cmTypeBadge: { paddingHorizontal: spacing.xs, paddingVertical: 3, borderRadius: borderRadius.sm, marginRight: spacing.xs, borderWidth: 1 },
   cmTypeBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold },
-  cmAddBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  cmAddForm: { borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, ...shadows.sm },
-  cmInput: { borderWidth: 1, borderRadius: borderRadius.md, padding: spacing.lg, fontSize: fontSize.xl, marginBottom: spacing.md },
-  cmTypeRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  cmTypeOption: { flex: 1, height: 44, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  cmTypeOptionText: { fontSize: fontSize.base, fontWeight: fontWeight.medium },
-  cmIconSelect: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, padding: spacing.md, gap: spacing.sm },
-  cmIconPreview: { width: 36, height: 36, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
-  cmIconSelectText: { flex: 1, fontSize: fontSize.base },
-  cmIconColorRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
-  cmColorSelect: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, padding: spacing.md, gap: spacing.sm },
-  cmColorPreview: { width: 36, height: 36, borderRadius: borderRadius.sm, borderWidth: 1 },
-  cmColorSelectText: { flex: 1, fontSize: fontSize.base },
+  cmAddBtn: {
+    minHeight: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+  },
+  cmAddBtnText: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold },
+  cmAddForm: { borderRadius: borderRadius.md, padding: spacing.sm, marginBottom: spacing.xs, borderWidth: 1, ...shadows.sm },
+  cmFormEyebrow: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, marginBottom: spacing.xs },
+  cmInput: { borderWidth: 1, borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: 9, fontSize: fontSize.base, marginBottom: spacing.xs },
+  cmTypeRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
+  cmTypeOption: { flex: 1, height: 36, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  cmTypeOptionText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  cmIconSelect: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 8, gap: spacing.xs },
+  cmIconPreview: { width: 32, height: 32, borderRadius: borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
+  cmIconSelectText: { flex: 1, fontSize: fontSize.sm },
+  cmIconColorRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
+  cmColorSelect: { flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 8, gap: spacing.xs },
+  cmColorPreview: { width: 32, height: 32, borderRadius: borderRadius.sm, borderWidth: 1 },
+  cmColorSelectText: { flex: 1, fontSize: fontSize.sm },
   cmAddChildBtn: { marginRight: spacing.sm },
-  childrenContainer: { marginLeft: spacing.md },
-  cmParentInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md },
-  cmParentInfoText: { flex: 1, fontSize: fontSize.sm },
-  cmEditBtn: { marginRight: spacing.sm },
-  cmEditActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  cmCancelBtn: { flex: 1, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  cmCancelBtnText: { fontSize: fontSize.xl, fontWeight: fontWeight.semiBold },
-  cmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 48, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4 },
-  cmSaveBtnText: { fontSize: fontSize.xl, fontWeight: fontWeight.semiBold },
+  childrenContainer: { marginLeft: spacing.sm },
+  cmParentInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.sm, borderRadius: borderRadius.md, marginBottom: spacing.sm },
+  cmParentInfoText: { flex: 1, fontSize: fontSize.xs },
+  cmEditBtn: { marginRight: spacing.xs, padding: 4 },
+  cmEditActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  cmCancelBtn: { flex: 1, height: 40, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  cmCancelBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
+  cmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 40, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
+  cmSaveBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
   cmEmptyText: { fontSize: fontSize.base, textAlign: 'center', padding: spacing.xl },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%' },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%', borderWidth: 1 },
   pickerHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg },
   pickerScroll: { maxHeight: 400 },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pickerIconItem: { width: 48, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
+  pickerIconItem: { width: 48, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 });

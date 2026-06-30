@@ -285,9 +285,6 @@ export default function MessageDetailScreen() {
         <Text style={[styles.heroTitle, { color: palette.text }]} numberOfLines={1}>
           与 {peerName} 的对话
         </Text>
-        <Text style={[styles.heroMeta, { color: palette.textSecondary }]}>
-          这里会同步展示文本消息、物品分享和待办协作卡片。
-        </Text>
       </View>
 
       <ScrollView
@@ -398,42 +395,36 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.bold,
   },
   heroTitle: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 28,
+    fontSize: fontSize.xl,
+    lineHeight: 22,
     fontWeight: fontWeight.bold,
-    marginTop: spacing.md,
-  },
-  heroMeta: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    textAlign: 'center',
-    marginTop: 4,
+    marginTop: spacing.sm,
   },
   messageList: {
     flex: 1,
   },
   messageListContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xl,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   emptyState: {
     minHeight: 360,

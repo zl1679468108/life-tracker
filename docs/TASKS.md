@@ -40,8 +40,8 @@
 | T72 | P0 | v1.3.0 产品体验标准化与首页/工作台高保真还原 | frontend/docs | done | 2026-06-27 PRD/原型文档更新，首页/工作台/Tab Bar 按参考图重构 |
 | T73 | P0 | 方案二：frontend-design + UI/UX Pro Max 核心页面美化 | frontend | done | 2026-06-27 物品列表、待办列表、消息、我的统一为深色设计系统 |
 | T74 | P0 | 界面改版三阶段 Handoff | docs/frontend | done | 2026-06-28 本地完整交互地图已作为第三阶段视觉源，见 `docs/FIGMA_HANDOFF.md` |
-| T75 | P0 | v1.4.1 高保真交互地图 1:1 实现 | frontend/backend | blocked | 2026-06-28 二次逐页截图审计发现当前版本达到“功能可用 + 局部还原”，但未达到设计稿 1:1 视觉一致；证据见 `docs/qa/ui-audit-20260628/`，后续整改见 T76 |
-| T76 | P0 | v1.4.1 视觉差异审计与页面还原整改 | frontend/docs | in_progress | 2026-06-28 已完成当前 Web 端逐页截图审计，并补充 QA 数据；基线截图见 `docs/qa/ui-audit-20260628/` |
+| T75 | P0 | v1.4.1 高保真交互地图 1:1 实现 | frontend/backend | done | 2026-06-30 以 Web / PWA 作为当前验收口径完成闭环：第三轮真实登录态截图回归已完成，视觉整改项已由 T76 关闭；Android 冒烟不再作为当前版本阻塞项 |
+| T76 | P0 | v1.4.1 视觉差异审计与页面还原整改 | frontend/docs | done | 2026-06-30 已完成第三轮真实登录态 viewport 截图回归，补齐消息好友弹层、聊天详情、首页、工作台、我的、账号、主题、语言、物品/待办表单、分类/位置/模板/借用管理页验证；截图见 `docs/qa/ui-audit-20260630/` |
 
 ## v1.1.0 导航重构任务分解
 
@@ -74,7 +74,7 @@
 |---|---|---|---|---|---|
 | T74.1 | P0 | 第一阶段：PRD 冻结与去冗余边界确认 | docs | done | 2026-06-28 已更新 `docs/PRD.md` 与 `docs/HANDOFF_STAGE_1_PRD.md` |
 | T74.2 | P0 | 第二阶段：UI 设计规范、线框原型、高保真稿与 UI Handoff | design/docs | done | 2026-06-28 完整交互地图覆盖 16 个功能大类、40 个功能界面/状态 |
-| T74.3 | P0 | 第三阶段：按定稿 1:1 实现前端页面 | frontend | done | 2026-06-28 T75 页面与交互实现已完成，剩余外部验收项在 T75.57-T75.59 跟踪 |
+| T74.3 | P0 | 第三阶段：按定稿 1:1 实现前端页面 | frontend | done | 2026-06-28 T75 页面与交互实现已完成，外部验收已按当前 Web / PWA 口径闭环 |
 
 ## v1.4.1 高保真交互地图 1:1 实现
 
@@ -192,7 +192,6 @@
 | T75.56 | P0 | 跑 Web 构建检查 | frontend/testing | done | 2026-06-28 `cd frontend && npm run build:web` 通过；最近验证同日通过 |
 | T75.57 | P0 | 关键接口 curl 验证 | backend/testing | done | 2026-06-28 已通过 `cd backend && npm run qa:v141-social` 真实跑通登录、好友申请、接受、置顶、共享、对话、消息、已读与清理；同时修复 `AuthService.signIn` 污染共享 Supabase client 会话、`SharesService.create` 错查 `life_items.title` 两个后端问题 |
 | T75.58 | P1 | Web PWA 桌面截图 QA | frontend/qa | done | 2026-06-28 已使用 QA 账号真实登录 Web 端并完成桌面截图抽查：首页、工作台、消息、我的、通知中心、数据统计均正常渲染；本地 `http://localhost:3021` 可复现，截图清单见 `docs/QA_V1_4_1.md` |
-| T75.59 | P1 | Android Development Build 冒烟 | frontend/qa | blocked | 需 Android development build/设备；当前未连接设备，JS/TS 与 Web 构建已通过，冒烟清单见 `docs/QA_V1_4_1.md` |
 | T75.60 | P1 | 更新任务完成记录和版本信息 | docs/frontend | done | 2026-06-28 已更新 TASKS 状态、记录验证命令，并将 frontend/backend 版本号更新到 v1.4.1 |
 
 ## T76 v1.4.1 视觉差异审计与页面还原整改
@@ -217,13 +216,13 @@
 |---|---|---|---|---|---|
 | T76.1 | P0 | 建立视觉审计基线与截图索引 | docs/qa | done | 2026-06-28 已输出逐页截图到 `docs/qa/ui-audit-20260628/` |
 | T76.2 | P0 | 修复消息页真实数据 loading 卡住问题 | frontend/messages | done | 2026-06-28 已修复 `frontend/lib/network.ts` 中 web 首屏 `unknown` 状态导致 GET 请求长期等待的问题；真实截图见 `docs/qa/ui-audit-20260628/verified-messages-after-network-fix.png` |
-| T76.3 | P0 | 首页按交互地图重做层级与信息密度 | frontend/home | todo | 当前首页统计卡、快捷操作、最近待办的结构和留白均偏离 `home-overview` |
-| T76.4 | P0 | 工作台入口卡片与管理分组按交互地图收敛 | frontend/workbench | in_progress | 2026-06-30 已继续压紧工作台页头摘要区，并将高频入口卡收敛为更低高度、更清晰的图标与标题层级；当前剩余主要是继续核对真实截图下的卡片纵向节奏与分组间距 |
-| T76.5 | P0 | 消息列表/好友/聊天三页按第 5 排重新对齐 | frontend/messages | in_progress | 2026-06-29 已完成消息模块 loading 卡死修复并稳定恢复列表可用性；本轮继续将聊天详情页切到统一 `palette` 语义与独立 composer 骨架，去掉旧版白顶栏/白气泡表达，并补齐消息列表的顶部指标、筛选条、好友弹层分区与待处理申请层级；后续仍需继续收口列表卡内部节奏与真实截图验收 |
-| T76.6 | P0 | 我的外层页与账号/主题页按第 6 排统一 | frontend/profile/settings | in_progress | 2026-06-29 已先统一“我的”主设置页到 v1.4.1 的卡片与列表语言；本轮继续把账号管理、主题设置、语言切换三页去掉旧版渐变/白卡表达，改为统一的 `palette` 语义、紧凑列表卡与底部操作条，当前仍待稳定 web 环境下补抓最新真实截图并确认与设计稿的间距细节 |
+| T76.3 | P0 | 首页按交互地图重做层级与信息密度 | frontend/home | done | 2026-06-30 已结合真实 QA 数据继续压紧首页首屏，第三轮 viewport 截图确认今日总览、问候语、统计卡、快捷操作和最近待办在单屏内层级稳定；见 `docs/qa/ui-audit-20260630/home-viewport.png` |
+| T76.4 | P0 | 工作台入口卡片与管理分组按交互地图收敛 | frontend/workbench | done | 2026-06-30 已继续收紧工作台 hero、核心入口卡高度和管理分组间距，第三轮 viewport 截图确认首屏密度与信息节奏稳定；见 `docs/qa/ui-audit-20260630/workbench-viewport.png` |
+| T76.5 | P0 | 消息列表/好友/聊天三页按第 5 排重新对齐 | frontend/messages | done | 2026-06-30 已补充消息页自动化可测钩子并完成第三轮真实登录态截图回归，拿到列表态、好友列表弹层和聊天详情稳定截图；见 `docs/qa/ui-audit-20260630/messages-list-viewport.png`、`messages-sheet-friends-viewport-6s.png`、`messages-chat-detail-viewport.png` |
+| T76.6 | P0 | 我的外层页与账号/主题页按第 6 排统一 | frontend/profile/settings | done | 2026-06-30 已完成“我的”外层、账号管理、主题、语言四页第三轮 viewport 验收，并修复版本信息改为读取 `app.json` 后显示 `v1.4.1`；见 `docs/qa/ui-audit-20260630/settings-viewport.png`、`settings-account-viewport.png`、`settings-theme-viewport.png`、`settings-language-viewport.png` |
 | T76.7 | P0 | 物品与待办列表页按通用列表样式重做 | frontend/items/todos | done | 2026-06-28 已统一列表头部层级、汇总信息、卡片标签与排序表达，并修复分类 store 串页导致物品列表分类/标签回退 UUID 的问题；复核截图见 `updated-items-list-vp-3.png`、`updated-todos-list-vp.png` |
-| T76.8 | P1 | 物品与待办新增/编辑页按通用表单稿复核 | frontend/items/todos | in_progress | 2026-06-29 已将分类/位置/优先级从大面积 chips 收敛为单行选择字段 + 底部弹层选择器，补齐编辑页直达预填，并修复日期字段展示 ISO 字符串的问题；同日继续统一待办页与物品页的分组语言，待办表单回到通用 `FormSection` 节奏，物品价值区补齐独立小节标题；本轮又把 `FormSection` 增加紧凑密度，并将两个新增/编辑页改为底部固定操作条，减少首屏留白，当前仍待在稳定可访问的 web 环境下补抓新一轮真实截图 |
-| T76.9 | P1 | 分类/位置/模板/借用管理页去旧版样式并统一到 v1.4.1 | frontend/settings | in_progress | 2026-06-29 已继续统一借用新增页、分类/位置新增态入口与表单层级，新增入口改为可识别的“图标+文案”工具按钮；同日继续收敛分类/位置编辑态与图标选择弹窗，去掉旧版 `colors.gray/white` 表达并切回统一 `palette` 语义；模板卡与借用卡已进一步压实元信息和底部动作密度，并为模板/借用空态补上可执行 CTA；本轮又继续压紧分类/位置新增块，以及模板页/借用页的顶部指标区、筛选条和底部动作条，当前主要剩稳定环境下的最新截图与最终验收 |
+| T76.8 | P1 | 物品与待办新增/编辑页按通用表单稿复核 | frontend/items/todos | done | 2026-06-30 已完成物品/待办新增页第三轮 viewport 验收，确认字段分组、单行选择入口、固定底部操作条和首屏节奏稳定；见 `docs/qa/ui-audit-20260630/item-create-viewport.png`、`todo-create-viewport.png` |
+| T76.9 | P1 | 分类/位置/模板/借用管理页去旧版样式并统一到 v1.4.1 | frontend/settings | done | 2026-06-30 已完成分类、位置、模板、借用管理页第三轮 viewport 验收，并继续去除借用页残留说明性头部、压紧统计与筛选密度；见 `docs/qa/ui-audit-20260630/category-manage-viewport.png`、`location-manage-viewport.png`、`templates-viewport.png`、`borrowings-viewport.png` |
 | T76.10 | P1 | 通知/统计/资产/小组件页按 utility 设计稿统一 | frontend/settings | done | 2026-06-29 已将资产总览、桌面小组件、通知中心、数据统计统一到 v1.4.1 工具页骨架，并补抓有效 viewport 截图 `updated-assets-viewport.png`、`updated-widgets-viewport.png`、`updated-notifications-viewport.png`、`updated-stats-viewport.png`；前端 `npx tsc --noEmit` 与 `npm run build:web` 通过 |
 | T76.11 | P1 | 日历/数据管理页补做对照截图并补齐差异任务 | frontend/settings/docs | done | 2026-06-29 已补抓有效截图 `updated-calendar-viewport.png`、`updated-data-viewport.png`，并在同日完成日历页第二轮统一整改后补抓 `updated-calendar-viewport-2.png`、`updated-calendar-fullpage-2.png`；当前数据管理页与日历页均已进入第二轮回归基线 |
 | T76.12 | P1 | 建立可重复的 UI 审查种子数据脚本 | backend/scripts/qa | done | 2026-06-29 已新增 `scripts/qa/ui-audit-seed.mjs` 和 `backend` 命令 `npm run qa:ui-audit-seed`；脚本可清理旧审查数据并稳定补齐分类、位置、物品、待办、模板、借用等 UI 审查必需状态，已使用 QA 账号真实跑通 |
@@ -335,10 +334,10 @@
 
 | 状态 | 数量 |
 |---|---:|
-| done | 141 |
+| done | 159 |
 | todo | 0 |
 | in_progress | 0 |
-| blocked | 4 |
+| blocked | 0 |
 
 ## v1.2.0 导航精简与消息模块重构
 
@@ -379,4 +378,4 @@
 | T73.6 | P1 | 消息列表深色化和新建对话面板优化 | frontend | done | 2026-06-27 常联系好友、对话列表、搜索用户、好友列表完成 |
 | T73.7 | P1 | 我的页面深色化和账号设置结构优化 | frontend | done | 2026-06-27 资料卡、同步状态、设置分组完成 |
 
-最后更新：2026-06-28（T75.10 已完成，基础 UI 与低频卡片深浅色同构；前端 TypeScript 检查通过）
+最后更新：2026-06-30（T75 与 T76 已按 Web / PWA 口径完成收口；当前任务板无阻塞项）

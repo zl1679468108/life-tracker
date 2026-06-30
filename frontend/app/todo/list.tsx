@@ -54,6 +54,7 @@ export default function TodoListScreen() {
   });
 
   const pendingCount = todos.filter((t) => !t.completed).length;
+  const completedCount = todos.filter((t) => t.completed).length;
 
   const getPriorityLabel = (p: number) => {
     if (p === 3) return '紧急';
@@ -91,9 +92,12 @@ export default function TodoListScreen() {
           <MaterialCommunityIcons name="drag" size={20} color={palette.textMuted} />
           <Checkbox checked={item.completed} onPress={() => toggleComplete(item.id)} />
           <View style={styles.todoContent}>
-            <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
-              {item.title}
-            </Text>
+            <View style={styles.todoTitleRow}>
+              <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
+                {item.title}
+              </Text>
+              {item.completed && <Text style={[styles.todoStatus, { color: palette.success }]}>已完成</Text>}
+            </View>
             {item.description && (
               <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
@@ -122,9 +126,12 @@ export default function TodoListScreen() {
         <View style={styles.todoHeader}>
           <Checkbox checked={item.completed} onPress={() => toggleComplete(item.id)} />
           <View style={styles.todoContent}>
-            <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
-              {item.title}
-            </Text>
+            <View style={styles.todoTitleRow}>
+              <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
+                {item.title}
+              </Text>
+              {item.completed && <Text style={[styles.todoStatus, { color: palette.success }]}>已完成</Text>}
+            </View>
             {item.description && (
               <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
             )}
@@ -148,7 +155,10 @@ export default function TodoListScreen() {
       <View style={[styles.container, { backgroundColor: palette.bg }]}>
         <View style={[styles.header, { backgroundColor: palette.bg }]}>
           <View style={styles.headerTop}>
-            <Text style={[styles.title, { color: palette.text }]}>待办</Text>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>通用列表布局</Text>
+              <Text style={[styles.title, { color: palette.text }]}>待办</Text>
+            </View>
             <View style={styles.headerActions}>
               <Text style={[styles.count, { color: palette.textMuted }]}>{pendingCount} 个待完成</Text>
               <TouchableOpacity
@@ -183,6 +193,20 @@ export default function TodoListScreen() {
               <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
                 <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
               </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.summaryRow}>
+            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>全部</Text>
+              <Text style={[styles.summaryValue, { color: palette.text }]}>{todos.length}</Text>
+            </View>
+            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>待完成</Text>
+              <Text style={[styles.summaryValue, { color: palette.orange }]}>{pendingCount}</Text>
+            </View>
+            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>已完成</Text>
+              <Text style={[styles.summaryValue, { color: palette.success }]}>{completedCount}</Text>
             </View>
           </View>
           <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -319,8 +343,18 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.lg,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eyebrow: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+    marginBottom: 2,
   },
   title: {
     fontSize: fontSize['7xl'],
@@ -328,6 +362,30 @@ const styles = StyleSheet.create({
   },
   count: {
     fontSize: fontSize.base,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  summaryPill: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+  },
+  summaryLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+  },
+  summaryValue: {
+    fontSize: fontSize.xl,
+    lineHeight: 22,
+    fontWeight: fontWeight.bold,
+    marginTop: 2,
   },
   filterTabs: {
     minHeight: 44,
@@ -384,10 +442,21 @@ const styles = StyleSheet.create({
   todoContent: {
     flex: 1,
   },
+  todoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
   todoTitle: {
+    flex: 1,
     fontSize: fontSize.xl,
     fontWeight: fontWeight.semiBold,
-    marginBottom: 4,
+  },
+  todoStatus: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
   },
   todoDesc: {
     fontSize: fontSize.base,

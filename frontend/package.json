@@ -11,7 +11,9 @@
     "build:web": "expo export --platform web",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
-    "test": "jest"
+    "test": "jest",
+    "qa:ui": "node scripts/qa/ui-integration.mjs",
+    "qa:ui:real": "QA_UI_REAL=1 node scripts/qa/ui-integration.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -54,6 +56,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",

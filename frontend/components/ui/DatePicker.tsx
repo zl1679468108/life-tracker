@@ -48,9 +48,18 @@ export function DatePicker({
     setTimeout(() => setShowNative(false), 200);
   };
 
-  const displayValue = value
+  const normalizedDate = value ? new Date(value) : null;
+  const isValidDate = normalizedDate && !Number.isNaN(normalizedDate.getTime());
+  const nativeValue = value
     ? mode === 'datetime'
-      ? new Date(value).toLocaleString('zh-CN')
+      ? (value.includes('T') ? value.slice(0, 16) : value)
+      : (value.includes('T') ? value.slice(0, 10) : value)
+    : '';
+  const displayValue = value
+    ? isValidDate
+      ? mode === 'datetime'
+        ? normalizedDate.toLocaleString('zh-CN')
+        : normalizedDate.toLocaleDateString('zh-CN')
       : value
     : '';
 
@@ -72,7 +81,7 @@ export function DatePicker({
             <input
               ref={inputRef}
               type={mode === 'datetime' ? 'datetime-local' : 'date'}
-              value={value}
+              value={nativeValue}
               onChange={handleNativeChange}
               onBlur={handleBlur}
               min={minDate ? minDate.toISOString().slice(0, mode === 'datetime' ? 16 : 10) : undefined}

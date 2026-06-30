@@ -1,25 +1,23 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LineChart, PieChart, BarChart } from 'react-native-chart-kit';
+import { BarChart, LineChart, PieChart } from 'react-native-chart-kit';
 import { useItemStore } from '../../stores/itemStore';
 import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';
-import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 type Period = 'week' | 'month' | 'year';
-
-// 生成颜色
-const CHART_COLORS = ['#FF6B35', '#7C5CFC', '#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6', '#06B6D4'];
+const CHART_COLORS = ['#F36F3C', '#7C5CFC', '#10A66E', '#D89400', '#3B82F6', '#E84A5F', '#8B5CF6', '#06B6D4'];
 
 export default function StatsScreen() {
+  const colors = useColors();
+  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { items, fetchItems } = useItemStore();
   const { todos, fetchTodos } = useTodoStore();
   const { categories, fetchCategories } = useCategoryStore();
-  const colors = useColors();
   const [period, setPeriod] = useState<Period>('week');
 
   useEffect(() => {
@@ -28,13 +26,12 @@ export default function StatsScreen() {
     fetchCategories();
   }, []);
 
-  // 计算待办统计
   const pendingTodos = todos.filter((t) => !t.completed).length;
   const completedTodos = todos.filter((t) => t.completed).length;
   const totalTodos = todos.length;
+  const totalItems = items.length;
   const completionRate = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
 
-  // 分类 ID 到名称的映射
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
     categories.forEach((c) => {
@@ -43,23 +40,18 @@ export default function StatsScreen() {
     return map;
   }, [categories]);
 
-  // 计算物品分类统计
   const categoryCount: Record<string, number> = {};
   items.forEach((item) => {
-    const cat = item.category_id || 'uncategorized';
-    categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+    const categoryId = item.category_id || 'uncategorized';
+    categoryCount[categoryId] = (categoryCount[categoryId] || 0) + 1;
   });
 
-  const totalItems = items.length;
-
-  // 计算趋势数据
-  const getTrendData = useMemo(() => {
+  const trendData = useMemo(() => {
     const now = new Date();
     let labels: string[] = [];
     let data: number[] = [];
 
     if (period === 'week') {
-      // 最近 7 天
       labels = ['一', '二', '三', '四', '五', '六', '日'];
       data = [0, 0, 0, 0, 0, 0, 0];
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -67,12 +59,10 @@ export default function StatsScreen() {
         .filter((t) => t.completed && new Date(t.updated_at) >= weekAgo)
         .forEach((t) => {
           const day = new Date(t.updated_at).getDay();
-          // getDay(): 0=周日, 1=周一... 转为 0=周一, 6=周日
           const idx = day === 0 ? 6 : day - 1;
-          data[idx]++;
+          data[idx] += 1;
         });
     } else if (period === 'month') {
-      // 最近 4 周
       labels = ['第1周', '第2周', '第3周', '第4周'];
       data = [0, 0, 0, 0];
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -82,15 +72,14 @@ export default function StatsScreen() {
           const diff = now.getTime() - new Date(t.updated_at).getTime();
           const weekIndex = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
           if (weekIndex < 4) {
-            data[3 - weekIndex]++;
+            data[3 - weekIndex] += 1;
           }
         });
     } else {
-      // 最近 12 个月
+      const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
       labels = [];
       data = [];
-      const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-      for (let i = 11; i >= 0; i--) {
+      for (let i = 11; i >= 0; i -= 1) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         labels.push(monthNames[d.getMonth()]);
         data.push(0);
@@ -99,186 +88,339 @@ export default function StatsScreen() {
       todos
         .filter((t) => t.completed && new Date(t.updated_at) >= yearAgo)
         .forEach((t) => {
-          const tDate = new Date(t.updated_at);
-          const monthDiff = (now.getFullYear() - tDate.getFullYear()) * 12 + (now.getMonth() - tDate.getMonth());
+          const doneAt = new Date(t.updated_at);
+          const monthDiff = (now.getFullYear() - doneAt.getFullYear()) * 12 + (now.getMonth() - doneAt.getMonth());
           if (monthDiff >= 0 && monthDiff < 12) {
-            data[11 - monthDiff]++;
+            data[11 - monthDiff] += 1;
           }
         });
     }
 
     return { labels, data };
-  }, [todos, period]);
+  }, [period, todos]);
 
-  // 饼图数据
-  const pieData = Object.entries(categoryCount).map(([catId, count], index) => ({
-    name: categoryMap[catId] || (catId === 'uncategorized' ? '未分类' : catId),
+  const pieData = Object.entries(categoryCount).map(([categoryId, count], index) => ({
+    name: categoryMap[categoryId] || (categoryId === 'uncategorized' ? '未分类' : categoryId),
     population: count,
     color: CHART_COLORS[index % CHART_COLORS.length],
-    legendFontColor: colors.gray[500],
+    legendFontColor: palette.textMuted,
     legendFontSize: 12,
   }));
 
-  // 柱状图数据（按分类）
-  const barLabels = Object.keys(categoryCount).slice(0, 6).map((catId) => {
-    const name = categoryMap[catId] || (catId === 'uncategorized' ? '未分类' : catId);
-    return name.length > 4 ? name.slice(0, 4) : name;
-  });
-  const barData = Object.values(categoryCount).slice(0, 6);
+  const sortedCategoryEntries = Object.entries(categoryCount)
+    .map(([categoryId, count]) => ({
+      id: categoryId,
+      name: categoryMap[categoryId] || (categoryId === 'uncategorized' ? '未分类' : categoryId),
+      count,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const barLabels = sortedCategoryEntries.slice(0, 5).map((entry) => (entry.name.length > 4 ? entry.name.slice(0, 4) : entry.name));
+  const barData = sortedCategoryEntries.slice(0, 5).map((entry) => entry.count);
+
+  const periodOptions: Array<{ key: Period; label: string }> = [
+    { key: 'week', label: '本周' },
+    { key: 'month', label: '本月' },
+    { key: 'year', label: '本年' },
+  ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
-      {/* 周期选择 */}
-      <View style={[styles.periodBar, { backgroundColor: colors.gray[100] }]}>
-        {([
-          { key: 'week', label: '本周' },
-          { key: 'month', label: '本月' },
-          { key: 'year', label: '本年' },
-        ] as { key: Period; label: string }[]).map((p) => (
+    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>数据与提醒</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.title, { color: palette.text }]}>数据统计</Text>
+            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+              回顾待办完成节奏和物品分布，帮助你快速判断近期记录密度与重点分类。
+            </Text>
+          </View>
+          <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            <Text style={[styles.summaryValue, { color: palette.text }]}>{completionRate}%</Text>
+            <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>完成率</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={[styles.periodBar, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+        {periodOptions.map((option) => (
           <TouchableOpacity
-            key={p.key}
-            style={[styles.periodBtn, period === p.key && styles.periodBtnActive, period === p.key && { backgroundColor: colors.white }]}
-            onPress={() => setPeriod(p.key)}
-            activeOpacity={0.7}
+            key={option.key}
+            style={[
+              styles.periodBtn,
+              period === option.key && { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+            onPress={() => setPeriod(option.key)}
+            activeOpacity={0.82}
           >
-            <Text style={[styles.periodText, { color: colors.gray[500] }, period === p.key && styles.periodTextActive, period === p.key && { color: colors.gray[900] }]}>
-              {p.label}
+            <Text
+              style={[
+                styles.periodText,
+                { color: period === option.key ? palette.text : palette.textMuted },
+              ]}
+            >
+              {option.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* 统计卡片 */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statsMiniCard, { backgroundColor: colors.white }]}>
-          <Text style={[styles.statsLabel, { color: colors.gray[500] }]}>物品总数</Text>
-          <Text style={[styles.statsValue, { color: colors.gray[900] }]}>{totalItems}</Text>
-        </View>
-        <View style={[styles.statsMiniCard, { backgroundColor: colors.white }]}>
-          <Text style={[styles.statsLabel, { color: colors.gray[500] }]}>完成待办</Text>
-          <Text style={[styles.statsValue, { color: colors.gray[900] }]}>{completedTodos}</Text>
-        </View>
-        <View style={[styles.statsMiniCard, { backgroundColor: colors.white }]}>
-          <Text style={[styles.statsLabel, { color: colors.gray[500] }]}>完成率</Text>
-          <Text style={[styles.statsValue, { color: colors.gray[900] }]}>{completionRate}%</Text>
-        </View>
-        <View style={[styles.statsMiniCard, { backgroundColor: colors.white }]}>
-          <Text style={[styles.statsLabel, { color: colors.gray[500] }]}>待完成</Text>
-          <Text style={[styles.statsValue, { color: colors.gray[900] }]}>{pendingTodos}</Text>
-        </View>
+      <View style={styles.metricsGrid}>
+        {[
+          { label: '物品总数', value: totalItems, tone: palette.orange, icon: 'package-variant-closed' },
+          { label: '完成待办', value: completedTodos, tone: palette.success, icon: 'check-circle-outline' },
+          { label: '待完成', value: pendingTodos, tone: palette.warning, icon: 'clock-outline' },
+          { label: '总待办', value: totalTodos, tone: palette.violet, icon: 'format-list-checks' },
+        ].map((metric) => (
+          <View key={metric.label} style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <View style={[styles.metricIconWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+              <MaterialCommunityIcons name={metric.icon as any} size={18} color={metric.tone} />
+            </View>
+            <Text style={[styles.metricLabel, { color: palette.textMuted }]}>{metric.label}</Text>
+            <Text style={[styles.metricValue, { color: palette.text }]}>{metric.value}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* 待办完成趋势 */}
-      <View style={[styles.chartCard, { backgroundColor: colors.white }]}>
-        <Text style={[styles.chartTitle, { color: colors.gray[900] }]}>待办完成趋势</Text>
-        <View style={styles.chartContainer}>
-          {getTrendData.data.some((v) => v > 0) ? (
+      <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>趋势图表</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>待办完成趋势</Text>
+          </View>
+          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>
+            {period === 'week' ? '最近 7 天' : period === 'month' ? '最近 4 周' : '最近 12 个月'}
+          </Text>
+        </View>
+
+        {trendData.data.some((value) => value > 0) ? (
+          <View style={styles.chartWrap}>
             <LineChart
-              data={{
-                labels: getTrendData.labels,
-                datasets: [{ data: getTrendData.data }],
-              }}
+              data={{ labels: trendData.labels, datasets: [{ data: trendData.data }] }}
               width={SCREEN_WIDTH - 64}
-              height={200}
+              height={220}
               chartConfig={{
-                backgroundColor: colors.white,
-                backgroundGradientFrom: colors.white,
-                backgroundGradientTo: colors.white,
+                backgroundColor: palette.surface,
+                backgroundGradientFrom: palette.surface,
+                backgroundGradientTo: palette.surface,
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
-                labelColor: () => colors.gray[500],
-                style: { borderRadius: 12 },
+                color: (opacity = 1) => `rgba(243, 111, 60, ${opacity})`,
+                labelColor: () => palette.textMuted,
                 propsForDots: {
-                  r: '6',
+                  r: '5',
                   strokeWidth: '2',
-                  stroke: colors.primary,
+                  stroke: palette.orange,
                 },
               }}
               bezier
-              style={{ borderRadius: 12 }}
+              style={styles.chart}
             />
-          ) : (
-            <Text style={[styles.emptyText, { color: colors.gray[400] }]}>暂无数据</Text>
-          )}
-        </View>
+          </View>
+        ) : (
+          <EmptyPanel palette={palette} icon="chart-line" title="暂无数据" desc="完成待办后，这里会显示当前时间维度下的完成趋势。" />
+        )}
       </View>
 
-      {/* 物品分类分布 */}
-      <View style={[styles.chartCard, { backgroundColor: colors.white }]}>
-        <Text style={[styles.chartTitle, { color: colors.gray[900] }]}>物品分类分布</Text>
-        <View style={styles.chartContainer}>
-          {pieData.length > 0 ? (
+      <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>分类图表</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>物品分类分布</Text>
+          </View>
+          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>{pieData.length} 个分类</Text>
+        </View>
+
+        {pieData.length > 0 ? (
+          <View style={styles.chartWrap}>
             <PieChart
               data={pieData}
               width={SCREEN_WIDTH - 64}
               height={220}
-              chartConfig={{
-                color: () => colors.gray[900],
-              }}
+              chartConfig={{ color: () => palette.text }}
               accessor="population"
               backgroundColor="transparent"
-              paddingLeft="15"
+              paddingLeft="8"
               absolute
             />
-          ) : (
-            <Text style={[styles.emptyText, { color: colors.gray[400] }]}>暂无数据</Text>
-          )}
-        </View>
+          </View>
+        ) : (
+          <EmptyPanel palette={palette} icon="chart-donut" title="暂无数据" desc="添加物品后，这里会按分类展示数量占比。" />
+        )}
       </View>
 
-      {/* 物品数量统计 */}
-      <View style={[styles.chartCard, { backgroundColor: colors.white }]}>
-        <Text style={[styles.chartTitle, { color: colors.gray[900] }]}>物品数量统计</Text>
-        <View style={styles.chartContainer}>
-          {barData.length > 0 ? (
-            <BarChart
-              data={{
-                labels: barLabels,
-                datasets: [{ data: barData }],
-              }}
-              width={SCREEN_WIDTH - 64}
-              height={200}
-              yAxisLabel=""
-              yAxisSuffix=""
-              chartConfig={{
-                backgroundColor: colors.white,
-                backgroundGradientFrom: colors.white,
-                backgroundGradientTo: colors.white,
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
-                labelColor: () => colors.gray[500],
-                barPercentage: 0.6,
-              }}
-              style={{ borderRadius: 12 }}
-            />
-          ) : (
-            <Text style={[styles.emptyText, { color: colors.gray[400] }]}>暂无数据</Text>
-          )}
+      <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>分类排行</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>物品数量统计</Text>
+          </View>
+          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>最多展示前 5 个分类</Text>
         </View>
+
+        {barData.length > 0 ? (
+          <>
+            <View style={styles.chartWrap}>
+              <BarChart
+                data={{ labels: barLabels, datasets: [{ data: barData }] }}
+                width={SCREEN_WIDTH - 64}
+                height={220}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: palette.surface,
+                  backgroundGradientFrom: palette.surface,
+                  backgroundGradientTo: palette.surface,
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(124, 92, 252, ${opacity})`,
+                  labelColor: () => palette.textMuted,
+                  barPercentage: 0.58,
+                }}
+                style={styles.chart}
+              />
+            </View>
+            <View style={styles.rankList}>
+              {sortedCategoryEntries.slice(0, 5).map((entry, index) => (
+                <View key={entry.id} style={[styles.rankRow, { borderColor: palette.border }]}>
+                  <View style={[styles.rankDot, { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }]} />
+                  <Text style={[styles.rankName, { color: palette.text }]} numberOfLines={1}>
+                    {entry.name}
+                  </Text>
+                  <Text style={[styles.rankValue, { color: palette.textMuted }]}>{entry.count} 件</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <EmptyPanel palette={palette} icon="chart-bar" title="暂无数据" desc="添加物品后，这里会生成分类数量排行。" />
+        )}
       </View>
     </ScrollView>
   );
 }
 
+function EmptyPanel({
+  palette,
+  icon,
+  title,
+  desc,
+}: {
+  palette: typeof appDesign.light;
+  icon: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <View style={[styles.emptyPanel, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+      <MaterialCommunityIcons name={icon as any} size={24} color={palette.textMuted} />
+      <Text style={[styles.emptyTitle, { color: palette.text }]}>{title}</Text>
+      <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>{desc}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingBottom: 40 },
-  periodBar: { flexDirection: 'row', borderRadius: borderRadius.md, padding: 4, margin: spacing.xl },
-  periodBtn: { flex: 1, paddingVertical: spacing.md, alignItems: 'center', borderRadius: borderRadius.sm },
-  periodBtnActive: { ...shadows.sm },
-  periodText: { fontSize: fontSize.base, fontWeight: fontWeight.medium },
-  periodTextActive: {},
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
-  statsMiniCard: {
-    width: (SCREEN_WIDTH - spacing.xl * 2 - spacing.md) / 2,
+  content: { paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
+  eyebrow: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, marginBottom: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  headerCopy: { flex: 1 },
+  title: { fontSize: fontSize['5xl'], fontWeight: fontWeight.bold },
+  subtitle: { fontSize: fontSize.base, marginTop: spacing.xs },
+  summaryBadge: {
+    minWidth: 88,
+    borderWidth: 1,
     borderRadius: borderRadius.lg,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'flex-start',
+  },
+  summaryValue: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold },
+  summaryLabel: { fontSize: fontSize.sm, marginTop: 2 },
+  periodBar: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    padding: 4,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  periodBtn: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  periodText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  metricCard: {
+    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     ...shadows.sm,
   },
-  statsLabel: { fontSize: fontSize.sm, marginBottom: spacing.sm },
-  statsValue: { fontSize: fontSize['7xl'], fontWeight: fontWeight.bold },
-  chartCard: { marginHorizontal: spacing.xl, borderRadius: borderRadius.lg, padding: spacing.xl, marginBottom: spacing.lg, ...shadows.sm },
-  chartTitle: { fontSize: fontSize['2xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.xl },
-  chartContainer: { minHeight: 160, alignItems: 'center' },
-  emptyText: { fontSize: fontSize.base, textAlign: 'center', paddingVertical: spacing['3xl'] },
+  metricIconWrap: {
+    width: 36,
+    height: 36,
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  metricLabel: { fontSize: fontSize.sm, marginBottom: spacing.xs },
+  metricValue: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
+  sectionCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sectionEyebrow: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: 2 },
+  sectionTitle: { fontSize: fontSize['2xl'], fontWeight: fontWeight.semiBold },
+  sectionMeta: { fontSize: fontSize.sm },
+  chartWrap: { alignItems: 'center', justifyContent: 'center' },
+  chart: { borderRadius: 12 },
+  rankList: { gap: spacing.sm, marginTop: spacing.md },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  rankDot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.md },
+  rankName: { flex: 1, fontSize: fontSize.base, fontWeight: fontWeight.medium },
+  rankValue: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold },
+  emptyPanel: {
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  emptyTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.semiBold },
+  emptyDesc: { fontSize: fontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

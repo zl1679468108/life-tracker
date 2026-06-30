@@ -27,8 +27,9 @@ async function bootstrap() {
   const port = process.env.NODE_ENV === 'production'
     ? 80
     : parseInt(process.env.PORT || '3020', 10);
-  await app.listen(port, '0.0.0.0');
-  console.log(`🚀 LifeTracker API running on 0.0.0.0:${port}`);
+  const host = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+  await app.listen(port, host);
+  console.log(`🚀 LifeTracker API running on ${host}:${port}`);
   console.log(`📦 process.env.PORT = ${process.env.PORT}`);
   console.log(`📦 NODE_ENV = ${process.env.NODE_ENV || 'development'}`);
   console.log(`📦 SUPABASE_URL = ${process.env.SUPABASE_URL ? 'set' : 'NOT SET'}`);

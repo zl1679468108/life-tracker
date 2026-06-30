@@ -11,6 +11,7 @@ interface CategoryState {
   categories: LifeCategory[];
   loading: boolean;
   error: string | null;
+  loadedScope: 'all' | 'item' | 'todo' | null;
   fetchCategories: (type?: 'item' | 'todo', force?: boolean) => Promise<void>;
   addCategory: (category: Omit<LifeCategory, 'id' | 'created_at'>) => Promise<void>;
   updateCategory: (id: string, updates: Partial<LifeCategory>) => Promise<void>;
@@ -22,10 +23,12 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   categories: [],
   loading: false,
   error: null,
+  loadedScope: null,
   clearError: () => set({ error: null }),
   fetchCategories: async (type, force = false) => {
-    // 防止重复请求：已有数据且非强制刷新时跳过
-    if (!force && get().categories.length > 0 && !get().error) return;
+    const requestedScope = type || 'all';
+    // 防止错误复用不同作用域的数据，例如先加载 todo 再进入 item 页面。
+    if (!force && get().loadedScope === requestedScope && get().categories.length > 0 && !get().error) return;
     if (get().loading) return;
     set({ loading: true, error: null });
     
@@ -34,35 +37,29 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
       const cached = await cache.get<LifeCategory[]>(CATEGORIES_CACHE_KEY);
       if (cached) {
         const filtered = type ? cached.filter(c => c.type === type) : cached;
-        set({ categories: filtered, loading: false });
+        set({ categories: filtered, loading: false, loadedScope: requestedScope });
         return;
       }
     }
     
     try {
-      const response = await api.categories.list(type);
-      const categories = Array.isArray(response?.data) ? response.data : [];
-      set({ categories, loading: false });
-      
-      // 当前请求已是全量分类时，直接复用结果写缓存，避免重复请求同一接口。
-      if (!type) {
-        await cache.set(CATEGORIES_CACHE_KEY, categories);
-      } else {
-        const allResponse = await api.categories.list();
-        await cache.set(CATEGORIES_CACHE_KEY, Array.isArray(allResponse?.data) ? allResponse.data : []);
-      }
+      const response = await api.categories.list();
+      const allCategories = Array.isArray(response?.data) ? response.data : [];
+      const visibleCategories = type ? allCategories.filter((c) => c.type === type) : allCategories;
+      set({ categories: visibleCategories, loading: false, loadedScope: requestedScope });
+      await cache.set(CATEGORIES_CACHE_KEY, allCategories);
     } catch (error) {
       // 网络错误时尝试从缓存加载
       if (!networkMonitor.isOnline()) {
         const cached = await cache.get<LifeCategory[]>(CATEGORIES_CACHE_KEY);
         if (cached) {
           const filtered = type ? cached.filter(c => c.type === type) : cached;
-          set({ categories: filtered, loading: false });
+          set({ categories: filtered, loading: false, loadedScope: requestedScope });
           return;
         }
       }
       
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, loading: false, loadedScope: null });
     }
   },
   addCategory: async (category) => {

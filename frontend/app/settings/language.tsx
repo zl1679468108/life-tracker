@@ -27,13 +27,9 @@ export default function LanguageScreen() {
   return (
     <AppScreen contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>{t('settings.language')}</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>界面语言</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              切换后会立即应用到主要导航、设置项与表单文案。
-            </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <Text style={[styles.badgeValue, { color: palette.text }]}>{currentLanguage === 'zh-CN' ? '中文' : 'EN'}</Text>
@@ -88,65 +84,55 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
   header: {
-    marginBottom: spacing.xl,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
   headerRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   headerCopy: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: fontSize['4xl'],
+    lineHeight: 30,
     fontWeight: fontWeight.bold,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    lineHeight: 22,
   },
   badge: {
-    minWidth: 92,
+    minWidth: 76,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   badgeValue: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   badgeLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     marginTop: 2,
   },
   section: {
     marginBottom: spacing.lg,
   },
   languageCard: {
-    minHeight: 88,
+    minHeight: 72,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   languageMark: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -162,19 +148,19 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   languageName: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   languageMeta: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     marginTop: 2,
   },
   languageNote: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 4,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
+    marginTop: 2,
   },
   checkWrap: {
     width: 24,
