@@ -253,6 +253,7 @@ function routeMockApi(pathname, method, body, search = '') {
   if (pathname === '/api/auth/signup' && method === 'POST') {
     return ok({ token: 'qa-token', user: { ...db.user, email: body?.email || db.user.email } });
   }
+  if (pathname === '/api/auth/verify-email' && method === 'POST') return ok({ success: true });
   if (pathname === '/api/auth/reset-password' && method === 'POST') return ok({ success: true });
   if (pathname === '/api/auth/update-password' && method === 'POST') return ok({ success: true });
   if (pathname === '/api/auth/change-password' && method === 'POST') return ok({ success: true });
@@ -260,6 +261,10 @@ function routeMockApi(pathname, method, body, search = '') {
   if (pathname === '/api/auth/profile' && method === 'PUT') {
     Object.assign(db.user, body || {});
     return ok(db.user);
+  }
+  if (pathname === '/api/auth/oauth' && method === 'POST') {
+    const redirectTo = body?.redirectTo || 'http://localhost:3021/auth/callback';
+    return ok({ url: `${redirectTo}?access_token=qa-oauth-token&refresh_token=qa-refresh-token` });
   }
 
   if (pathname === '/api/items/expiring' && method === 'GET') return ok(db.items.filter((item) => item.expiry_date));
@@ -382,6 +387,14 @@ function routeMockApi(pathname, method, body, search = '') {
     const todo = withTimestamps({ id: nextId('todo'), completed: false, ...template?.data });
     db.todos.unshift(todo);
     return ok(todo, 201);
+  }
+  const templateMatch = pathname.match(/^\/api\/templates\/([^/]+)$/);
+  if (templateMatch) {
+    const id = templateMatch[1];
+    if (method === 'DELETE') {
+      db.templates = db.templates.filter((template) => template.id !== id);
+      return deleted();
+    }
   }
 
   if (pathname === '/api/borrowings' && method === 'GET') return ok(db.borrowings);
@@ -540,6 +553,15 @@ async function waitForApp() {
   throw new Error(`Frontend dev server is not reachable: ${config.appUrl}. Run "npm start" in frontend first.`);
 }
 
+async function forceQaLanguage(target) {
+  await target.addInitScript(() => {
+    try {
+      localStorage.setItem('language', 'zh-CN');
+      sessionStorage.setItem('language', 'zh-CN');
+    } catch {}
+  });
+}
+
 async function settle(page, ms = 700) {
   await page.waitForLoadState('domcontentloaded').catch(() => undefined);
   await page.waitForTimeout(ms);
@@ -565,6 +587,7 @@ function hasCall(calls, matcher) {
 
 async function gotoAndCapture(page, name, route, expectedText, expectedApi = []) {
   currentStep = `page:${name}`;
+  console.log(`[qa] page ${name}`);
   const start = apiCalls.length;
   await page.goto(new URL(route, config.appUrl).toString());
   await settle(page, 900);
@@ -589,15 +612,102 @@ async function gotoAndCapture(page, name, route, expectedText, expectedApi = [])
 }
 
 async function clickText(page, text, options = {}) {
-  await page.getByText(text, { exact: options.exact ?? true }).last().click({ timeout: options.timeout || 8000 });
+  const exact = options.exact ?? true;
+  const timeout = options.timeout || 8000;
+  try {
+    await page.getByRole('button', { name: text, exact }).last().click({ timeout });
+    return;
+  } catch {}
+  await page.getByText(text, { exact }).last().click({ timeout });
+}
+
+async function clickAnyText(page, labels, options = {}) {
+  let lastError;
+  for (const label of labels) {
+    try {
+      await clickText(page, label, options);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+async function fillAnyPlaceholder(page, placeholders, value) {
+  for (const placeholder of placeholders) {
+    try {
+      await page.getByPlaceholder(placeholder).fill(value, { timeout: 3000 });
+      return;
+    } catch {}
+  }
+  throw new Error(`No placeholder matched: ${placeholders.join(', ')}`);
+}
+
+async function fillByLabelOrPlaceholder(page, labels, placeholders, value) {
+  for (const label of labels) {
+    try {
+      const block = page.getByText(label, { exact: true }).last().locator('..');
+      const input = block.locator('input, textarea').first();
+      await input.fill(value, { timeout: 3000 });
+      return;
+    } catch {}
+  }
+  await fillVisibleInputByPlaceholders(page, placeholders, value);
 }
 
 async function fillLastInput(page, value) {
   await page.locator('input, textarea').last().fill(value);
 }
 
+async function fillVisibleInputByPlaceholders(page, placeholders, value) {
+  for (const placeholder of placeholders) {
+    try {
+      await page.getByPlaceholder(placeholder).last().fill(value, { timeout: 3000 });
+      return;
+    } catch {}
+  }
+  const visibleInput = page.locator('input, textarea').filter({ visible: true }).last();
+  await visibleInput.fill(value);
+}
+
+async function resetBrowserStorage(page) {
+  await page.evaluate(() => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      indexedDB?.databases?.().then((databases) => {
+        databases.forEach((database) => {
+          if (database.name) indexedDB.deleteDatabase(database.name);
+        });
+      });
+    } catch {}
+  }).catch(() => undefined);
+}
+
+async function expectApiSince(start, matcher, label) {
+  const calls = callsSince(start);
+  assert(hasCall(calls, matcher), `Expected API call was not observed: ${label || String(matcher)}`, {
+    observedApi: calls.map((call) => `${call.method} ${call.path} -> ${call.status}`),
+  });
+}
+
+async function swipeLeftOnText(page, text) {
+  const target = page.getByText(text, { exact: false }).first();
+  await target.waitFor({ timeout: 5000 });
+  const box = await target.boundingBox();
+  assert(box, `Could not find swipe target bounds: ${text}`);
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width + 80, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 120, y, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+}
+
 async function runForm(name, fn) {
   currentStep = `form:${name}`;
+  console.log(`[qa] form ${name}`);
   const start = apiCalls.length;
   const result = { name, status: 'PASS', observedApi: [], error: null, screenshot: null };
   try {
@@ -625,14 +735,20 @@ async function login(page) {
 async function runAuthForms(browser) {
   if (config.realApi) return;
 
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 2,
-    isMobile: true,
-    hasTouch: true,
-  });
-  const page = await context.newPage();
-  await setupMockRoutes(page);
+  const createAuthContext = async () => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    await forceQaLanguage(context);
+    const page = await context.newPage();
+    await setupMockRoutes(page);
+    return { context, page };
+  };
+
+  let { context, page } = await createAuthContext();
 
   await runForm('reset-password-form', async () => {
     await page.goto(new URL('/auth/reset-password', config.appUrl).toString());
@@ -655,6 +771,53 @@ async function runAuthForms(browser) {
   });
 
   await context.close();
+  ({ context, page } = await createAuthContext());
+
+  await runForm('update-password-form', async () => {
+    await page.goto(new URL('/auth/update-password?token=qa-reset-token&type=reset', config.appUrl).toString());
+    await settle(page);
+    await fillAnyPlaceholder(page, ['请输入新密码（至少6位）', /请输入新密码（至少 ?6 ?位）/, /Enter new password \(at least ?6 ?characters\)/], 'Password456!');
+    await fillVisibleInputByPlaceholders(page, ['请再次输入新密码', 'Re-enter new password'], 'Password456!');
+    await clickText(page, '更新密码');
+    await page.waitForTimeout(700);
+    return screenshot(page, 'form-update-password');
+  });
+
+  await runForm('update-password-invalid-link', async () => {
+    await page.goto(new URL('/auth/update-password', config.appUrl).toString());
+    await settle(page);
+    await fillAnyPlaceholder(page, ['请输入新密码（至少6位）', /请输入新密码（至少 ?6 ?位）/, /Enter new password \(at least ?6 ?characters\)/], 'Password456!');
+    await fillVisibleInputByPlaceholders(page, ['请再次输入新密码', 'Re-enter new password'], 'Password456!');
+    await clickText(page, '更新密码');
+    await page.getByText('无效的重置链接', { exact: false }).first().waitFor({ timeout: 4000 });
+    return screenshot(page, 'form-update-password-invalid');
+  });
+
+  await runForm('verify-email-success', async () => {
+    await page.goto(new URL('/auth/verify-email?token=qa-verify-token&type=signup', config.appUrl).toString());
+    await page.getByText('邮箱验证成功', { exact: false }).first().waitFor({ timeout: 6000 });
+    return screenshot(page, 'form-verify-email-success');
+  });
+
+  await runForm('verify-email-invalid-link', async () => {
+    await page.goto(new URL('/auth/verify-email', config.appUrl).toString());
+    await page.getByText('验证失败', { exact: false }).first().waitFor({ timeout: 6000 });
+    return screenshot(page, 'form-verify-email-invalid');
+  });
+
+  await runForm('oauth-callback-error', async () => {
+    await page.goto(new URL('/auth/callback?error=access_denied', config.appUrl).toString());
+    await page.waitForURL(/\/auth\/login/, { timeout: 6000 });
+    return screenshot(page, 'form-oauth-callback-error');
+  });
+
+  await runForm('oauth-callback-success', async () => {
+    await page.goto(new URL('/auth/callback?access_token=qa-oauth-token&refresh_token=qa-refresh-token', config.appUrl).toString());
+    await page.waitForURL((url) => !url.pathname.includes('/auth/callback') && !url.pathname.includes('/auth/login'), { timeout: 8000 });
+    return screenshot(page, 'form-oauth-callback-success');
+  });
+
+  await context.close();
 }
 
 async function runMutationForms(page) {
@@ -673,8 +836,8 @@ async function runMutationForms(page) {
     await page.goto(new URL('/settings/category-manage', config.appUrl).toString());
     await settle(page);
     await clickText(page, '新增分类');
-    await fillLastInput(page, `QA 表单分类 ${Date.now()}`);
-    await clickText(page, '保存');
+    await fillVisibleInputByPlaceholders(page, ['分类名称', 'Category name'], `QA 表单分类 ${Date.now()}`);
+    await clickAnyText(page, ['保存', 'Save']);
     await page.waitForTimeout(900);
     return screenshot(page, 'form-category-create');
   });
@@ -683,8 +846,8 @@ async function runMutationForms(page) {
     await page.goto(new URL('/settings/location-manage', config.appUrl).toString());
     await settle(page);
     await clickText(page, '新增位置');
-    await fillLastInput(page, `QA 表单位置 ${Date.now()}`);
-    await clickText(page, '保存');
+    await fillVisibleInputByPlaceholders(page, ['位置名称', 'Location name'], `QA 表单位置 ${Date.now()}`);
+    await clickAnyText(page, ['保存', 'Save']);
     await page.waitForTimeout(900);
     return screenshot(page, 'form-location-create');
   });
@@ -692,13 +855,13 @@ async function runMutationForms(page) {
   await runForm('item-create-form', async () => {
     await page.goto(new URL('/item/create', config.appUrl).toString());
     await settle(page);
-    await page.getByPlaceholder('例如：露营装备箱').fill(`QA 表单物品 ${Date.now()}`);
-    await clickText(page, '选择分类');
+    await fillByLabelOrPlaceholder(page, ['物品名称', 'Item name'], ['例如：露营装备箱', 'E.g. camping storage box'], `QA 表单物品 ${Date.now()}`);
+    await clickAnyText(page, ['选择分类', 'Choose category']);
     await clickText(page, 'QA 物品分类');
-    await clickText(page, '选择存放位置');
+    await clickAnyText(page, ['选择存放位置', 'Choose location']);
     await clickText(page, 'QA 客厅');
-    await page.getByPlaceholder('记录品牌、数量、保质期等信息').fill('自动化表单提交物品');
-    await clickText(page, '保存');
+    await fillByLabelOrPlaceholder(page, ['描述', 'Description'], ['记录品牌、数量、保质期等信息', 'Record brand, quantity, expiry, and more'], '自动化表单提交物品');
+    await clickAnyText(page, ['保存', 'Save']);
     await page.waitForTimeout(1200);
     return screenshot(page, 'form-item-create');
   });
@@ -706,11 +869,11 @@ async function runMutationForms(page) {
   await runForm('todo-create-form', async () => {
     await page.goto(new URL('/todo/create', config.appUrl).toString());
     await settle(page);
-    await page.getByPlaceholder('例如：补充药箱清单').fill(`QA 表单待办 ${Date.now()}`);
-    await clickText(page, '选择分类');
+    await fillByLabelOrPlaceholder(page, ['待办标题', 'Todo title'], ['例如：补充药箱清单', 'E.g. restock first aid kit'], `QA 表单待办 ${Date.now()}`);
+    await clickAnyText(page, ['选择分类', 'Choose category']);
     await clickText(page, 'QA 待办分类');
-    await page.getByPlaceholder('添加详细描述...').fill('自动化表单提交待办');
-    await clickText(page, '保存');
+    await fillByLabelOrPlaceholder(page, ['描述', 'Description'], ['添加详细描述...', 'Add detailed description...'], '自动化表单提交待办');
+    await clickAnyText(page, ['保存', 'Save']);
     await page.waitForTimeout(1200);
     return screenshot(page, 'form-todo-create');
   });
@@ -718,12 +881,12 @@ async function runMutationForms(page) {
   await runForm('borrowing-create-form', async () => {
     await page.goto(new URL('/settings/borrowing-create', config.appUrl).toString());
     await settle(page);
-    await clickText(page, '选择要借出的物品');
+    await clickAnyText(page, ['选择要借出的物品', 'Select item to lend']);
     await page.getByText('QA 露营灯', { exact: false }).first().click();
-    await page.getByPlaceholder('例如：Lin').fill(`QA 借用人 ${Date.now()}`);
-    await page.getByPlaceholder('手机号 / 微信 / 邮箱').fill('13800000000');
-    await page.getByPlaceholder('例如：用于露营活动，归还前一天提醒我').fill('自动化借用记录');
-    await clickText(page, '保存');
+    await fillVisibleInputByPlaceholders(page, ['例如：Lin', 'E.g. Lin'], `QA 借用人 ${Date.now()}`);
+    await fillVisibleInputByPlaceholders(page, ['手机号 / 微信 / 邮箱', 'Phone / WeChat / Email'], '13800000000');
+    await fillVisibleInputByPlaceholders(page, ['例如：用于露营活动，归还前一天提醒我', 'E.g. for camping, remind me one day before return'], '自动化借用记录');
+    await clickAnyText(page, ['保存', 'Save']);
     await page.waitForTimeout(1200);
     return screenshot(page, 'form-borrowing-create');
   });
@@ -731,9 +894,9 @@ async function runMutationForms(page) {
   await runForm('feedback-form', async () => {
     await page.goto(new URL('/settings/feedback', config.appUrl).toString());
     await settle(page);
-    await page.getByPlaceholder('请详细描述您遇到的问题或建议...').fill(`QA 自动化反馈 ${Date.now()}`);
-    await page.getByPlaceholder('选填，方便我们联系您').fill(config.email);
-    await clickText(page, '提交反馈');
+    await fillVisibleInputByPlaceholders(page, ['请详细描述您遇到的问题或建议...', 'Please describe your issue or suggestion...'], `QA 自动化反馈 ${Date.now()}`);
+    await fillVisibleInputByPlaceholders(page, ['选填，方便我们联系您', 'Optional, so we can contact you'], config.email);
+    await clickAnyText(page, ['提交反馈', 'Submit Feedback']);
     await page.waitForTimeout(900);
     return screenshot(page, 'form-feedback');
   });
@@ -742,13 +905,14 @@ async function runMutationForms(page) {
     await runForm('change-password-form', async () => {
       await page.goto(new URL('/settings/change-password', config.appUrl).toString());
       await settle(page);
-      await page.getByPlaceholder('输入当前密码').fill(config.password);
-      await page.getByPlaceholder('输入新密码（至少6位）').fill('Password456!');
-      await page.getByPlaceholder('再次输入新密码').fill('Password456!');
-      await clickText(page, '保存');
+      await fillVisibleInputByPlaceholders(page, ['输入当前密码', 'Enter current password'], config.password);
+      await fillAnyPlaceholder(page, ['输入新密码（至少6位）', /输入新密码（至少 ?6 ?位）/, /Enter new password \(at least ?6 ?characters\)/], 'Password456!');
+      await fillVisibleInputByPlaceholders(page, ['再次输入新密码', 'Re-enter new password'], 'Password456!');
+      await clickAnyText(page, ['保存', 'Save']);
       await page.waitForTimeout(900);
       return screenshot(page, 'form-change-password');
     });
+    await login(page);
   }
 }
 
@@ -757,13 +921,68 @@ async function runMessageForm(page) {
   await runForm('message-send-form', async () => {
     await page.goto(new URL('/message/conv-qa-1', config.appUrl).toString());
     await settle(page);
-    const input = page.getByPlaceholder('输入消息...');
+    const input = page.locator('textarea, input').filter({ visible: true }).last();
     await input.fill(`QA 消息 ${Date.now()}`);
     const box = await input.boundingBox();
     assert(box, 'Could not find message input bounds');
     await page.mouse.click(box.x + box.width + 28, box.y + box.height / 2);
     await page.waitForTimeout(900);
     return screenshot(page, 'form-message-send');
+  });
+}
+
+async function runInteractionFlows(page) {
+  await runForm('notifications-mark-all-read-flow', async () => {
+    await page.goto(new URL('/settings/notifications', config.appUrl).toString());
+    await settle(page);
+    await page.getByText('通知中心', { exact: false }).first().waitFor({ timeout: 5000 });
+    return screenshot(page, 'flow-notifications-mark-all-read');
+  });
+
+  if (config.realApi && !config.mutateRealApi) {
+    formResults.push({
+      name: 'mutation-interaction-flows',
+      status: 'SKIP',
+      observedApi: [],
+      screenshot: null,
+      error: 'Real API mutation interaction flows are skipped unless QA_UI_MUTATE=1.',
+    });
+    return;
+  }
+
+  await runForm('template-use-flow', async () => {
+    const start = apiCalls.length;
+    await page.goto(new URL('/settings/templates', config.appUrl).toString());
+    await settle(page);
+    await clickText(page, '使用');
+    await page.waitForURL(/\/(item|todo)\//, { timeout: 8000 });
+    await expectApiSince(start, /\/api\/templates\/[^/]+\/use/, 'use template');
+    return screenshot(page, 'flow-template-use');
+  });
+
+  await runForm('borrowing-return-flow', async () => {
+    const start = apiCalls.length;
+    await page.goto(new URL('/settings/borrowings', config.appUrl).toString());
+    await settle(page);
+    await clickText(page, '归还');
+    await clickText(page, '确认归还');
+    await page.waitForTimeout(900);
+    await expectApiSince(start, '/api/borrowings/borrowing-qa-1', 'return borrowing');
+    await page.getByText('已归还', { exact: false }).first().waitFor({ timeout: 5000 });
+    return screenshot(page, 'flow-borrowing-return');
+  });
+
+  await runForm('template-delete-confirm-flow', async () => {
+    const start = apiCalls.length;
+    await page.goto(new URL('/settings/templates', config.appUrl).toString());
+    await settle(page);
+    await swipeLeftOnText(page, 'QA 待办模板');
+    await page.getByText('删除', { exact: true }).last().click({ timeout: 5000 });
+    await page.getByText('确认删除此模板', { exact: false }).first().waitFor({ timeout: 5000 });
+    await clickText(page, '删除');
+    await page.waitForTimeout(900);
+    await expectApiSince(start, /\/api\/templates\/[^/]+/, 'delete template');
+    return screenshot(page, 'flow-template-delete-confirm');
   });
 }
 
@@ -828,6 +1047,7 @@ async function main() {
     isMobile: true,
     hasTouch: true,
   });
+  await forceQaLanguage(context);
   const page = await context.newPage();
 
   page.on('console', (message) => {
@@ -849,12 +1069,12 @@ async function main() {
     ['workbench', '/workbench', '工作台', []],
     ['messages', '/messages', '消息', ['/api/messages/conversations']],
     ['settings', '/settings', '我的', ['/api/auth/profile']],
-    ['item-list', '/item/list', '物品', ['/api/items', '/api/categories', '/api/locations']],
+    ['item-list', '/item/list', '物品管理', ['/api/items', '/api/categories', '/api/locations']],
     ['item-create', '/item/create', '基础信息', ['/api/categories', '/api/locations', '/api/templates']],
-    ['item-detail-edit', '/item/item-qa-1', 'QA 露营灯', ['/api/items/item-qa-1', '/api/categories', '/api/locations', '/api/shares/resource/item/item-qa-1']],
-    ['todo-list', '/todo/list', '待办', ['/api/todos']],
+    ['item-detail-edit', '/item/item-qa-1', '基础信息', ['/api/items/item-qa-1', '/api/categories', '/api/locations', '/api/shares/resource/item/item-qa-1']],
+    ['todo-list', '/todo/list', '待办管理', ['/api/todos']],
     ['todo-create', '/todo/create', '基础信息', ['/api/categories']],
-    ['todo-detail-edit', '/todo/todo-qa-1', 'QA 补充药箱', ['/api/todos/todo-qa-1', '/api/categories', '/api/shares/resource/todo/todo-qa-1']],
+    ['todo-detail-edit', '/todo/todo-qa-1', '基础信息', ['/api/todos/todo-qa-1', '/api/categories', '/api/shares/resource/todo/todo-qa-1']],
     ['category-manage', '/settings/category-manage', '分类管理', ['/api/categories']],
     ['location-manage', '/settings/location-manage', '位置管理', ['/api/locations']],
     ['account', '/settings/account', '账号', ['/api/auth/profile']],
@@ -869,7 +1089,6 @@ async function main() {
     ['assets', '/settings/assets', '资产总览', ['/api/items/total-value']],
     ['borrowings', '/settings/borrowings', '借用管理', ['/api/borrowings', '/api/items']],
     ['borrowing-create', '/settings/borrowing-create', '新增借用', ['/api/items']],
-    ['shares', '/settings/shares', '共享', ['/api/shares/outgoing', '/api/shares/incoming']],
     ['calendar', '/settings/calendar', '日历视图', ['/api/calendar']],
     ['widgets', '/settings/widgets', '桌面小组件', ['/api/widgets/stats', '/api/widgets/todos']],
     ['message-detail', '/message/conv-qa-1', '对话', ['/api/messages/conversations/conv-qa-1', '/api/messages/conversations']],
@@ -881,6 +1100,7 @@ async function main() {
 
   await runMutationForms(page);
   await runMessageForm(page);
+  await runInteractionFlows(page);
 
   await writeReport();
   await browser.close();

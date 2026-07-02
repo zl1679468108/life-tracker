@@ -66,6 +66,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await api.todos.create(todo);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '创建待办失败');
+      }
       const data = response.data;
       
       // 如果设置了提醒时间，调度通知
@@ -83,7 +86,12 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         }
       }
       
-      set((state) => ({ todos: [data, ...state.todos], loading: false }));
+      set((state) => ({
+        todos: state.todos.find((existing) => existing.id === data.id)
+          ? state.todos.map((existing) => (existing.id === data.id ? data : existing))
+          : [data, ...state.todos],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -115,10 +123,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       }
       
       const response = await api.todos.update(id, updates);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '更新待办失败');
+      }
       const data = response.data;
       set((state) => ({ todos: state.todos.map((t) => t.id === id ? { ...t, ...updates, ...data } : t), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   deleteTodo: async (id) => {
@@ -191,9 +203,12 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 // 监听 socket 事件
 socketService.onTodoCreated((todo) => {
   const currentTodos = useTodoStore.getState().todos;
-  if (!currentTodos.find(t => t.id === todo.id)) {
-    useTodoStore.setState({ todos: [todo, ...currentTodos] });
-  }
+  const existing = currentTodos.find((t) => t.id === todo.id);
+  useTodoStore.setState({
+    todos: existing
+      ? currentTodos.map((t) => (t.id === todo.id ? todo : t))
+      : [todo, ...currentTodos],
+  });
 });
 
 socketService.onTodoUpdated((todo) => {

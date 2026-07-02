@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, TextInput, RefreshControl, SafeAreaView } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Text, TextInput, RefreshControl, SafeAreaView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
@@ -8,7 +8,7 @@ import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, Chip, PageLoadable, CachedImage } from '../../components/ui';
+import { FAB, Chip, PageLoadable, CachedImage, EmptyState } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
@@ -29,7 +29,7 @@ export default function ItemListScreen() {
   const { t } = useTranslation();
   const ALL_CATEGORY = 'ALL';
 
-  const { items, loading, error: itemsError, fetchItems, deleteItem, clearError: clearItemsError } = useItemStore();
+  const { items, loading, error: itemsError, fetchItems, deleteItem } = useItemStore();
   const { categories: customCategories, fetchCategories } = useCategoryStore();
   const { locations: customLocations, fetchLocations } = useLocationStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,10 +202,6 @@ export default function ItemListScreen() {
     <View>
       <View style={[styles.header, { backgroundColor: palette.bg }]}>
         <View style={styles.headerTop}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>通用列表布局</Text>
-            <Text style={[styles.title, { color: palette.text }]}>物品</Text>
-          </View>
           <View style={styles.headerActions}>
             <Text style={[styles.count, { color: palette.textMuted }]}>{countLabel}</Text>
             <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
@@ -257,12 +253,34 @@ export default function ItemListScreen() {
           </View>
         )}
       </View>
-      <View style={styles.chipsContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsContent}
+        style={styles.chipsScroll}
+      >
         {categoryFilters.map((cat) => (
-          <Chip key={cat.id} label={cat.label} selected={selectedCategory === cat.id} onPress={() => setSelectedCategory(cat.id)} />
+          <Chip
+            key={cat.id}
+            label={cat.label}
+            selected={selectedCategory === cat.id}
+            onPress={() => setSelectedCategory(cat.id)}
+            style={styles.categoryChip}
+          />
         ))}
-      </View>
+      </ScrollView>
     </View>
+  );
+
+  const renderEmpty = () => (
+    <EmptyState
+      icon="package-variant"
+      title={selectedCategory === ALL_CATEGORY && !debouncedSearch ? '暂无物品' : '没有匹配的物品'}
+      description={selectedCategory === ALL_CATEGORY && !debouncedSearch ? '点击下方按钮添加第一个物品' : '切换分类或清空搜索后再看看'}
+      actionLabel="添加物品"
+      onAction={() => router.push('/item/create')}
+      style={styles.inlineEmpty}
+    />
   );
 
   return (
@@ -271,7 +289,6 @@ export default function ItemListScreen() {
         <PageLoadable
           loading={loading}
           error={itemsError}
-          empty={!loading && filtered.length === 0}
           emptyIcon="package-variant"
           emptyTitle="暂无物品"
           emptyMessage="点击下方按钮添加第一个物品"
@@ -285,6 +302,7 @@ export default function ItemListScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             ListHeaderComponent={renderHeader}
+            ListEmptyComponent={renderEmpty}
             contentContainerStyle={styles.list}
             removeClippedSubviews
             maxToRenderPerBatch={10}
@@ -354,23 +372,9 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: fontSize['7xl'],
-    fontWeight: fontWeight.bold,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   count: {
     fontSize: fontSize.base,
@@ -390,14 +394,22 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     padding: 0,
   },
-  chipsContainer: {
-    flexDirection: 'row',
+  chipsScroll: {
+    flexGrow: 0,
+  },
+  chipsContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
     gap: spacing.sm,
   },
+  categoryChip: {
+    flexShrink: 0,
+  },
   list: {
     paddingBottom: 120,
+  },
+  inlineEmpty: {
+    minHeight: 420,
   },
   itemCard: {
     flexDirection: 'row',

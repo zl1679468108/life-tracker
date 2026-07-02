@@ -30,8 +30,6 @@ export default function StatsScreen() {
   const completedTodos = todos.filter((t) => t.completed).length;
   const totalTodos = todos.length;
   const totalItems = items.length;
-  const completionRate = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
-
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
     categories.forEach((c) => {
@@ -127,17 +125,9 @@ export default function StatsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>数据与提醒</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>数据统计</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              回顾待办完成节奏和物品分布，帮助你快速判断近期记录密度与重点分类。
-            </Text>
-          </View>
-          <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.summaryValue, { color: palette.text }]}>{completionRate}%</Text>
-            <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>完成率</Text>
           </View>
         </View>
       </View>
@@ -172,12 +162,14 @@ export default function StatsScreen() {
           { label: '待完成', value: pendingTodos, tone: palette.warning, icon: 'clock-outline' },
           { label: '总待办', value: totalTodos, tone: palette.violet, icon: 'format-list-checks' },
         ].map((metric) => (
-          <View key={metric.label} style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <View style={[styles.metricIconWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <MaterialCommunityIcons name={metric.icon as any} size={18} color={metric.tone} />
+          <View key={metric.label} style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
+            <View style={styles.metricCopy}>
+              <Text style={[styles.metricValue, { color: palette.text }]}>{metric.value}</Text>
+              <Text style={[styles.metricLabel, { color: palette.textMuted }]} numberOfLines={1}>{metric.label}</Text>
             </View>
-            <Text style={[styles.metricLabel, { color: palette.textMuted }]}>{metric.label}</Text>
-            <Text style={[styles.metricValue, { color: palette.text }]}>{metric.value}</Text>
+            <View style={[styles.metricIconWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
+              <MaterialCommunityIcons name={metric.icon as any} size={20} color={metric.tone} />
+            </View>
           </View>
         ))}
       </View>
@@ -322,21 +314,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xl },
   header: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  eyebrow: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, marginBottom: 2 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['5xl'], fontWeight: fontWeight.bold },
-  subtitle: { fontSize: fontSize.base, marginTop: spacing.xs },
-  summaryBadge: {
-    minWidth: 88,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'flex-start',
-  },
-  summaryValue: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.sm, marginTop: 2 },
+  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   periodBar: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
@@ -364,6 +344,11 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
+    minHeight: 86,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
@@ -376,9 +361,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
   },
-  metricLabel: { fontSize: fontSize.sm, marginBottom: spacing.xs },
+  metricCopy: { flex: 1, minWidth: 0 },
+  metricLabel: { fontSize: fontSize.sm, marginTop: spacing.xs },
   metricValue: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   sectionCard: {
     marginHorizontal: spacing.lg,

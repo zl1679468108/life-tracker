@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS life_items (
   location_id UUID REFERENCES life_locations(id) ON DELETE SET NULL,
   category_id UUID REFERENCES life_categories(id) ON DELETE SET NULL,
   images TEXT[],
+  barcode TEXT,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -189,6 +190,17 @@ CREATE TABLE IF NOT EXISTS life_items (
 CREATE INDEX IF NOT EXISTS idx_items_user_id ON life_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_items_category_id ON life_items(category_id);
 CREATE INDEX IF NOT EXISTS idx_items_location_id ON life_items(location_id);
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_attribute
+    WHERE attrelid = 'life_items'::regclass
+    AND attname = 'barcode'
+    AND NOT attisdropped
+  ) THEN
+    ALTER TABLE life_items ADD COLUMN barcode TEXT;
+  END IF;
+END $$;
 
 -- 为已有表添加 expiry_date 列（如果不存在）
 DO $$ BEGIN

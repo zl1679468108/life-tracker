@@ -62,16 +62,28 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await api.locations.create(location);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '创建位置失败');
+      }
       const data = response.data;
-      set((state) => ({ locations: [...state.locations, data], loading: false }));
+      set((state) => ({
+        locations: state.locations.find((existing) => existing.id === data.id)
+          ? state.locations.map((existing) => (existing.id === data.id ? data : existing))
+          : [...state.locations, data],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   updateLocation: async (id, updates) => {
     set({ loading: true, error: null });
     try {
       const response = await api.locations.update(id, updates);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '更新位置失败');
+      }
       const data = response.data;
       set((state) => ({
         locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l)),
@@ -79,18 +91,23 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   deleteLocation: async (id) => {
     set({ loading: true, error: null });
     try {
-      await api.locations.delete(id);
+      const response = await api.locations.delete(id);
+      if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '删除位置失败');
+      }
       set((state) => ({
         locations: state.locations.filter((l) => l.id !== id),
         loading: false,
       }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
 }));
@@ -98,9 +115,12 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 // 监听 socket 事件
 socketService.onLocationCreated((location) => {
   const currentLocations = useLocationStore.getState().locations;
-  if (!currentLocations.find(l => l.id === location.id)) {
-    useLocationStore.setState({ locations: [...currentLocations, location] });
-  }
+  const existing = currentLocations.find((l) => l.id === location.id);
+  useLocationStore.setState({
+    locations: existing
+      ? currentLocations.map((l) => (l.id === location.id ? location : l))
+      : [...currentLocations, location],
+  });
 });
 
 socketService.onLocationDeleted(({ id }) => {

@@ -52,6 +52,7 @@ export default function CreateItemScreen() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
+  const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [prefillAttempted, setPrefillAttempted] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -168,10 +169,15 @@ export default function CreateItemScreen() {
       } else {
         await addItem(itemData);
       }
+      setSubmitSucceeded(true);
       setToastVisible(true);
       setTimeout(() => {
         setToastVisible(false);
-        router.back();
+        if (isEdit) {
+          router.back();
+        } else {
+          router.replace('/item/list');
+        }
       }, 1500);
     } catch (error) {
       console.error('Submit error:', error);
@@ -441,15 +447,20 @@ export default function CreateItemScreen() {
 
         </ScrollView>
         <View style={[styles.stickyActionsShell, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
-          <View style={[styles.stickyActionsCard, { backgroundColor: palette.bgElevated, borderColor: palette.border }]}>
-            <FormActions
-              onCancel={() => router.back()}
-              onSubmit={handleSubmit}
-              submitLabel={isEdit ? '保存修改' : '保存'}
-              loading={loading}
-              style={styles.stickyActions}
-            />
-          </View>
+          <FormActions
+            onCancel={() => {
+              if (submitSucceeded) return;
+              if (isEdit) {
+                router.back();
+              } else {
+                router.replace('/item/list');
+              }
+            }}
+            onSubmit={handleSubmit}
+            submitLabel={isEdit ? '保存修改' : '保存'}
+            loading={loading}
+            style={styles.stickyActions}
+          />
         </View>
       </KeyboardAvoidingView>
       {isEdit && params.id && (
@@ -685,15 +696,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  stickyActionsCard: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-    ...shadows.sm,
-  },
   stickyActions: {
-    marginTop: spacing.sm,
+    marginTop: 0,
   },
   pickerOverlay: {
     flex: 1,

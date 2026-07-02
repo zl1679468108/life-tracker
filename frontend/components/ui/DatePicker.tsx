@@ -31,17 +31,39 @@ export function DatePicker({
   const handleClick = () => {
     if (Platform.OS === 'web') {
       setShowNative(true);
-      setTimeout(() => inputRef.current?.showPicker?.(), 100);
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !showNative) return;
+
+    const input = inputRef.current;
+    if (!input) return;
+
+    try {
+      input.showPicker?.();
+      input.focus();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  }, [showNative]);
+
+  const syncNativeValue = (value: string) => {
+    if (mode === 'datetime') {
+      onChange(value ? `${value}:00` : '');
+    } else {
+      onChange(value);
     }
   };
 
   const handleNativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (mode === 'datetime') {
-      onChange(val ? `${val}:00` : '');
-    } else {
-      onChange(val);
-    }
+    syncNativeValue(val);
+  };
+
+  const handleNativeInput = (e: React.FormEvent<HTMLInputElement>) => {
+    syncNativeValue(e.currentTarget.value);
   };
 
   const handleBlur = () => {
@@ -77,23 +99,22 @@ export function DatePicker({
               {displayValue || placeholder || `选择${label}`}
             </Text>
           </TouchableOpacity>
-          {showNative && (
-            <input
-              ref={inputRef}
-              type={mode === 'datetime' ? 'datetime-local' : 'date'}
-              value={nativeValue}
-              onChange={handleNativeChange}
-              onBlur={handleBlur}
-              min={minDate ? minDate.toISOString().slice(0, mode === 'datetime' ? 16 : 10) : undefined}
-              style={{
-                position: 'absolute',
-                opacity: 0,
-                width: 1,
-                height: 1,
-                pointerEvents: 'none',
-              }}
-            />
-          )}
+          <input
+            ref={inputRef}
+            type={mode === 'datetime' ? 'datetime-local' : 'date'}
+            value={nativeValue}
+            onChange={handleNativeChange}
+            onInput={handleNativeInput}
+            onBlur={handleBlur}
+            min={minDate ? minDate.toISOString().slice(0, mode === 'datetime' ? 16 : 10) : undefined}
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              width: 1,
+              height: 1,
+              pointerEvents: 'none',
+            }}
+          />
         </View>
       </View>
     );

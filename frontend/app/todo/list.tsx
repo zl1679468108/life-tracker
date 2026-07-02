@@ -53,9 +53,6 @@ export default function TodoListScreen() {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const pendingCount = todos.filter((t) => !t.completed).length;
-  const completedCount = todos.filter((t) => t.completed).length;
-
   const getPriorityLabel = (p: number) => {
     if (p === 3) return '紧急';
     if (p === 2) return '普通';
@@ -155,12 +152,20 @@ export default function TodoListScreen() {
       <View style={[styles.container, { backgroundColor: palette.bg }]}>
         <View style={[styles.header, { backgroundColor: palette.bg }]}>
           <View style={styles.headerTop}>
-            <View style={styles.headerCopy}>
-              <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>通用列表布局</Text>
-              <Text style={[styles.title, { color: palette.text }]}>待办</Text>
+            <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
+              {(['all', 'pending', 'completed'] as FilterType[]).map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.filterTab, filter === f && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                  onPress={() => setFilter(f)}
+                >
+                  <Text style={[styles.filterText, { color: palette.textMuted }, filter === f && { color: palette.text }]}> 
+                    {f === 'all' ? '全部' : f === 'pending' ? '待完成' : '已完成'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
             <View style={styles.headerActions}>
-              <Text style={[styles.count, { color: palette.textMuted }]}>{pendingCount} 个待完成</Text>
               <TouchableOpacity
                 style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, dragEnabled && { borderColor: palette.orange }]}
                 onPress={() => setDragEnabled(!dragEnabled)}
@@ -194,33 +199,6 @@ export default function TodoListScreen() {
                 <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
               </TouchableOpacity>
             </View>
-          </View>
-          <View style={styles.summaryRow}>
-            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>全部</Text>
-              <Text style={[styles.summaryValue, { color: palette.text }]}>{todos.length}</Text>
-            </View>
-            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>待完成</Text>
-              <Text style={[styles.summaryValue, { color: palette.orange }]}>{pendingCount}</Text>
-            </View>
-            <View style={[styles.summaryPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>已完成</Text>
-              <Text style={[styles.summaryValue, { color: palette.success }]}>{completedCount}</Text>
-            </View>
-          </View>
-          <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            {(['all', 'pending', 'completed'] as FilterType[]).map((f) => (
-              <TouchableOpacity
-                key={f}
-                style={[styles.filterTab, filter === f && { backgroundColor: palette.surface, borderColor: palette.border }]}
-                onPress={() => setFilter(f)}
-              >
-                <Text style={[styles.filterText, { color: palette.textMuted }, filter === f && { color: palette.text }]}>
-                  {f === 'all' ? '全部' : f === 'pending' ? '待完成' : '已完成'}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
           {searchActive && (
             <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
@@ -343,57 +321,17 @@ const styles = StyleSheet.create({
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: fontSize['7xl'],
-    fontWeight: fontWeight.bold,
-  },
-  count: {
-    fontSize: fontSize.base,
-  },
-  summaryRow: {
-    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
     gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  summaryPill: {
-    flex: 1,
-    minHeight: 54,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    justifyContent: 'center',
-  },
-  summaryLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
-  },
-  summaryValue: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
-    fontWeight: fontWeight.bold,
-    marginTop: 2,
   },
   filterTabs: {
+    flex: 1,
     minHeight: 44,
     flexDirection: 'row',
     borderRadius: borderRadius.md,
     borderWidth: 1,
     padding: 4,
-    marginBottom: spacing.lg,
   },
   searchBox: {
     height: 44,

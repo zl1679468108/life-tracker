@@ -40,6 +40,7 @@ export default function CreateTodoScreen() {
   const [completed, setCompleted] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; category?: string; description?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
+  const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [prefillAttempted, setPrefillAttempted] = useState(false);
 
@@ -179,10 +180,15 @@ export default function CreateTodoScreen() {
       } else {
         await addTodo(todoData);
       }
+      setSubmitSucceeded(true);
       setToastVisible(true);
       setTimeout(() => {
         setToastVisible(false);
-        router.back();
+        if (isEdit) {
+          router.back();
+        } else {
+          router.replace('/todo/list');
+        }
       }, 1500);
     } catch (error) {
       console.error('Submit error:', error);
@@ -348,15 +354,20 @@ export default function CreateTodoScreen() {
 
         </ScrollView>
         <View style={[styles.stickyActionsShell, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
-          <View style={[styles.stickyActionsCard, { backgroundColor: palette.bgElevated, borderColor: palette.border }]}>
-            <FormActions
-              onCancel={() => router.back()}
-              onSubmit={handleSubmit}
-              submitLabel={isEdit ? '保存修改' : '保存'}
-              loading={loading}
-              style={styles.stickyActions}
-            />
-          </View>
+          <FormActions
+            onCancel={() => {
+              if (submitSucceeded) return;
+              if (isEdit) {
+                router.back();
+              } else {
+                router.replace('/todo/list');
+              }
+            }}
+            onSubmit={handleSubmit}
+            submitLabel={isEdit ? '保存修改' : '保存'}
+            loading={loading}
+            style={styles.stickyActions}
+          />
         </View>
       </KeyboardAvoidingView>
 
@@ -565,14 +576,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  stickyActionsCard: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-  },
   stickyActions: {
-    marginTop: spacing.sm,
+    marginTop: 0,
   },
   pickerOverlay: {
     flex: 1,

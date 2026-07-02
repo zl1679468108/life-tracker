@@ -211,9 +211,11 @@ export default function LocationManageScreen() {
             <View style={styles.headerCopy}>
               <Text style={[styles.title, { color: palette.text }]}>位置管理</Text>
             </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryValue, { color: palette.text }]}>{locations.length}</Text>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>个位置</Text>
+            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
+              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
+                <Text style={styles.summaryValue}>{locations.length}</Text>
+                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个位置</Text>
+              </Text>
             </View>
           </View>
         </View>
@@ -326,9 +328,10 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   headerCopy: { flex: 1 },
   title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
-  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 72, alignItems: 'flex-start' },
+  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 92, alignItems: 'center', justifyContent: 'center' },
+  summaryText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.xs, marginTop: 2 },
+  summaryLabel: { fontSize: fontSize.xs },
   lmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   lmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   lmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },

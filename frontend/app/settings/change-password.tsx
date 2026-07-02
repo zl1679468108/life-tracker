@@ -121,11 +121,7 @@ export default function ChangePasswordScreen() {
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <AppScreen contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>账号安全</Text>
           <Text style={[styles.title, { color: palette.text }]}>修改密码</Text>
-          <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-            更新登录密码后，当前会话将跳回登录页，方便重新校验身份。
-          </Text>
         </View>
 
         <View style={styles.section}>
@@ -186,21 +182,10 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
-  },
   title: {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: fontWeight.bold,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    lineHeight: 22,
   },
   section: {
     marginBottom: spacing.lg,

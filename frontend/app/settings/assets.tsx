@@ -60,19 +60,9 @@ export default function AssetsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>数据与提醒</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>资产总览</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              汇总当前物品估值、购买成本和折旧情况，帮助你快速判断资产结构。
-            </Text>
-          </View>
-          <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.summaryValue, { color: palette.text }]}>
-              ¥{Math.round(totalValue?.total_current_value || 0).toLocaleString()}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>当前估值</Text>
           </View>
         </View>
       </View>
@@ -204,42 +194,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
-  eyebrow: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: 2,
-  },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.md,
   },
   headerCopy: {
     flex: 1,
   },
   title: {
-    fontSize: fontSize['5xl'],
+    fontSize: fontSize['4xl'],
     fontWeight: fontWeight.bold,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    marginTop: spacing.xs,
-  },
-  summaryBadge: {
-    minWidth: 108,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'flex-start',
-  },
-  summaryValue: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-  },
-  summaryLabel: {
-    fontSize: fontSize.sm,
-    marginTop: 2,
   },
   heroCard: {
     marginHorizontal: spacing.lg,

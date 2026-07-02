@@ -78,9 +78,17 @@ export const useItemStore = create<ItemState>((set) => ({
         ...item,
         images: uploadedImages,
       });
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '创建物品失败');
+      }
       const data = response.data;
       
-      set((state) => ({ items: [data, ...state.items], loading: false }));
+      set((state) => ({
+        items: state.items.find((existing) => existing.id === data.id)
+          ? state.items.map((existing) => (existing.id === data.id ? data : existing))
+          : [data, ...state.items],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -105,7 +113,10 @@ export const useItemStore = create<ItemState>((set) => ({
         }
       }
       
-      await api.items.update(id, { ...updates, images: uploadedImages });
+      const response = await api.items.update(id, { ...updates, images: uploadedImages });
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '更新物品失败');
+      }
       set((state) => ({ 
         items: state.items.map((item) => 
           item.id === id ? { ...item, ...updates, images: uploadedImages } : item
@@ -114,6 +125,7 @@ export const useItemStore = create<ItemState>((set) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   deleteItem: async (id) => {
@@ -148,9 +160,12 @@ export const useItemStore = create<ItemState>((set) => ({
 // 监听 socket 事件
 socketService.onItemCreated((item) => {
   const currentItems = useItemStore.getState().items;
-  if (!currentItems.find(i => i.id === item.id)) {
-    useItemStore.setState({ items: [item, ...currentItems] });
-  }
+  const existing = currentItems.find((i) => i.id === item.id);
+  useItemStore.setState({
+    items: existing
+      ? currentItems.map((i) => (i.id === item.id ? item : i))
+      : [item, ...currentItems],
+  });
 });
 
 socketService.onItemUpdated((item) => {

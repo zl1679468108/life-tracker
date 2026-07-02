@@ -66,16 +66,28 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await api.categories.create(category);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '创建分类失败');
+      }
       const data = response.data;
-      set((state) => ({ categories: [...state.categories, data], loading: false }));
+      set((state) => ({
+        categories: state.categories.find((existing) => existing.id === data.id)
+          ? state.categories.map((existing) => (existing.id === data.id ? data : existing))
+          : [...state.categories, data],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   updateCategory: async (id, updates) => {
     set({ loading: true, error: null });
     try {
       const response = await api.categories.update(id, updates);
+      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '更新分类失败');
+      }
       const data = response.data;
       set((state) => ({
         categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates, ...data } : c)),
@@ -83,18 +95,23 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   deleteCategory: async (id) => {
     set({ loading: true, error: null });
     try {
-      await api.categories.delete(id);
+      const response = await api.categories.delete(id);
+      if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
+        throw new Error(response?.message || '删除分类失败');
+      }
       set((state) => ({
         categories: state.categories.filter((c) => c.id !== id),
         loading: false,
       }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
 }));
@@ -102,9 +119,12 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 // 监听 socket 事件
 socketService.onCategoryCreated((category) => {
   const currentCategories = useCategoryStore.getState().categories;
-  if (!currentCategories.find(c => c.id === category.id)) {
-    useCategoryStore.setState({ categories: [...currentCategories, category] });
-  }
+  const existing = currentCategories.find((c) => c.id === category.id);
+  useCategoryStore.setState({
+    categories: existing
+      ? currentCategories.map((c) => (c.id === category.id ? category : c))
+      : [...currentCategories, category],
+  });
 });
 
 socketService.onCategoryDeleted(({ id }) => {

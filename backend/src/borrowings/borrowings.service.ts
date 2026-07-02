@@ -1,4 +1,4 @@
-import { Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
@@ -69,6 +69,18 @@ export class BorrowingsService {
   }
 
   async create(borrowing: any) {
+    const { data: activeBorrowing, error: activeError } = await this.supabase
+      .from('life_borrowings')
+      .select('id')
+      .eq('item_id', borrowing.item_id)
+      .eq('user_id', borrowing.user_id)
+      .in('status', ['borrowed', 'overdue'])
+      .limit(1)
+      .maybeSingle();
+
+    if (activeError) throw new InternalServerErrorException(activeError.message);
+    if (activeBorrowing) throw new BadRequestException('该物品已有未归还的借用记录');
+
     const { data, error } = await this.supabase
       .from('life_borrowings')
       .insert(borrowing)

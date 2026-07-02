@@ -184,17 +184,9 @@ export default function NotificationsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>数据与提醒</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>通知中心</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              集中查看待办提醒、系统消息和推送事件，并在这里统一管理已读状态。
-            </Text>
-          </View>
-          <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.summaryValue, { color: palette.text }]}>{unreadCount}</Text>
-            <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>未读通知</Text>
           </View>
         </View>
       </View>
@@ -277,21 +269,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { marginBottom: spacing.lg },
-  eyebrow: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, marginBottom: 2 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['5xl'], fontWeight: fontWeight.bold },
-  subtitle: { fontSize: fontSize.base, marginTop: spacing.xs },
-  summaryBadge: {
-    minWidth: 88,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'flex-start',
-  },
-  summaryValue: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.sm, marginTop: 2 },
+  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   segmentWrap: {
     flexDirection: 'row',
     padding: 4,

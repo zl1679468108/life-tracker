@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, TextInput, Modal, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, TextInput, Modal, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../constants/theme';
+import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
 import { useColors } from '../stores/themeStore';
 import { useItemStore } from '../stores/itemStore';
 import { useTodoStore } from '../stores/todoStore';
+import { SafeScreen } from './SafeScreen';
 
 interface GlobalSearchProps {
   visible: boolean;
@@ -91,51 +92,61 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={[styles.overlay, { backgroundColor: palette.scrim }]}>
-        <View style={[styles.modal, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          {/* 搜索框 */}
-          <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border, paddingVertical: Platform.OS === 'web' ? spacing.md : spacing.sm }]}>
-            <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
-            <TextInput
-              style={[styles.searchInput, { color: palette.text }]}
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="搜索物品或待办..."
-              placeholderTextColor={palette.textMuted}
-              autoFocus
-              returnKeyType="search"
-            />
-            {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')}>
-                <MaterialCommunityIcons name="close-circle" size={20} color={palette.textMuted} />
-              </TouchableOpacity>
-            )}
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleClose}>
+      <SafeScreen backgroundColor={palette.bg}>
+        <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+          <View style={styles.header}>
+            <View style={[styles.searchBox, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
+              <TextInput
+                style={[styles.searchInput, { color: palette.text }]}
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder="搜索物品、待办或功能..."
+                placeholderTextColor={palette.textMuted}
+                autoFocus
+                returnKeyType="search"
+              />
+              {searchText.length > 0 ? (
+                <TouchableOpacity onPress={() => setSearchText('')} hitSlop={8}>
+                  <MaterialCommunityIcons name="close-circle" size={20} color={palette.textMuted} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleClose} activeOpacity={0.75}>
+              <Text style={[styles.cancelText, { color: palette.textSecondary }]}>取消</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* 搜索结果 */}
-          <ScrollView style={styles.resultsList} contentContainerStyle={styles.resultsContent}>
-            {searchText.trim() && results.length === 0 ? (
+          <ScrollView style={styles.resultsList} contentContainerStyle={styles.resultsContent} keyboardShouldPersistTaps="handled">
+            {!searchText.trim() ? (
               <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="text-search" size={48} color={palette.textDisabled} />
+                <MaterialCommunityIcons name="text-search" size={46} color={palette.textDisabled} />
+                <Text style={[styles.emptyText, { color: palette.textMuted }]}>搜索物品、待办或工作台功能</Text>
+              </View>
+            ) : results.length === 0 ? (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons name="text-search" size={46} color={palette.textDisabled} />
                 <Text style={[styles.emptyText, { color: palette.textMuted }]}>未找到相关结果</Text>
               </View>
             ) : (
               results.map((result, index) => (
                 <TouchableOpacity
                   key={`${result.type}-${result.data.id}-${index}`}
-                  style={[styles.resultItem, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+                  style={[styles.resultItem, { backgroundColor: palette.surface, borderColor: palette.border }]}
                   onPress={() => handleResultPress(result)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.78}
                 >
-                  <View style={[
-                    styles.resultIcon,
-                    { backgroundColor: result.type === 'item' ? palette.orange : result.type === 'todo' ? palette.success : palette.violet }
-                  ]}>
+                  <View
+                    style={[
+                      styles.resultIcon,
+                      { backgroundColor: result.type === 'item' ? `${palette.orange}18` : result.type === 'todo' ? `${palette.success}18` : `${palette.violet}18` },
+                    ]}
+                  >
                     <MaterialCommunityIcons
                       name={result.type === 'item' ? 'package-variant' : result.type === 'todo' ? 'check-circle-outline' : result.data.icon}
                       size={20}
-                      color="#FFFFFF"
+                      color={result.type === 'item' ? palette.orange : result.type === 'todo' ? palette.success : palette.violet}
                     />
                   </View>
                   <View style={styles.resultContent}>
@@ -146,7 +157,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
                       {result.data.description || (result.type === 'feature' ? result.data.description : '')}
                     </Text>
                   </View>
-                  <View style={[styles.resultBadge, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                  <View style={[styles.resultBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
                     <Text style={[styles.resultBadgeText, { color: result.type === 'item' ? palette.orange : result.type === 'todo' ? palette.success : palette.violet }]}>
                       {result.type === 'item' ? '物品' : result.type === 'todo' ? '待办' : '功能'}
                     </Text>
@@ -155,53 +166,61 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
               ))
             )}
           </ScrollView>
-
-          {/* 关闭按钮 */}
-          <TouchableOpacity style={[styles.closeBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={handleClose}>
-            <Text style={[styles.closeBtnText, { color: palette.textSecondary }]}>关闭</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </SafeScreen>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
   },
-  modal: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    padding: spacing.xl,
-    maxHeight: '80%',
-    ...shadows.lg,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   searchBox: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    minHeight: 52,
+    paddingHorizontal: spacing.md,
   },
   searchInput: {
     flex: 1,
-    fontSize: fontSize.xl,
-    marginLeft: spacing.md,
+    fontSize: fontSize.base,
+    marginLeft: spacing.sm,
     paddingVertical: 0,
   },
+  cancelButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  cancelText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
   resultsList: {
-    maxHeight: 400,
+    flex: 1,
   },
   resultsContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 112,
     gap: spacing.sm,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing['2xl'],
+    justifyContent: 'center',
+    paddingTop: spacing['3xl'],
   },
   emptyText: {
     fontSize: fontSize.base,
@@ -210,7 +229,7 @@ const styles = StyleSheet.create({
   resultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     padding: spacing.md,
   },
@@ -226,11 +245,13 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   resultTitle: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.medium,
   },
   resultDesc: {
     fontSize: fontSize.sm,
+    lineHeight: 18,
     marginTop: 2,
   },
   resultBadge: {
@@ -243,16 +264,5 @@ const styles = StyleSheet.create({
   resultBadgeText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semiBold,
-  },
-  closeBtn: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-  },
-  closeBtnText: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
   },
 });

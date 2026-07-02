@@ -3,6 +3,9 @@ import { Platform } from 'react-native';
 type NetworkStatus = 'online' | 'offline' | 'unknown';
 type NetworkListener = (status: NetworkStatus) => void;
 
+const isTestEnvironment = () =>
+  typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
 class NetworkMonitor {
   private listeners: NetworkListener[] = [];
   private currentStatus: NetworkStatus = 'unknown';
@@ -10,6 +13,12 @@ class NetworkMonitor {
   private started = false;
 
   constructor() {
+    if (isTestEnvironment()) {
+      this.currentStatus = 'online';
+      this.started = true;
+      return;
+    }
+
     this.startMonitoring();
   }
 

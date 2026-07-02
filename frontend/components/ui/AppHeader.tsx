@@ -9,15 +9,18 @@ export type HeaderAction = {
   label: string;
   onPress: () => void;
   tone?: 'default' | 'primary' | 'danger';
+  unreadDot?: boolean;
 };
 
 interface AppHeaderProps {
   title: string;
   actions?: HeaderAction[];
   backAction?: HeaderAction;
+  align?: 'left' | 'center';
+  leftActions?: HeaderAction[];
 }
 
-export function AppHeader({ title, actions = [], backAction }: AppHeaderProps) {
+export function AppHeader({ title, actions = [], backAction, align = 'left', leftActions = [] }: AppHeaderProps) {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
 
@@ -37,17 +40,23 @@ export function AppHeader({ title, actions = [], backAction }: AppHeaderProps) {
         accessibilityLabel={action.label}
       >
         <MaterialCommunityIcons name={action.icon} size={20} color={color} />
+        {action.unreadDot ? <View style={[styles.unreadDot, { backgroundColor: palette.danger, borderColor: palette.surfaceSoft }]} /> : null}
       </TouchableOpacity>
     );
   };
 
+  const leadingActions = backAction ? [backAction] : leftActions;
+  const hasLeading = leadingActions.length > 0;
+
   return (
-    <View style={styles.header}>
-      {backAction && renderAction(backAction, true)}
-      <Text style={[styles.title, { color: palette.text }]} numberOfLines={1}>
+    <View style={[styles.header, align === 'center' && styles.headerCenter]}>
+      <View style={[styles.side, align === 'center' ? styles.sideBalanced : hasLeading ? styles.sideLeft : styles.sideCollapsed]}>
+        {leadingActions.map((action, index) => renderAction(action, Boolean(backAction) && index === 0))}
+      </View>
+      <Text style={[styles.title, align === 'center' ? styles.titleCenter : styles.titleLeft, { color: palette.text }]} numberOfLines={1}>
         {title}
       </Text>
-      <View style={styles.actions}>{actions.map((action) => renderAction(action))}</View>
+      <View style={[styles.side, align === 'center' ? styles.sideBalanced : styles.sideRight]}>{actions.map((action) => renderAction(action))}</View>
     </View>
   );
 }
@@ -57,18 +66,42 @@ const styles = StyleSheet.create({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
     marginBottom: spacing.md,
   },
+  headerCenter: {
+    justifyContent: 'space-between',
+  },
   title: {
-    flex: 1,
     fontSize: 22,
     lineHeight: 30,
     fontWeight: fontWeight.bold,
   },
-  actions: {
+  titleLeft: {
+    flex: 1,
+  },
+  titleCenter: {
+    flex: 1,
+    textAlign: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  side: {
     flexDirection: 'row',
     gap: spacing.sm,
+    alignItems: 'center',
+  },
+  sideBalanced: {
+    minWidth: 44,
+  },
+  sideLeft: {
+    marginRight: spacing.sm,
+  },
+  sideCollapsed: {
+    width: 0,
+    marginRight: 0,
+  },
+  sideRight: {
+    minWidth: 44,
+    justifyContent: 'flex-end',
   },
   iconButton: {
     width: 44,
@@ -77,8 +110,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   backButton: {
     marginRight: spacing.xs,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
   },
 });

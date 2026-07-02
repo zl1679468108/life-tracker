@@ -24,7 +24,6 @@ export default function WorkbenchScreen() {
   const core: Entry[] = [
     { title: '物品', desc: '列表 / 新增 / 编辑', icon: 'package-variant', route: '/item/list', color: palette.orange },
     { title: '待办', desc: '筛选 / 完成 / 编辑', icon: 'check-circle-outline', route: '/todo/list', color: palette.violet },
-    { title: '消息', desc: '对话与共享协作', icon: 'message-text-outline', route: '/messages', color: palette.success },
   ];
 
   const groups: Array<{ title: string; entries: Entry[] }> = [
@@ -61,25 +60,12 @@ export default function WorkbenchScreen() {
     <AppScreen>
       <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
 
-      <View style={styles.heroBlock}>
-        <View style={styles.heroRow}>
-          <View style={styles.heroCopy}>
-            <Text style={[styles.heroTitle, { color: palette.text }]}>全量入口</Text>
-          </View>
-          <View style={[styles.heroBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.heroBadgeValue, { color: palette.text }]}>{core.length + groups.reduce((sum, group) => sum + group.entries.length, 0)}</Text>
-            <Text style={[styles.heroBadgeLabel, { color: palette.textMuted }]}>功能入口</Text>
-          </View>
-        </View>
-      </View>
-
       <View style={styles.coreGrid}>
         {core.map((entry, index) => (
           <TouchableOpacity
             key={entry.title}
             style={[
               styles.coreCard,
-              index === core.length - 1 && core.length % 2 === 1 && styles.coreCardWide,
               { backgroundColor: palette.surface, borderColor: palette.border },
             ]}
             onPress={() => go(entry.route)}
@@ -125,44 +111,11 @@ export default function WorkbenchScreen() {
 }
 
 const styles = StyleSheet.create({
-  heroBlock: {
-    marginBottom: spacing.sm,
-  },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    fontSize: 26,
-    lineHeight: 30,
-    fontWeight: fontWeight.bold,
-  },
-  heroBadge: {
-    minWidth: 72,
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 8,
-  },
-  heroBadgeValue: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
-  },
-  heroBadgeLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 2,
-  },
   coreGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
   coreCard: {
     width: '48.6%',
@@ -172,9 +125,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     justifyContent: 'flex-start',
-  },
-  coreCardWide: {
-    width: '100%',
   },
   coreCardTop: {
     flexDirection: 'row',
@@ -203,7 +153,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   group: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   groupHeader: {
     flexDirection: 'row',

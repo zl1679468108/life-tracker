@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Animated,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,8 +28,6 @@ export default function HomeScreen() {
   const { getUnreadCount, loadReadIds, loaded, pushTrigger, refreshNotifications } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const shakeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const pendingTodos = todos.filter((todo) => !todo.completed).length;
   const completedTodos = todos.filter((todo) => todo.completed).length;
@@ -44,9 +41,6 @@ export default function HomeScreen() {
     { title: '添加待办', icon: 'check', color: palette.violet, route: '/todo/create' as const, hint: '安排今天事项' },
   ];
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
-
   useEffect(() => {
     fetchItems();
     fetchTodos();
@@ -59,28 +53,6 @@ export default function HomeScreen() {
       refreshNotifications();
     }
   }, [loaded, items.length, todos.length, pushTrigger]);
-
-  useEffect(() => {
-    if (loaded && unreadCount > 0) {
-      shakeAnimRef.current?.stop();
-      shakeAnim.setValue(0);
-      const shake = Animated.sequence([
-        Animated.timing(shakeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: -1, duration: 150, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      ]);
-      shakeAnimRef.current = Animated.loop(Animated.sequence([shake, Animated.delay(5000)]));
-      shakeAnimRef.current.start();
-    } else {
-      shakeAnimRef.current?.stop();
-      shakeAnim.setValue(0);
-    }
-  }, [loaded, unreadCount, pushTrigger]);
-
-  const rotate = shakeAnim.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: ['-18deg', '0deg', '18deg'],
-  });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -105,35 +77,9 @@ export default function HomeScreen() {
           title="今日总览"
           actions={[
             { icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) },
+            { icon: 'bell-outline', label: '通知中心', onPress: () => router.push('/settings/notifications'), unreadDot: unreadCount > 0 },
           ]}
         />
-
-        <View style={styles.greetingBlock}>
-          <View style={styles.greetingCopy}>
-            <View style={styles.greetingRow}>
-              <View style={styles.greetingText}>
-                <Text style={[styles.greetingTitle, { color: palette.text }]}>{greeting}</Text>
-                <Text style={[styles.greetingDesc, { color: palette.textMuted }]}>今天也要加油哦</Text>
-              </View>
-              <View style={[styles.greetingBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                <Text style={[styles.greetingBadgeValue, { color: palette.orange }]}>{pendingTodos}</Text>
-                <Text style={[styles.greetingBadgeLabel, { color: palette.textMuted }]}>待完成</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-            activeOpacity={0.78}
-            onPress={() => router.push('/settings/notifications')}
-            accessibilityRole="button"
-            accessibilityLabel="通知中心"
-          >
-            <Animated.View style={{ transform: [{ rotate }] }}>
-              <MaterialCommunityIcons name="bell-outline" size={22} color={palette.textSecondary} />
-            </Animated.View>
-            {unreadCount > 0 && <View style={[styles.unreadDot, { backgroundColor: palette.danger }]} />}
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.stats}>
           <Stat label="物品总数" value={items.length} palette={palette} meta="管理中" onPress={() => router.push('/item/list')} />
@@ -269,69 +215,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xl,
     paddingBottom: 112,
-  },
-  greetingBlock: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  greetingCopy: {
-    flex: 1,
-  },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  greetingText: {
-    flex: 1,
-  },
-  greetingTitle: {
-    fontSize: 26,
-    lineHeight: 30,
-    fontWeight: fontWeight.bold,
-  },
-  greetingDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 1,
-  },
-  greetingBadge: {
-    minWidth: 70,
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 8,
-  },
-  greetingBadgeValue: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 24,
-    fontWeight: fontWeight.bold,
-  },
-  greetingBadgeLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 9,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   stats: {
     flexDirection: 'row',
@@ -400,8 +285,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   section: {
-    marginTop: 2,
-    marginBottom: spacing.md,
+    marginTop: 0,
+    marginBottom: spacing.lg,
   },
   sectionHead: {
     flexDirection: 'row',

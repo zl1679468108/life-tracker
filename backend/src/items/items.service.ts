@@ -4,12 +4,45 @@ import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
 import { convertTimesToBeijing } from '../common/utils/time';
 
+const OPTIONAL_ITEM_COLUMNS = new Set([
+  'barcode',
+  'expiry_date',
+  'reminder_enabled',
+  'reminder_days_before',
+  'purchase_price',
+  'purchase_date',
+  'current_value',
+  'currency',
+  'depreciation_rate',
+  'ai_suggestions',
+  'ai_confidence',
+  'is_borrowed',
+  'borrowed_by',
+]);
+
 @Injectable()
 export class ItemsService {
   constructor(
     @Inject(SUPABASE_CLIENT) private supabase: SupabaseClient,
     private readonly eventsGateway: EventsGateway,
   ) {}
+
+  private getMissingColumn(error: { message?: string } | null | undefined, table: string) {
+    const message = error?.message || '';
+    const match = message.match(new RegExp(`Could not find the '([^']+)' column of '${table}' in the schema cache`));
+    return match?.[1] || null;
+  }
+
+  private stripUnsupportedOptionalColumn(payload: Record<string, any>, error: { message?: string } | null | undefined, table: string) {
+    const missingColumn = this.getMissingColumn(error, table);
+    if (!missingColumn || !OPTIONAL_ITEM_COLUMNS.has(missingColumn) || !(missingColumn in payload)) {
+      return null;
+    }
+
+    const nextPayload = { ...payload };
+    delete nextPayload[missingColumn];
+    return nextPayload;
+  }
 
   async findAll(userId: string) {
     const { data, error } = await this.supabase
@@ -37,11 +70,22 @@ export class ItemsService {
   }
 
   async create(item: any) {
-    const { data, error } = await this.supabase
+    let { data, error } = await this.supabase
       .from('life_items')
       .insert(item)
       .select()
       .single();
+
+    if (error) {
+      const fallbackItem = this.stripUnsupportedOptionalColumn(item, error, 'life_items');
+      if (fallbackItem) {
+        ({ data, error } = await this.supabase
+          .from('life_items')
+          .insert(fallbackItem)
+          .select()
+          .single());
+      }
+    }
 
     if (error) throw new InternalServerErrorException(error.message);
     this.eventsGateway.emitItemCreated(item.user_id, convertTimesToBeijing(data));
@@ -49,12 +93,24 @@ export class ItemsService {
   }
 
   async update(id: string, updates: any) {
-    const { data, error } = await this.supabase
+    let { data, error } = await this.supabase
       .from('life_items')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
+
+    if (error) {
+      const fallbackUpdates = this.stripUnsupportedOptionalColumn(updates, error, 'life_items');
+      if (fallbackUpdates) {
+        ({ data, error } = await this.supabase
+          .from('life_items')
+          .update({ ...fallbackUpdates, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single());
+      }
+    }
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');

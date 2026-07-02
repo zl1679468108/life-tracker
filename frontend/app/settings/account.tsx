@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -174,7 +174,6 @@ export default function AccountScreen() {
 
   const profileName = username || t('settings.profile');
   const profileEmail = email || t('auth.login');
-  const userCode = useMemo(() => (user?.id ? `ID ${user.id.slice(0, 6)}` : 'ID ----'), [user?.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
@@ -210,46 +209,41 @@ export default function AccountScreen() {
               <Text style={[styles.heroEmail, { color: palette.textMuted }]} numberOfLines={1}>
                 {profileEmail}
               </Text>
-              <View style={[styles.heroBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                <Text style={[styles.heroBadgeText, { color: palette.orange }]}>{userCode}</Text>
-              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>基础资料</Text>
-          <InfoField
-            label={t('settings.username')}
-            value={username}
-            onChangeText={setUsername}
-            placeholder={t('settings.username')}
-            editable={editing}
-            palette={palette}
-          />
-          <InfoField
-            label={t('settings.email')}
-            value={email}
-            onChangeText={setEmail}
-            placeholder={t('settings.email')}
-            editable={editing}
-            palette={palette}
-            keyboardType="email-address"
-          />
-        </View>
+        {editing && (
+          <View style={styles.section}>
+            <InfoField
+              label={t('settings.username')}
+              value={username}
+              onChangeText={setUsername}
+              placeholder={t('settings.username')}
+              editable={editing}
+              palette={palette}
+            />
+            <InfoField
+              label={t('settings.email')}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('settings.email')}
+              editable={editing}
+              palette={palette}
+              keyboardType="email-address"
+            />
+          </View>
+        )}
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>账号操作</Text>
           <AppListRow
             title={t('settings.changePassword')}
-            description="更新登录密码和安全凭据"
             icon="lock-outline"
             accent={palette.violet}
             onPress={() => router.push('/settings/change-password')}
           />
           <AppListRow
             title={t('auth.logout')}
-            description="退出当前账号并返回登录页"
             icon="logout"
             accent={palette.danger}
             onPress={handleLogout}
@@ -354,27 +348,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 2,
   },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-  },
-  heroBadgeText: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
-    fontWeight: fontWeight.semiBold,
-  },
   section: {
     marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.xs,
   },
   fieldCard: {
     borderWidth: 1,

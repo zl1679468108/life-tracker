@@ -54,7 +54,7 @@ export default function SettingsScreen() {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
-  const { user, signOut } = useAuthStore();
+  const { user } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, initCachedAvatar } = useProfileStore();
   const { status, lastSyncTime, syncAll } = useSyncStore();
   const [toastVisible, setToastVisible] = useState(false);
@@ -63,7 +63,6 @@ export default function SettingsScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const profileName = profile?.display_name || user?.email?.split('@')[0] || t('settings.profile');
   const profileEmail = user?.email || t('auth.login');
-  const profileId = user?.id ? `ID ${user.id.slice(0, 4)}` : 'ID ----';
   const appVersion = appConfig.expo.version;
 
   useEffect(() => {
@@ -104,31 +103,9 @@ export default function SettingsScreen() {
     }
   }, [status, syncAll, showToast, t]);
 
-  const handleSignOut = () => {
-    showAlert(t('auth.logout'), t('auth.logoutConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('auth.logout'),
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          router.replace('/auth/login');
-        },
-      },
-    ]);
-  };
-
   const go = (route: string) => router.push(route as never);
 
   const sections: Array<{ title: string; entries: MineEntry[] }> = [
-    {
-      title: '账号与安全',
-      entries: [
-        { title: '账号管理', desc: user?.email || '管理头像、昵称和账号资料', icon: 'account-circle-outline', route: '/settings/account', tone: 'orange' },
-        { title: '修改密码', desc: '更新登录密码和安全凭据', icon: 'lock-outline', route: '/settings/change-password', tone: 'violet' },
-        { title: '退出登录', desc: '退出当前账号并返回登录页', icon: 'logout', onPress: handleSignOut, tone: 'danger' },
-      ],
-    },
     {
       title: '偏好设置',
       entries: [
@@ -176,14 +153,9 @@ export default function SettingsScreen() {
           <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
             {profileName}
           </Text>
-          <View style={styles.profileMetaRow}>
-            <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
-              {profileEmail}
-            </Text>
-            <View style={[styles.profileBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.profileBadgeText, { color: palette.orange }]}>{profileId}</Text>
-            </View>
-          </View>
+          <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
+            {profileEmail}
+          </Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
       </TouchableOpacity>
@@ -216,7 +188,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   avatarImage: {
     width: 52,
@@ -246,31 +218,14 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   profileMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
     marginTop: 4,
   },
   profileEmail: {
-    flex: 1,
     fontSize: fontSize.sm,
     lineHeight: 18,
   },
-  profileBadge: {
-    minHeight: 24,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileBadgeText: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
-    fontWeight: fontWeight.semiBold,
-  },
   section: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
     fontSize: fontSize.base,

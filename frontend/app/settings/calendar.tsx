@@ -1,19 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { CalendarDay } from '../../types';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CALENDAR_WIDTH = SCREEN_WIDTH - spacing.lg * 2;
-const DAY_SIZE = (CALENDAR_WIDTH - spacing.md * 2) / 7;
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const PRIORITY_COLORS: Record<number, string> = {
   1: '#10A66E',
   2: '#D89400',
   3: '#E84A5F',
+};
+
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export default function CalendarScreen() {
@@ -57,7 +61,7 @@ export default function CalendarScreen() {
     for (let i = startDayOfWeek - 1; i >= 0; i -= 1) {
       const date = new Date(firstDay);
       date.setDate(date.getDate() - i - 1);
-      cells.push({ date: date.toISOString().split('T')[0], day: date.getDate(), isCurrentMonth: false });
+      cells.push({ date: formatLocalDate(date), day: date.getDate(), isCurrentMonth: false });
     }
 
     for (let day = 1; day <= totalDays; day += 1) {
@@ -69,7 +73,7 @@ export default function CalendarScreen() {
     if (remaining < 7) {
       for (let i = 1; i <= remaining; i += 1) {
         const date = new Date(currentYear, currentMonth, i);
-        cells.push({ date: date.toISOString().split('T')[0], day: date.getDate(), isCurrentMonth: false });
+        cells.push({ date: formatLocalDate(date), day: date.getDate(), isCurrentMonth: false });
       }
     }
 
@@ -98,23 +102,20 @@ export default function CalendarScreen() {
   const selectedDayData = selectedDate ? dayMap[selectedDate] : null;
   const selectedTodoCount = selectedDayData?.todos?.length || 0;
   const selectedEventCount = selectedDayData?.events?.length || 0;
+  const calendarWeeks = useMemo(() => {
+    const weeks: typeof calendarGrid[] = [];
+    for (let index = 0; index < calendarGrid.length; index += 7) {
+      weeks.push(calendarGrid.slice(index, index + 7));
+    }
+    return weeks;
+  }, [calendarGrid]);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={[styles.eyebrow, { color: palette.textSecondary }]}>生活记录</Text>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: palette.text }]}>日历视图</Text>
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>
-              以月视图查看待办截止日期和提醒事件，快速定位今天与即将发生的记录。
-            </Text>
-          </View>
-          <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.summaryValue, { color: palette.text }]}>
-              {selectedTodoCount + selectedEventCount}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>当日事项</Text>
           </View>
         </View>
       </View>
@@ -140,14 +141,14 @@ export default function CalendarScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.calendarCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <View style={[styles.calendarCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
         <View style={styles.weekdayRow}>
           {WEEKDAYS.map((weekday, index) => (
             <Text
               key={weekday}
               style={[
                 styles.weekdayText,
-                { color: index >= 5 ? palette.danger : palette.textMuted, width: DAY_SIZE },
+                { color: index >= 5 ? palette.danger : palette.textMuted },
               ]}
             >
               {weekday}
@@ -156,51 +157,53 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.grid}>
-          {calendarGrid.map((cell) => {
-            const dayData = dayMap[cell.date];
-            const isToday = cell.date === today;
-            const isSelected = cell.date === selectedDate;
-            const hasTodos = Boolean(dayData?.todos?.length);
-            const hasEvents = Boolean(dayData?.events?.length);
+          {calendarWeeks.map((week, weekIndex) => (
+            <View key={`week-${weekIndex}`} style={styles.weekRow}>
+              {week.map((cell) => {
+                const dayData = dayMap[cell.date];
+                const isToday = cell.date === today;
+                const isSelected = cell.date === selectedDate;
+                const hasTodos = Boolean(dayData?.todos?.length);
+                const hasEvents = Boolean(dayData?.events?.length);
 
-            return (
-              <TouchableOpacity
-                key={cell.date}
-                style={[
-                  styles.dayCell,
-                  {
-                    width: DAY_SIZE,
-                    height: DAY_SIZE + 8,
-                    backgroundColor: isSelected ? '#FFF4EC' : 'transparent',
-                    borderColor: isSelected ? palette.orange : 'transparent',
-                  },
-                ]}
-                onPress={() => setSelectedDate(cell.date)}
-                activeOpacity={0.82}
-              >
-                <Text
-                  style={[
-                    styles.dayText,
-                    {
-                      color: cell.isCurrentMonth ? palette.text : palette.textDisabled,
-                      fontWeight: isToday ? fontWeight.bold : fontWeight.medium,
-                    },
-                  ]}
-                >
-                  {cell.day}
-                </Text>
+                return (
+                  <TouchableOpacity
+                    key={cell.date}
+                    style={[
+                      styles.dayCell,
+                      {
+                        backgroundColor: isSelected ? '#FFF4EC' : 'transparent',
+                        borderColor: isSelected ? palette.orange : 'transparent',
+                      },
+                    ]}
+                    onPress={() => setSelectedDate(cell.date)}
+                    activeOpacity={0.82}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        {
+                          color: cell.isCurrentMonth ? palette.text : palette.textDisabled,
+                          fontWeight: isToday ? fontWeight.bold : fontWeight.medium,
+                        },
+                      ]}
+                    >
+                      {cell.day}
+                    </Text>
 
-                {(hasTodos || hasEvents) && (
-                  <View style={styles.dotRow}>
-                    {hasTodos && <View style={[styles.dot, { backgroundColor: palette.orange }]} />}
-                    {hasEvents && <View style={[styles.dot, { backgroundColor: palette.violet }]} />}
-                  </View>
-                )}
+                    {(hasTodos || hasEvents) && (
+                      <View style={styles.dotRow}>
+                        {hasTodos && <View style={[styles.dot, { backgroundColor: palette.orange }]} />}
+                        {hasEvents && <View style={[styles.dot, { backgroundColor: palette.violet }]} />}
+                      </View>
+                    )}
 
-                {isToday && <View style={[styles.todayIndicator, { backgroundColor: palette.orange }]} />}
-              </TouchableOpacity>
-            );
-          })}
+                    {isToday && <View style={[styles.todayIndicator, { backgroundColor: palette.orange }]} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
       </View>
 
@@ -274,21 +277,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   header: { marginBottom: spacing.lg },
-  eyebrow: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, marginBottom: 2 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['5xl'], fontWeight: fontWeight.bold },
-  subtitle: { fontSize: fontSize.base, marginTop: spacing.xs },
-  summaryBadge: {
-    minWidth: 88,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'flex-start',
-  },
-  summaryValue: { fontSize: fontSize['3xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.sm, marginTop: 2 },
+  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   toolbarCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -318,9 +309,12 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   weekdayRow: { flexDirection: 'row', marginBottom: spacing.sm },
-  weekdayText: { fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  weekdayText: { flex: 1, fontSize: fontSize.sm, fontWeight: fontWeight.semiBold, textAlign: 'center' },
+  grid: { gap: 4 },
+  weekRow: { flexDirection: 'row' },
   dayCell: {
+    flex: 1,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

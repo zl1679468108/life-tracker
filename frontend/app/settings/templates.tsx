@@ -80,22 +80,10 @@ export default function TemplatesScreen() {
             <View style={styles.headerCopy}>
               <Text style={[styles.title, { color: palette.text }]}>模板管理</Text>
             </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryValue, { color: palette.text }]}>{templates.length}</Text>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>个模板</Text>
-            </View>
-          </View>
-          <View style={styles.metricsRow}>
-            <View style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.metricLabel, { color: palette.textMuted }]}>物品模板</Text>
-              <Text style={[styles.metricValue, { color: palette.text }]}>
-                {templates.filter((t) => t.template_type === 'item').length}
-              </Text>
-            </View>
-            <View style={[styles.metricCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.metricLabel, { color: palette.textMuted }]}>待办模板</Text>
-              <Text style={[styles.metricValue, { color: palette.text }]}>
-                {templates.filter((t) => t.template_type === 'todo').length}
+            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
+              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
+                <Text style={styles.summaryValue}>{templates.length}</Text>
+                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个模板</Text>
               </Text>
             </View>
           </View>
@@ -165,18 +153,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize['4xl'],
     fontWeight: fontWeight.bold,
   },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
   summaryBadge: {
     borderRadius: borderRadius.md,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    minWidth: 72,
-    alignItems: 'flex-start',
+    minWidth: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
   },
   summaryValue: {
     fontSize: fontSize['2xl'],
@@ -184,22 +172,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: fontSize.xs,
-    marginTop: 2,
-  },
-  metricCard: {
-    flex: 1,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  metricLabel: {
-    fontSize: fontSize.xs,
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.semiBold,
   },
   filterTabs: {
     flexDirection: 'row',

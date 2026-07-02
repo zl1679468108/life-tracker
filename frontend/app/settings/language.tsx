@@ -14,9 +14,9 @@ export default function LanguageScreen() {
   const { t } = useTranslation();
   const currentLanguage = i18n.getLanguage();
 
-  const languages: { code: Language; name: string; nativeName: string; note: string }[] = [
-    { code: 'zh-CN', name: 'Chinese', nativeName: t('settings.languageZh'), note: '默认用于中文生活管理场景' },
-    { code: 'en', name: 'English', nativeName: t('settings.languageEn'), note: '适合英文界面与跨语种记录' },
+  const languages: { code: Language; name: string; nativeName: string }[] = [
+    { code: 'zh-CN', name: 'Chinese', nativeName: t('settings.languageZh') },
+    { code: 'en', name: 'English', nativeName: t('settings.languageEn') },
   ];
 
   const handleLanguageChange = async (language: Language) => {
@@ -26,18 +26,6 @@ export default function LanguageScreen() {
 
   return (
     <AppScreen contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: palette.text }]}>界面语言</Text>
-          </View>
-          <View style={[styles.badge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            <Text style={[styles.badgeValue, { color: palette.text }]}>{currentLanguage === 'zh-CN' ? '中文' : 'EN'}</Text>
-            <Text style={[styles.badgeLabel, { color: palette.textMuted }]}>当前语言</Text>
-          </View>
-        </View>
-      </View>
-
       <View style={styles.section}>
         {languages.map((lang) => {
           const selected = currentLanguage === lang.code;
@@ -62,7 +50,6 @@ export default function LanguageScreen() {
               <View style={styles.languageCopy}>
                 <Text style={[styles.languageName, { color: palette.text }]}>{lang.nativeName}</Text>
                 <Text style={[styles.languageMeta, { color: palette.textMuted }]}>{lang.name}</Text>
-                <Text style={[styles.languageNote, { color: palette.textSecondary }]}>{lang.note}</Text>
               </View>
               {selected ? (
                 <View style={[styles.checkWrap, { backgroundColor: palette.orange }]}>
@@ -83,48 +70,15 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 96,
   },
-  header: {
-    marginBottom: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSize['4xl'],
-    lineHeight: 30,
-    fontWeight: fontWeight.bold,
-  },
-  badge: {
-    minWidth: 76,
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  badgeValue: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    fontWeight: fontWeight.semiBold,
-  },
-  badgeLabel: {
-    fontSize: fontSize.xs,
-    lineHeight: 16,
-    marginTop: 2,
-  },
   section: {
     marginBottom: spacing.lg,
   },
   languageCard: {
-    minHeight: 72,
+    minHeight: 58,
     borderWidth: 1,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -153,11 +107,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   languageMeta: {
-    fontSize: fontSize.xs,
-    lineHeight: 16,
-    marginTop: 2,
-  },
-  languageNote: {
     fontSize: fontSize.xs,
     lineHeight: 16,
     marginTop: 2,

@@ -26,6 +26,7 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   const router = useRouter();
+  const navigation = useNavigation();
   const segments = useSegments();
   const { user, loading, init } = useAuthStore();
   const { isDark } = useTheme();
@@ -139,7 +140,16 @@ export default function RootLayout() {
     headerStyle: { backgroundColor: colors.white, elevation: 0, shadowOpacity: 0 },
     headerTitleStyle: { fontWeight: '600' as const, fontSize: 17, color: colors.gray[900] },
     headerLeft: () => (
-      <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity
+        onPress={() => {
+          if (navigation.canGoBack()) {
+            router.back();
+            return;
+          }
+          router.replace('/');
+        }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <MaterialCommunityIcons name="chevron-left" size={24} color={colors.gray[800]} />
       </TouchableOpacity>
     ),

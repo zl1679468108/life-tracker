@@ -61,7 +61,7 @@ export default function CategoryManageScreen() {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
-  const { categories, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
+  const { categories, fetchCategories, addCategory, updateCategory, deleteCategory, loading } = useCategoryStore();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('tag');
@@ -97,18 +97,23 @@ export default function CategoryManageScreen() {
   const todoCategoryTree = buildCategoryTree(customTodoCategories);
 
   const handleAdd = async () => {
+    if (loading) return;
     if (!newName.trim()) {
       showAlert(t('common.error'), t('categories.nameRequired'));
       return;
     }
-    await addCategory({ name: newName.trim(), type: newType, icon: newIcon, color: newColor, parent_id: newParentId });
-    setNewName('');
-    setNewIcon('tag');
-    setNewType('item');
-    setNewColor(colors.success);
-    setNewParentId(undefined);
-    setShowAdd(false);
-    fetchCategories(undefined, true);
+    try {
+      await addCategory({ name: newName.trim(), type: newType, icon: newIcon, color: newColor, parent_id: newParentId });
+      setNewName('');
+      setNewIcon('tag');
+      setNewType('item');
+      setNewColor(colors.success);
+      setNewParentId(undefined);
+      setShowAdd(false);
+      await fetchCategories(undefined, true);
+    } catch (error) {
+      showAlert(t('common.error'), error instanceof Error ? error.message : '创建分类失败');
+    }
   };
 
   const handleStartEdit = (cat: typeof customItemCategories[0]) => {
@@ -126,25 +131,34 @@ export default function CategoryManageScreen() {
   };
 
   const handleSaveEdit = async () => {
+    if (loading) return;
     if (!editName.trim()) {
       showAlert(t('common.error'), t('categories.nameRequired'));
       return;
     }
     if (!editingId) return;
-    await updateCategory(editingId, { name: editName.trim(), icon: editIcon, color: editColor });
-    setEditingId(null);
-    setEditName('');
-    setEditIcon('');
-    setEditColor('');
-    fetchCategories(undefined, true);
+    try {
+      await updateCategory(editingId, { name: editName.trim(), icon: editIcon, color: editColor });
+      setEditingId(null);
+      setEditName('');
+      setEditIcon('');
+      setEditColor('');
+      await fetchCategories(undefined, true);
+    } catch (error) {
+      showAlert(t('common.error'), error instanceof Error ? error.message : '更新分类失败');
+    }
   };
 
   const handleDelete = (id: string, name: string) => {
     showAlert(t('categories.deleteConfirm'), `${name}`, [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: async () => {
-        await deleteCategory(id);
-        await fetchCategories(undefined, true);
+        try {
+          await deleteCategory(id);
+          await fetchCategories(undefined, true);
+        } catch (error) {
+          showAlert(t('common.error'), error instanceof Error ? error.message : '删除分类失败');
+        }
       }},
     ]);
   };
@@ -267,9 +281,11 @@ export default function CategoryManageScreen() {
             <View style={styles.headerCopy}>
               <Text style={[styles.title, { color: palette.text }]}>分类管理</Text>
             </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.summaryValue, { color: palette.text }]}>{categories.length}</Text>
-              <Text style={[styles.summaryLabel, { color: palette.textMuted }]}>个分类</Text>
+            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
+              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
+                <Text style={styles.summaryValue}>{categories.length}</Text>
+                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个分类</Text>
+              </Text>
             </View>
           </View>
         </View>
@@ -353,7 +369,7 @@ export default function CategoryManageScreen() {
                   </Text>
                 </View>
               )}
-              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} />
+              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} loading={loading} />
             </View>
           )}
 
@@ -429,9 +445,10 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   headerCopy: { flex: 1 },
   title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
-  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 72, alignItems: 'flex-start' },
+  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 92, alignItems: 'center', justifyContent: 'center' },
+  summaryText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.xs, marginTop: 2 },
+  summaryLabel: { fontSize: fontSize.xs },
   cmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   cmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },

@@ -139,20 +139,7 @@ jest.mock('../lib/upload', () => ({
 }));
 
 jest.mock('../lib/socket', () => ({
-  socketService: {
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    onItemCreated: jest.fn(),
-    onItemUpdated: jest.fn(),
-    onItemDeleted: jest.fn(),
-    onTodoCreated: jest.fn(),
-    onTodoUpdated: jest.fn(),
-    onTodoDeleted: jest.fn(),
-    onCategoryCreated: jest.fn(),
-    onCategoryDeleted: jest.fn(),
-    onLocationCreated: jest.fn(),
-    onLocationDeleted: jest.fn(),
-  },
+  socketService: require('../__mocks__/socketMock').socketService,
 }));
 
 jest.mock('../lib/token', () => ({
