@@ -47,8 +47,23 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
         const reminderKey = `todo-${todo.id}-${todo.reminder_date}`;
         if (this.sentReminders.has(reminderKey)) continue;
 
+        const log = await this.recordReminder({
+          reminderKey,
+          resourceType: 'todo',
+          resourceId: todo.id,
+          reminderType: 'due_date',
+          userId: todo.user_id,
+        });
+        if (!log) continue;
+
         this.sentReminders.add(reminderKey);
-        this.eventsGateway.emitReminderFired(todo.user_id, todo);
+        this.eventsGateway.emitReminderFired(todo.user_id, {
+          ...todo,
+          reminder_log_id: log.id,
+          reminder_key: reminderKey,
+          reminder_type: 'due_date',
+          resource_type: 'todo',
+        });
         this.logger.log(`Reminder fired for todo: ${todo.title}`);
       }
     }
@@ -73,9 +88,21 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
           const reminderKey = `item-${item.id}-${item.expiry_date}`;
           if (this.sentReminders.has(reminderKey)) continue;
 
+          const log = await this.recordReminder({
+            reminderKey,
+            resourceType: 'item',
+            resourceId: item.id,
+            reminderType: 'expiry',
+            userId: item.user_id,
+          });
+          if (!log) continue;
+
           this.sentReminders.add(reminderKey);
           this.eventsGateway.emitReminderFired(item.user_id, {
             ...item,
+            reminder_log_id: log.id,
+            reminder_key: reminderKey,
+            resource_type: 'item',
             reminder_type: 'expiry',
             days_remaining: Math.ceil((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
           });
@@ -88,5 +115,56 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
     if (now.getMinutes() === 0) {
       this.sentReminders.clear();
     }
+  }
+
+  private async recordReminder({
+    reminderKey,
+    resourceType,
+    resourceId,
+    reminderType,
+    userId,
+  }: {
+    reminderKey: string;
+    resourceType: 'item' | 'todo';
+    resourceId: string;
+    reminderType: 'expiry' | 'due_date' | 'custom';
+    userId: string;
+  }) {
+    const { data: existing, error: existingError } = await this.supabase
+      .from('life_reminder_logs')
+      .select('id')
+      .eq('reminder_key', reminderKey)
+      .maybeSingle();
+
+    if (existingError) {
+      this.logger.error(`Failed to check reminder log ${reminderKey}:`, existingError);
+      return null;
+    }
+    if (existing) {
+      this.sentReminders.add(reminderKey);
+      return null;
+    }
+
+    const { data, error } = await this.supabase
+      .from('life_reminder_logs')
+      .insert({
+        reminder_key: reminderKey,
+        resource_type: resourceType,
+        resource_id: resourceId,
+        reminder_type: reminderType,
+        user_id: userId,
+      })
+      .select('id, sent_at')
+      .single();
+
+    if (error) {
+      if (error.code !== '23505') {
+        this.logger.error(`Failed to insert reminder log ${reminderKey}:`, error);
+      }
+      this.sentReminders.add(reminderKey);
+      return null;
+    }
+
+    return data;
   }
 }

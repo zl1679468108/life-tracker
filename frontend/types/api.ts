@@ -21,6 +21,11 @@ export interface CreateItemRequest {
   category_id?: string;
   images?: string[];
   barcode?: string;
+  purchase_price?: number;
+  purchase_date?: string;
+  current_value?: number;
+  currency?: string;
+  depreciation_rate?: number;
 }
 
 export interface UpdateItemRequest {
@@ -33,6 +38,11 @@ export interface UpdateItemRequest {
   expiry_date?: string;
   reminder_enabled?: boolean;
   reminder_days_before?: number;
+  purchase_price?: number;
+  purchase_date?: string;
+  current_value?: number;
+  currency?: string;
+  depreciation_rate?: number;
 }
 
 export interface CreateTodoRequest {

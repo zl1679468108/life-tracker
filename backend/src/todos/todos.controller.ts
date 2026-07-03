@@ -19,8 +19,8 @@ export class TodosController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.todosService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.todosService.findOne(id, user.id);
   }
 
   @Post()
@@ -29,12 +29,12 @@ export class TodosController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.todosService.update(id, body);
+  async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+    return this.todosService.update(id, body, user.id);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.todosService.remove(id);
+  async remove(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.todosService.remove(id, user.id);
   }
 }

@@ -60,7 +60,7 @@ export default function AccountScreen() {
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
-  const { profile, fetchProfile, updateProfile, cachedAvatarUrl, initCachedAvatar } = useProfileStore();
+  const { profile, fetchProfile, updateProfile, cachedAvatarUrl, avatarDataUri, initCachedAvatar } = useProfileStore();
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -75,8 +75,8 @@ export default function AccountScreen() {
     if (!profile && !user) return;
     setUsername(profile?.display_name || user?.email?.split('@')[0] || t('settings.profile'));
     setEmail(profile?.email || user?.email || '');
-    setAvatar(profile?.avatar_url || cachedAvatarUrl || null);
-  }, [cachedAvatarUrl, profile, t, user]);
+    setAvatar(profile?.avatar_url || avatarDataUri || cachedAvatarUrl || null);
+  }, [cachedAvatarUrl, avatarDataUri, profile, t, user]);
 
   useEffect(() => {
     initCachedAvatar();
@@ -90,10 +90,11 @@ export default function AccountScreen() {
   }, [editing, syncProfileToForm]);
 
   useEffect(() => {
-    if (cachedAvatarUrl && !avatar) {
-      setAvatar(cachedAvatarUrl);
+    const source = avatarDataUri || cachedAvatarUrl;
+    if (source && !avatar) {
+      setAvatar(source);
     }
-  }, [avatar, cachedAvatarUrl]);
+  }, [avatar, cachedAvatarUrl, avatarDataUri]);
 
   const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     clearTimeout(toastTimer.current);

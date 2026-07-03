@@ -19,6 +19,12 @@ interface CategoryState {
   clearError: () => void;
 }
 
+const visibleForScope = (categories: LifeCategory[], scope: CategoryState['loadedScope']) => {
+  if (scope === 'item') return categories.filter((category) => category.type === 'item');
+  if (scope === 'todo') return categories.filter((category) => category.type === 'todo');
+  return categories;
+};
+
 export const useCategoryStore = create<CategoryState>((set, get) => ({
   categories: [],
   loading: false,
@@ -70,10 +76,11 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
         throw new Error(response?.message || '创建分类失败');
       }
       const data = response.data;
+      const listResponse = await api.categories.list();
+      const allCategories = Array.isArray(listResponse?.data) ? listResponse.data : [...get().categories, data];
+      await cache.set(CATEGORIES_CACHE_KEY, allCategories);
       set((state) => ({
-        categories: state.categories.find((existing) => existing.id === data.id)
-          ? state.categories.map((existing) => (existing.id === data.id ? data : existing))
-          : [...state.categories, data],
+        categories: visibleForScope(allCategories, state.loadedScope),
         loading: false,
       }));
     } catch (error) {
@@ -89,8 +96,11 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
         throw new Error(response?.message || '更新分类失败');
       }
       const data = response.data;
+      const listResponse = await api.categories.list();
+      const allCategories = Array.isArray(listResponse?.data) ? listResponse.data : get().categories.map((c) => (c.id === id ? { ...c, ...updates, ...data } : c));
+      await cache.set(CATEGORIES_CACHE_KEY, allCategories);
       set((state) => ({
-        categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates, ...data } : c)),
+        categories: visibleForScope(allCategories, state.loadedScope),
         loading: false,
       }));
     } catch (error) {
@@ -105,8 +115,11 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
       if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
         throw new Error(response?.message || '删除分类失败');
       }
+      const listResponse = await api.categories.list();
+      const allCategories = Array.isArray(listResponse?.data) ? listResponse.data : get().categories.filter((c) => c.id !== id);
+      await cache.set(CATEGORIES_CACHE_KEY, allCategories);
       set((state) => ({
-        categories: state.categories.filter((c) => c.id !== id),
+        categories: visibleForScope(allCategories, state.loadedScope),
         loading: false,
       }));
     } catch (error) {

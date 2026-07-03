@@ -2,13 +2,16 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, layout, fontSize, fontWeight } from '../../constants/theme';
+import { appDesign, layout, fontSize, fontWeight, borderRadius } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
 
-function TabIcon({ name, color }: { name: string; color: string }) {
+function TabIcon({ name, color, focused }: { name: string; color: string; focused?: boolean }) {
   return (
-    <MaterialCommunityIcons name={name as any} size={24} color={color} />
+    <View style={styles.tabIconWrap}>
+      {focused && <View style={[styles.tabGlow, { backgroundColor: `${color}18` }]} />}
+      <MaterialCommunityIcons name={name as any} size={24} color={color} />
+    </View>
   );
 }
 
@@ -28,7 +31,6 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.textMuted,
         tabBarStyle: [styles.tabBar, { borderTopColor: palette.border, backgroundColor: palette.surface }],
         tabBarLabelStyle: styles.tabLabel,
-        tabBarIconStyle: styles.tabIcon,
         sceneStyle: { backgroundColor: palette.bg },
       }}
     >
@@ -36,23 +38,26 @@ export default function TabLayout() {
         name="index"
         options={{
           title: '首页',
-          tabBarIcon: ({ color }) => <TabIcon name="home" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="workbench"
         options={{
           title: '工作台',
-          tabBarIcon: ({ color }) => <TabIcon name="grid" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="grid" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
           title: '消息',
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: ({ color, focused }) => (
             <View>
-              <TabIcon name="message-text-outline" color={color} />
+              <View style={styles.tabIconWrap}>
+                {focused && <View style={[styles.tabGlow, { backgroundColor: `${color}18` }]} />}
+                <TabIcon name="message-text-outline" color={color} />
+              </View>
               {totalUnread > 0 && (
                 <View style={[styles.badge, { backgroundColor: colors.danger }]}>
                   <Text style={[styles.badgeText, { color: colors.white }]}>
@@ -68,7 +73,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: '我的',
-          tabBarIcon: ({ color }) => <TabIcon name="account" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="account" color={color} focused={focused} />,
         }}
       />
     </Tabs>
@@ -86,8 +91,19 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     marginTop: 2,
   },
-  tabIcon: {
-    marginBottom: 0,
+  tabIconWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  tabGlow: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: borderRadius.full,
+    top: 1,
   },
   badge: {
     position: 'absolute',

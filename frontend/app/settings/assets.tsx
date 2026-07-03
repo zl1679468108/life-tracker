@@ -9,6 +9,13 @@ import { useColors } from '../../stores/themeStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_COLORS = ['#F36F3C', '#7C5CFC', '#10A66E', '#D89400', '#3B82F6', '#E84A5F', '#8B5CF6', '#06B6D4'];
+const currencySymbol = (currency?: string) => (currency === 'CNY' || !currency ? '¥' : `${currency} `);
+const formatMoney = (value: number | undefined, currency?: string) =>
+  `${currencySymbol(currency)}${Math.round(value || 0).toLocaleString()}`;
+const formatDelta = (value: number, currency?: string) => {
+  const prefix = value > 0 ? '+' : value < 0 ? '-' : '';
+  return `${prefix}${formatMoney(Math.abs(value), currency)}`;
+};
 
 export default function AssetsScreen() {
   const colors = useColors();
@@ -30,7 +37,9 @@ export default function AssetsScreen() {
   };
 
   const categoryRows = totalValue?.by_category || [];
+  const recentChanges = totalValue?.recent_changes || [];
   const hasCategoryData = categoryRows.length > 0;
+  const displayCurrency = totalValue?.currency || 'CNY';
   const depreciationRate =
     totalValue && totalValue.total_purchase_price > 0
       ? Math.round((totalValue.total_depreciation / totalValue.total_purchase_price) * 100)
@@ -72,7 +81,7 @@ export default function AssetsScreen() {
           <View>
             <Text style={[styles.heroLabel, { color: palette.textSecondary }]}>资产总价值</Text>
             <Text style={[styles.heroValue, { color: palette.text }]}>
-              ¥{Math.round(totalValue?.total_current_value || 0).toLocaleString()}
+              {formatMoney(totalValue?.total_current_value, displayCurrency)}
             </Text>
           </View>
           <View style={[styles.heroChip, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -87,13 +96,13 @@ export default function AssetsScreen() {
           <View style={[styles.metricCard, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <Text style={[styles.metricLabel, { color: palette.textMuted }]}>购买总价</Text>
             <Text style={[styles.metricValue, { color: palette.success }]}>
-              ¥{Math.round(totalValue?.total_purchase_price || 0).toLocaleString()}
+              {formatMoney(totalValue?.total_purchase_price, displayCurrency)}
             </Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <Text style={[styles.metricLabel, { color: palette.textMuted }]}>总折旧</Text>
             <Text style={[styles.metricValue, { color: palette.danger }]}>
-              -¥{Math.round(totalValue?.total_depreciation || 0).toLocaleString()}
+              -{formatMoney(totalValue?.total_depreciation, displayCurrency)}
             </Text>
           </View>
           <View style={[styles.metricCard, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -163,7 +172,7 @@ export default function AssetsScreen() {
                       <Text style={[styles.detailMeta, { color: palette.textMuted }]}>{percent}% 占比</Text>
                     </View>
                     <Text style={[styles.detailValue, { color: palette.text }]}>
-                      ¥{Math.round(cat.total_value).toLocaleString()}
+                      {formatMoney(cat.total_value, displayCurrency)}
                     </Text>
                   </View>
                 );
@@ -171,6 +180,56 @@ export default function AssetsScreen() {
           </View>
         ) : (
           <Text style={[styles.emptyInline, { color: palette.textMuted }]}>当前没有可展示的资产分类明细。</Text>
+        )}
+      </View>
+
+      <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>价值变化</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>最近价值变化</Text>
+          </View>
+          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>
+            {recentChanges.length ? `${recentChanges.length} 条` : '暂无变化'}
+          </Text>
+        </View>
+
+        {recentChanges.length ? (
+          <View style={styles.detailList}>
+            {recentChanges.map((change) => {
+              const isPositive = (change.delta || 0) > 0;
+              const isNegative = (change.delta || 0) < 0;
+              const deltaLabel = change.delta == null ? '首次记录' : formatDelta(change.delta, displayCurrency);
+              return (
+                <View key={`${change.item_id}-${change.recorded_at}`} style={[styles.detailRow, { borderColor: palette.border }]}>
+                  <MaterialCommunityIcons
+                    name={change.delta == null ? 'bookmark-plus-outline' : isPositive ? 'trending-up' : isNegative ? 'trending-down' : 'minus'}
+                    size={18}
+                    color={change.delta == null ? palette.orange : isPositive ? palette.success : isNegative ? palette.danger : palette.textMuted}
+                    style={styles.changeIcon}
+                  />
+                  <View style={styles.detailCopy}>
+                    <Text style={[styles.detailName, { color: palette.text }]} numberOfLines={1}>
+                      {change.item_name}
+                    </Text>
+                    <Text style={[styles.detailMeta, { color: palette.textMuted }]}>
+                      {new Date(change.recorded_at).toLocaleDateString('zh-CN')} · {change.reason || '估值更新'}
+                    </Text>
+                  </View>
+                  <View style={styles.changeValueBlock}>
+                    <Text style={[styles.detailValue, { color: palette.text }]}>
+                      {formatMoney(change.value, displayCurrency)}
+                    </Text>
+                    <Text style={[styles.changeDelta, { color: isPositive ? palette.success : isNegative ? palette.danger : palette.textMuted }]}>
+                      {deltaLabel}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={[styles.emptyInline, { color: palette.textMuted }]}>编辑物品当前估值后，这里会显示最近变化。</Text>
         )}
       </View>
     </ScrollView>
@@ -347,6 +406,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.semiBold,
     marginLeft: spacing.md,
+  },
+  changeIcon: {
+    marginRight: spacing.md,
+  },
+  changeValueBlock: {
+    alignItems: 'flex-end',
+    marginLeft: spacing.md,
+  },
+  changeDelta: {
+    fontSize: fontSize.xs,
+    marginTop: 2,
+    fontWeight: fontWeight.medium,
   },
   emptyInline: {
     fontSize: fontSize.sm,

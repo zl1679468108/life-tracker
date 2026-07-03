@@ -9,24 +9,26 @@ export class AiService {
   ) {}
 
   /**
-   * T48: AI 物品识别（模拟实现）
-   * 实际部署时需要配置百度 AI / Google Vision 等 API
+   * T48: 智能录入建议（实验）
+   * 当前仅返回演示建议，不作为真实图像识别结论。
    */
   async recognize(imageBuffer: Buffer, userId: string) {
-    // 模拟 AI 识别结果
     const categories = ['电子产品', '书籍', '日用品', '衣物', '食品', '家具'];
     const brands = ['Apple', 'Samsung', 'Sony', 'IKEA', 'MUJI', 'Nike'];
     const models = ['Pro', 'Plus', 'Standard', 'Mini', 'Max'];
     
     const randomIdx = Math.floor(Math.random() * categories.length);
-    const confidence = 0.6 + Math.random() * 0.35; // 0.6-0.95
+    const confidence = 0.45 + Math.random() * 0.25;
     
     return {
+      experimental: true,
+      source: 'mock_suggestion',
+      notice: '当前为模拟建议，请人工确认后再保存。',
       category: categories[randomIdx],
       brand: brands[Math.floor(Math.random() * brands.length)],
       model: models[Math.floor(Math.random() * models.length)],
       confidence: Math.round(confidence * 100) / 100,
-      tags: [categories[randomIdx], '识别结果'],
+      tags: [categories[randomIdx], '录入建议'],
     };
   }
 

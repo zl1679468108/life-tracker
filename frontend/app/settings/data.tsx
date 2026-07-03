@@ -65,7 +65,7 @@ export default function DataManagementScreen() {
 
   const processImport = async (content: string) => {
     // 先预览
-    const preview = previewImportData(content);
+    const preview = await previewImportData(content);
     if (!preview) {
       showAlert('错误', '无效的备份文件格式');
       return;
@@ -73,7 +73,7 @@ export default function DataManagementScreen() {
 
     showAlert(
       '确认导入',
-      `即将导入：\n• ${preview.items_count} 个物品\n• ${preview.todos_count} 个待办\n• ${preview.categories_count} 个分类\n• ${preview.locations_count} 个位置\n\n导入将创建新数据，不会覆盖现有数据。`,
+      `备份内容：\n• 物品 ${preview.items_count} 个（新建 ${preview.new_items}，跳过 ${preview.duplicate_items}）\n• 待办 ${preview.todos_count} 个（新建 ${preview.new_todos}，跳过 ${preview.duplicate_todos}）\n• 分类 ${preview.categories_count} 个（新建 ${preview.new_categories}，复用 ${preview.duplicate_categories}）\n• 位置 ${preview.locations_count} 个（新建 ${preview.new_locations}，复用 ${preview.duplicate_locations}）\n\n关联重映射：\n• 物品分类 ${preview.remapped_item_categories} 处\n• 物品位置 ${preview.remapped_item_locations} 处\n• 待办分类 ${preview.remapped_todo_categories} 处\n\n导入会跳过重复数据，不会覆盖现有数据。`,
       [
         { text: '取消', style: 'cancel' },
         {
@@ -88,7 +88,7 @@ export default function DataManagementScreen() {
               setImportResult(result);
               showAlert(
                 '导入完成',
-                `成功导入：\n• ${result.imported_items} 个物品\n• ${result.imported_todos} 个待办\n• ${result.imported_categories} 个分类\n• ${result.imported_locations} 个位置\n\n${result.errors.length > 0 ? `失败 ${result.errors.length} 条` : ''}`
+                `成功导入：\n• ${result.imported_items} 个物品\n• ${result.imported_todos} 个待办\n• ${result.imported_categories} 个分类\n• ${result.imported_locations} 个位置\n\n跳过重复：\n• ${result.skipped_items || 0} 个物品\n• ${result.skipped_todos || 0} 个待办\n• ${result.skipped_categories || 0} 个分类\n• ${result.skipped_locations || 0} 个位置\n\n${result.errors.length > 0 ? `失败 ${result.errors.length} 条` : '无失败记录'}`
               );
             } catch (e) {
               showAlert('失败', `导入失败: ${(e as Error).message}`);
@@ -189,7 +189,8 @@ export default function DataManagementScreen() {
             </Text>
             <Text style={[{ fontSize: fontSize.sm, color: colors.gray[600], marginTop: spacing.xs }]}>
               • 导入会创建新数据，不会覆盖已有数据{'\n'}
-              • 分类和位置名称重复时会自动创建副本{'\n'}
+              • 分类和位置名称重复时会复用并重映射关联{'\n'}
+              • 物品和待办重复时会跳过并写入导入报告{'\n'}
               • 建议定期导出备份以防数据丢失
             </Text>
           </View>

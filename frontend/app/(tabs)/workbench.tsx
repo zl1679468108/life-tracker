@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { GlobalSearch } from '../../components/GlobalSearch';
-import { AppHeader, AppListRow, AppScreen } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { AppHeader, WorkbenchBackground } from '../../components/ui';
+import { SafeScreen } from '../../components/SafeScreen';
+import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 
 type Entry = {
   title: string;
-  desc: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   route: string;
   color: string;
+};
+
+type Group = {
+  title: string;
+  entries: Entry[];
 };
 
 export default function WorkbenchScreen() {
@@ -22,34 +28,34 @@ export default function WorkbenchScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
 
   const core: Entry[] = [
-    { title: '物品', desc: '列表 / 新增 / 编辑', icon: 'package-variant', route: '/item/list', color: palette.orange },
-    { title: '待办', desc: '筛选 / 完成 / 编辑', icon: 'check-circle-outline', route: '/todo/list', color: palette.violet },
+    { title: '物品', icon: 'package-variant', route: '/item/list', color: palette.orange },
+    { title: '待办', icon: 'check-circle-outline', route: '/todo/list', color: palette.violet },
   ];
 
-  const groups: Array<{ title: string; entries: Entry[] }> = [
+  const groups: Group[] = [
     {
       title: '管理工具',
       entries: [
-        { title: '分类管理', desc: '系统分类、自定义分类、颜色图标', icon: 'tag-multiple-outline', route: '/settings/category-manage', color: palette.orange },
-        { title: '位置管理', desc: '房间、层级、存放位置', icon: 'map-marker-outline', route: '/settings/location-manage', color: palette.violet },
-        { title: '模板管理', desc: '常用物品和待办模板', icon: 'file-document-outline', route: '/settings/templates', color: palette.warning },
+        { title: '分类', icon: 'tag-multiple-outline', route: '/settings/category-manage', color: palette.orange },
+        { title: '位置', icon: 'map-marker-outline', route: '/settings/location-manage', color: palette.violet },
+        { title: '模板', icon: 'file-document-outline', route: '/settings/templates', color: palette.warning },
       ],
     },
     {
       title: '生活记录',
       entries: [
-        { title: '借用管理', desc: '借出、归还、逾期记录', icon: 'account-arrow-right-outline', route: '/settings/borrowings', color: palette.success },
-        { title: '日历视图', desc: '待办和提醒日历', icon: 'calendar-month-outline', route: '/settings/calendar', color: palette.violet },
+        { title: '借用', icon: 'account-arrow-right-outline', route: '/settings/borrowings', color: palette.success },
+        { title: '日历', icon: 'calendar-month-outline', route: '/settings/calendar', color: palette.violet },
       ],
     },
     {
       title: '数据与提醒',
       entries: [
-        { title: '数据统计', desc: '图表概览和趋势', icon: 'chart-bar', route: '/settings/stats', color: palette.orange },
-        { title: '通知中心', desc: '全部、未读、已读通知', icon: 'bell-outline', route: '/settings/notifications', color: palette.warning },
-        { title: '数据管理', desc: '备份、恢复、导入、导出', icon: 'database-outline', route: '/settings/data', color: palette.violet },
-        { title: '资产总览', desc: '资产总值和分类分布', icon: 'wallet-outline', route: '/settings/assets', color: palette.success },
-        { title: '桌面小组件', desc: 'PWA 小组件和快捷入口', icon: 'widgets-outline', route: '/settings/widgets', color: palette.danger },
+        { title: '统计', icon: 'chart-bar', route: '/settings/stats', color: palette.orange },
+        { title: '通知', icon: 'bell-outline', route: '/settings/notifications', color: palette.warning },
+        { title: '数据', icon: 'database-outline', route: '/settings/data', color: palette.violet },
+        { title: '资产', icon: 'wallet-outline', route: '/settings/assets', color: palette.success },
+        { title: '快捷', icon: 'cellphone-link', route: '/settings/widgets', color: palette.danger },
       ],
     },
   ];
@@ -57,109 +63,134 @@ export default function WorkbenchScreen() {
   const go = (route: string) => router.push(route as never);
 
   return (
-    <AppScreen>
-      <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
-
-      <View style={styles.coreGrid}>
-        {core.map((entry, index) => (
-          <TouchableOpacity
-            key={entry.title}
-            style={[
-              styles.coreCard,
-              { backgroundColor: palette.surface, borderColor: palette.border },
-            ]}
-            onPress={() => go(entry.route)}
-            activeOpacity={0.82}
-          >
-            <View style={styles.coreCardTop}>
-              <View style={[styles.coreIcon, { backgroundColor: `${entry.color}16`, borderColor: `${entry.color}2E` }]}>
-                <MaterialCommunityIcons name={entry.icon} size={20} color={entry.color} />
-              </View>
-              <MaterialCommunityIcons name="arrow-top-right" size={18} color={palette.textMuted} />
-            </View>
-            <View style={styles.coreText}>
-              <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
-              <Text style={[styles.coreDesc, { color: palette.textMuted }]}>{entry.desc}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {groups.map((group) => (
-        <View key={group.title} style={styles.group}>
-          <View style={styles.groupHeader}>
-            <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
-            <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <Text style={[styles.groupBadgeText, { color: palette.textMuted }]}>{group.entries.length}</Text>
-            </View>
-          </View>
-          {group.entries.map((entry) => (
-            <AppListRow
-              key={entry.title}
-              title={entry.title}
-              description={entry.desc}
-              icon={entry.icon}
-              accent={entry.color}
-              onPress={() => go(entry.route)}
-            />
-          ))}
+    <SafeScreen backgroundColor={palette.bg}>
+      <View style={styles.pageWrap}>
+        {/* 氛围背景层 */}
+        <View style={styles.atmosphereArea} pointerEvents="none">
+          <LinearGradient
+            colors={palette.bg === appDesign.dark.bg
+              ? ['rgba(124,92,252,0.08)', 'rgba(243,111,60,0.03)', palette.bg]
+              : ['#F0EDFF', '#FFF6F0', palette.bg]
+            }
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <WorkbenchBackground />
         </View>
-      ))}
-      <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
-    </AppScreen>
+
+        <View style={[styles.stickyHeader, { backgroundColor: 'transparent' }]}>
+          <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
+        </View>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
+          <View style={styles.coreGrid}>
+            {core.map((entry) => (
+              <TouchableOpacity
+                key={entry.title}
+                style={[styles.coreCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => go(entry.route)}
+                activeOpacity={0.82}
+              >
+                <View style={[styles.coreIcon, { backgroundColor: `${entry.color}16`, borderColor: `${entry.color}2E` }]}>
+                  <MaterialCommunityIcons name={entry.icon} size={22} color={entry.color} />
+                </View>
+                <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {groups.map((group) => (
+            <View key={group.title} style={[styles.groupCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.groupHeader}>
+                <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
+                <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <Text style={[styles.groupBadgeText, { color: palette.textMuted }]}>{group.entries.length}</Text>
+                </View>
+              </View>
+              <View style={styles.grid}>
+                {group.entries.map((entry) => (
+                  <TouchableOpacity
+                    key={entry.title}
+                    style={styles.gridItem}
+                    onPress={() => go(entry.route)}
+                    activeOpacity={0.78}
+                  >
+                    <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
+                      <MaterialCommunityIcons name={entry.icon} size={20} color={entry.color} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>{entry.title}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+          <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
+        </ScrollView>
+      </View>
+    </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  pageWrap: {
+    flex: 1,
+  },
+  atmosphereArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  stickyHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    zIndex: 10,
+  },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 112,
+  },
   coreGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   coreCard: {
-    width: '48.6%',
-    minHeight: 94,
+    flex: 1,
+    minHeight: 88,
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    justifyContent: 'flex-start',
-  },
-  coreCardTop: {
-    flexDirection: 'row',
+    paddingVertical: 12,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 8,
   },
   coreIcon: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coreText: {
-    marginTop: 10,
-    gap: 2,
-  },
   coreTitle: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.base,
     lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
-  coreDesc: {
-    fontSize: fontSize.xs,
-    lineHeight: 16,
-  },
-  group: {
+  groupCard: {
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     marginBottom: spacing.lg,
   },
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   groupTitle: {
     fontSize: fontSize.base,
@@ -179,5 +210,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     lineHeight: 16,
     fontWeight: fontWeight.semiBold,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  gridItem: {
+    width: '25%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 8,
+    minHeight: 72,
+  },
+  gridIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  gridLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    fontWeight: fontWeight.medium,
+    textAlign: 'center',
   },
 });

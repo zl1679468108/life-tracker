@@ -28,3 +28,5 @@ export { AppScreen } from './AppScreen';
 export { AppHeader, type HeaderAction } from './AppHeader';
 export { AppListRow } from './AppListRow';
 export { FormActions } from './FormActions';
+export { DecorativeBackground } from './DecorativeBackground';
+export { HomeBackground, WorkbenchBackground, MessagesBackground, SettingsBackground } from './PageBackground';

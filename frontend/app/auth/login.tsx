@@ -12,7 +12,7 @@ import { showAlert } from '../../lib/alert';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, signInWithOAuth, handleOAuthCallback } = useAuthStore();
+  const { signIn } = useAuthStore();
   const colors = useColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,46 +29,6 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (error: any) {
       showAlert('登录失败', error.message || '请检查邮箱和密码');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 微信登录
-  const handleWechatLogin = async () => {
-    setLoading(true);
-    try {
-      // 获取当前域名作为回调地址
-      const redirectTo = typeof window !== 'undefined' 
-        ? `${window.location.origin}/auth/callback`
-        : 'http://localhost:3021/auth/callback';
-      
-      const { url } = await signInWithOAuth('wechat', redirectTo);
-      
-      if (url) {
-        // 在 Web 端打开新窗口，在原生端使用浏览器
-        if (typeof window !== 'undefined') {
-          window.location.href = url;
-        } else {
-          // 原生平台使用 WebBrowser
-          const { openAuthSessionAsync } = await import('expo-web-browser');
-          const result = await openAuthSessionAsync(url, redirectTo);
-          
-          if (result.type === 'success' && result.url) {
-            // 解析回调 URL 中的 token
-            const callbackUrl = new URL(result.url);
-            const accessToken = callbackUrl.searchParams.get('access_token');
-            const refreshToken = callbackUrl.searchParams.get('refresh_token');
-            
-            if (accessToken && refreshToken) {
-              await handleOAuthCallback(accessToken, refreshToken);
-              router.replace('/(tabs)');
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      showAlert('微信登录失败', error.message || '请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -154,16 +114,7 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.gray[200] }]} />
-              <Text style={[styles.dividerText, { color: colors.gray[400] }]}>或</Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.gray[200] }]} />
-            </View>
-
-            <TouchableOpacity style={[styles.wechatBtn, { borderColor: colors.gray[200] }]} onPress={handleWechatLogin} activeOpacity={0.8}>
-              <MaterialCommunityIcons name="wechat" size={20} color="#07C160" />
-              <Text style={[styles.wechatText, { color: colors.gray[700] }]}>微信登录</Text>
-            </TouchableOpacity>
+            <Text style={[styles.authHint, { color: colors.gray[500] }]}>当前版本仅开放邮箱密码登录。</Text>
           </View>
 
           <View style={styles.footer}>
@@ -264,31 +215,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 10,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    marginVertical: spacing.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
+  authHint: {
+    textAlign: 'center',
     fontSize: fontSize.sm,
-  },
-  wechatBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: 48,
-    borderWidth: 1.5,
-    borderRadius: borderRadius.md,
-  },
-  wechatText: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.medium,
+    marginTop: spacing.md,
   },
   footer: {
     flexDirection: 'row',

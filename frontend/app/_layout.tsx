@@ -144,9 +144,9 @@ export default function RootLayout() {
         onPress={() => {
           if (navigation.canGoBack()) {
             router.back();
-            return;
+          } else {
+            router.replace('/');
           }
-          router.replace('/');
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
@@ -165,7 +165,7 @@ export default function RootLayout() {
             <AppAlertHost />
             <Stack screenOptions={{ contentStyle: { backgroundColor: colors.gray[50] } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="message/[id]" options={{ ...subPageOptions, headerTitle: '对话详情' }} />
+            <Stack.Screen name="message/[id]" options={{ ...subPageOptions, headerShown: false }} />
             <Stack.Screen name="item/create" options={{ ...subPageOptions, headerTitle: '添加物品' }} />
             <Stack.Screen name="item/[id]" options={{ ...subPageOptions, headerTitle: '编辑物品' }} />
             <Stack.Screen name="item/list" options={{ ...subPageOptions, headerTitle: '物品管理' }} />
@@ -194,7 +194,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings/data" options={{ ...subPageOptions, headerTitle: '数据管理' }} />
             <Stack.Screen name="settings/assets" options={{ ...subPageOptions, headerTitle: '资产总览' }} />
             <Stack.Screen name="settings/calendar" options={{ ...subPageOptions, headerTitle: '日历视图' }} />
-            <Stack.Screen name="settings/widgets" options={{ ...subPageOptions, headerTitle: '桌面小组件' }} />
+            <Stack.Screen name="settings/widgets" options={{ ...subPageOptions, headerTitle: '桌面快捷入口' }} />
             </Stack>
           </PaperProvider>
         </ThemeProvider>

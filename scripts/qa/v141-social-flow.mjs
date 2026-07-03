@@ -240,6 +240,31 @@ async function createShare(token, resourceType, resourceId, sharedWithId) {
   return data;
 }
 
+async function updateSharePermission(token, shareId, permission) {
+  const { data } = await http(`/api/shares/${shareId}`, {
+    method: 'PUT',
+    token,
+    body: { permission },
+  });
+  assert(data?.permission === permission, `Share permission should be ${permission}`, data);
+  return data;
+}
+
+async function getItem(token, itemId, expected = [200]) {
+  const { data } = await http(`/api/items/${itemId}`, { token, expected });
+  return data;
+}
+
+async function updateItemDescription(token, itemId, description, expected = [200]) {
+  const { data } = await http(`/api/items/${itemId}`, {
+    method: 'PUT',
+    token,
+    body: { description },
+    expected,
+  });
+  return data;
+}
+
 async function findConversation(token, conversationId, participantId) {
   const { data } = await http('/api/messages/conversations', { token });
   const conversations = Array.isArray(data) ? data : [];
@@ -276,6 +301,15 @@ async function markAsRead(token, conversationId) {
     token,
   });
   assert(data?.success === true, 'Mark as read did not return success', data);
+  return data;
+}
+
+async function deleteFriend(token, friendshipId) {
+  const { data } = await http(`/api/messages/friends/${friendshipId}/delete`, {
+    method: 'PATCH',
+    token,
+    expected: [200, 404],
+  });
   return data;
 }
 
@@ -341,6 +375,13 @@ async function main() {
     await step('A 取消置顶好友', () => setFriendPinned(userA.token, accepted.id, false));
 
     const share = await step('A 共享测试物品给 B', () => createShare(userA.token, 'item', item.id, userB.user.id));
+    const sharedViewItem = await step('B 以查看权限打开共享物品', () => getItem(userB.token, item.id));
+    assert(sharedViewItem?.share_permission === 'view' && sharedViewItem?.can_edit === false, 'B should only have view permission after initial share', sharedViewItem);
+    await step('B 查看权限不能编辑共享物品', () => updateItemDescription(userB.token, item.id, 'view permission should not edit', [403]));
+    await step('A 将共享权限改为编辑', () => updateSharePermission(userA.token, share.id, 'edit'));
+    const sharedEditItem = await step('B 以编辑权限打开共享物品', () => getItem(userB.token, item.id));
+    assert(sharedEditItem?.share_permission === 'edit' && sharedEditItem?.can_edit === true, 'B should have edit permission after permission update', sharedEditItem);
+    await step('B 编辑权限可修改共享物品', () => updateItemDescription(userB.token, item.id, 'v1.4.3 edit permission smoke test'));
     const conversationA = await step('A 查看共享对话', () => findConversation(userA.token, share.conversation_id, userB.user.id));
     await step('B 查看共享对话', () => findConversation(userB.token, share.conversation_id, userA.user.id));
 
@@ -349,6 +390,8 @@ async function main() {
 
     await step('A 发送文字消息', () => sendMessage(userA.token, conversationA.id));
     await step('B 标记对话已读', () => markAsRead(userB.token, conversationA.id));
+    await step('A 删除好友并收回共享', () => deleteFriend(userA.token, accepted.id));
+    await step('B 删除好友后不能再打开共享物品', () => getItem(userB.token, item.id, [403]));
 
     await step('清理测试数据', () => cleanup(userA.token));
     console.log('\nAll v1.4.1 social flow checks passed.');

@@ -298,13 +298,13 @@ function renderScreen(Component, preState = {}) {
 describe('认证流程', () => {
   beforeEach(() => { useAuthStore.setState({ user: null, loading: false }); });
 
-  it('登录页 - 渲染邮箱密码表单和微信登录按钮', () => {
+  it('登录页 - 渲染邮箱密码表单和登录方式提示', () => {
     const { getByText, getByPlaceholderText } = renderScreen(LoginScreen);
     expect(getByText('欢迎回来')).toBeTruthy();
     expect(getByPlaceholderText('请输入邮箱或手机号')).toBeTruthy();
     expect(getByPlaceholderText('请输入密码')).toBeTruthy();
     expect(getByText('登录')).toBeTruthy();
-    expect(getByText('微信登录')).toBeTruthy();
+    expect(getByText('当前版本仅开放邮箱密码登录。')).toBeTruthy();
     expect(getByText('忘记密码？')).toBeTruthy();
     expect(getByText('立即注册')).toBeTruthy();
   });
@@ -400,7 +400,7 @@ const smokeScreens = [
   ['借用管理', BorrowingsScreen],
   ['共享管理', SharesScreen],
   ['日历视图', CalendarScreen],
-  ['桌面小组件', WidgetsScreen],
+  ['桌面快捷入口', WidgetsScreen],
 ];
 
 describe('当前页面渲染烟测', () => {

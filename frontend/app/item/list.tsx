@@ -22,6 +22,15 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+const getDayDiff = (dateValue?: string) => {
+  if (!dateValue) return null;
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.floor((startOfDay(date) - startOfDay(new Date())) / DAY_MS);
+};
+
 export default function ItemListScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -34,6 +43,8 @@ export default function ItemListScreen() {
   const { locations: customLocations, fetchLocations } = useLocationStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+  const [selectedLocation, setSelectedLocation] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'expired' | 'expiring' | 'valued' | 'noValue'>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
@@ -49,6 +60,17 @@ export default function ItemListScreen() {
   const categoryFilters = [
     { id: ALL_CATEGORY, label: t('common.all') },
     ...itemCategories.map((category) => ({ id: category.id, label: category.name })),
+  ];
+  const locationFilters = [
+    { id: 'ALL', label: '全部位置' },
+    ...customLocations.map((location) => ({ id: location.id, label: location.name })),
+  ];
+  const statusFilters: { id: typeof selectedStatus; label: string }[] = [
+    { id: 'all', label: '全部状态' },
+    { id: 'expired', label: '已过期' },
+    { id: 'expiring', label: '7天内到期' },
+    { id: 'valued', label: '有价值' },
+    { id: 'noValue', label: '未估值' },
   ];
 
   const allCategoriesForIcon = itemCategories.map((c) => ({
@@ -92,10 +114,26 @@ export default function ItemListScreen() {
   };
 
   const filtered = items.filter((i) => {
-    const matchesSearch = i.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      i.description?.toLowerCase().includes(debouncedSearch.toLowerCase());
+    const query = debouncedSearch.trim().toLowerCase();
+    const categoryName = getCategoryName(i.category_id).toLowerCase();
+    const locationName = getLocationName(i.location_id).toLowerCase();
+    const matchesSearch = !query ||
+      i.name.toLowerCase().includes(query) ||
+      Boolean(i.description?.toLowerCase().includes(query)) ||
+      Boolean(i.barcode?.toLowerCase().includes(query)) ||
+      categoryName.includes(query) ||
+      locationName.includes(query);
     const matchesCategory = selectedCategory === ALL_CATEGORY || i.category_id === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesLocation = selectedLocation === 'ALL' || i.location_id === selectedLocation;
+    const dayDiff = getDayDiff(i.expiry_date);
+    const hasValue = typeof i.current_value === 'number' || typeof i.purchase_price === 'number';
+    const matchesStatus =
+      selectedStatus === 'all' ||
+      (selectedStatus === 'expired' && dayDiff !== null && dayDiff < 0) ||
+      (selectedStatus === 'expiring' && dayDiff !== null && dayDiff >= 0 && dayDiff <= 7) ||
+      (selectedStatus === 'valued' && hasValue) ||
+      (selectedStatus === 'noValue' && !hasValue);
+    return matchesSearch && matchesCategory && matchesLocation && matchesStatus;
   }).sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'category') return getCategoryName(a.category_id).localeCompare(getCategoryName(b.category_id), 'zh-CN');
@@ -103,6 +141,19 @@ export default function ItemListScreen() {
   });
 
   const countLabel = batchMode ? `已选 ${selectedIds.size} / ${filtered.length}` : `共 ${filtered.length} 件`;
+  const activeFilterCount = [
+    debouncedSearch.trim(),
+    selectedCategory !== ALL_CATEGORY,
+    selectedLocation !== 'ALL',
+    selectedStatus !== 'all',
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory(ALL_CATEGORY);
+    setSelectedLocation('ALL');
+    setSelectedStatus('all');
+  };
 
   const handleDeleteItem = (item: LifeItem) => {
     showAlert('确认删除', `删除物品"${item.name}"？此操作不可撤销`, [
@@ -138,6 +189,7 @@ export default function ItemListScreen() {
     const icon = getCategoryIcon(item.category_id);
     const isSelected = selectedIds.has(item.id);
     const createdDate = new Date(item.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+    const expiryDiff = getDayDiff(item.expiry_date);
     return (
       <SwipeableRow onDelete={() => handleDeleteItem(item)}>
         <TouchableOpacity
@@ -190,6 +242,14 @@ export default function ItemListScreen() {
                   </Text>
                 </View>
               )}
+              {expiryDiff !== null && (
+                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name="calendar-alert" size={12} color={expiryDiff < 0 ? palette.danger : palette.warning} />
+                  <Text style={[styles.tagText, { color: expiryDiff < 0 ? palette.danger : palette.warning }]}>
+                    {expiryDiff < 0 ? `过期 ${Math.abs(expiryDiff)} 天` : expiryDiff === 0 ? '今天到期' : `${expiryDiff} 天后到期`}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} style={{ marginTop: 4 }} />
@@ -238,7 +298,7 @@ export default function ItemListScreen() {
               style={[styles.searchInput, { color: palette.text }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="搜索物品名称..."
+              placeholder="搜索名称、描述、分类、位置或条码..."
               placeholderTextColor={palette.textMuted}
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
@@ -269,14 +329,54 @@ export default function ItemListScreen() {
           />
         ))}
       </ScrollView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsContent}
+        style={styles.chipsScroll}
+      >
+        {locationFilters.map((loc) => (
+          <Chip
+            key={loc.id}
+            label={loc.label}
+            selected={selectedLocation === loc.id}
+            onPress={() => setSelectedLocation(loc.id)}
+            style={styles.categoryChip}
+          />
+        ))}
+      </ScrollView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsContent}
+        style={styles.chipsScroll}
+      >
+        {statusFilters.map((status) => (
+          <Chip
+            key={status.id}
+            label={status.label}
+            selected={selectedStatus === status.id}
+            onPress={() => setSelectedStatus(status.id)}
+            style={styles.categoryChip}
+          />
+        ))}
+      </ScrollView>
+      {activeFilterCount > 0 && (
+        <View style={styles.filterSummary}>
+          <Text style={[styles.filterSummaryText, { color: palette.textMuted }]}>已启用 {activeFilterCount} 个筛选</Text>
+          <TouchableOpacity onPress={clearFilters} activeOpacity={0.75}>
+            <Text style={[styles.clearFilterText, { color: palette.orange }]}>清除</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
   const renderEmpty = () => (
     <EmptyState
       icon="package-variant"
-      title={selectedCategory === ALL_CATEGORY && !debouncedSearch ? '暂无物品' : '没有匹配的物品'}
-      description={selectedCategory === ALL_CATEGORY && !debouncedSearch ? '点击下方按钮添加第一个物品' : '切换分类或清空搜索后再看看'}
+      title={activeFilterCount === 0 ? '暂无物品' : '没有匹配的物品'}
+      description={activeFilterCount === 0 ? '点击下方按钮添加第一个物品' : '调整筛选条件或清空搜索后再看看'}
       actionLabel="添加物品"
       onAction={() => router.push('/item/create')}
       style={styles.inlineEmpty}
@@ -404,6 +504,23 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     flexShrink: 0,
+  },
+  filterSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  filterSummaryText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.medium,
+  },
+  clearFilterText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.bold,
   },
   list: {
     paddingBottom: 120,

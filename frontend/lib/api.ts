@@ -536,7 +536,7 @@ export const api = {
     },
   },
 
-  // T53: 桌面小组件
+  // T53: 桌面快捷入口与摘要预览
   widgets: {
     todos: async (limit: number = 5): Promise<ApiResponse<{ todos: WidgetTodoData[] }>> => {
       return request<{ todos: WidgetTodoData[] }>(`/api/widgets/todos?limit=${limit}`);

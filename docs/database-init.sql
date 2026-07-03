@@ -9,10 +9,10 @@
 --   Supabase Dashboard -> SQL Editor。
 --
 -- 执行约束:
---   - 脚本尽量保持幂等，使用 IF NOT EXISTS / ON CONFLICT / 条件 ALTER。
+--   - 脚本尽量保持幂等，使用 IF NOT EXISTS / ON CONFLICT 安全重复执行。
 --   - 开发和生产目前共用 Supabase 表，改表前必须确认影响面。
 --   - 所有业务表使用 life_ 前缀。
---   - user_id 为 NULL 的分类/位置表示系统预设。
+--   - user_id 为 NULL 的分类/位置表示系统预设，所有用户可见不可删改。
 --
 -- 变更同步:
 --   - 修改表结构后，同步更新 frontend/types、后端 service/controller、
@@ -22,7 +22,7 @@
 
 -- ============================================================
 -- 1. 用户资料表 (life_profiles)
--- Supabase Auth 自带 auth.users，此表扩展用户资料
+-- 扩展 Supabase Auth 自带的 auth.users，一个用户对应一条资料
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -33,18 +33,6 @@ CREATE TABLE IF NOT EXISTS life_profiles (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- 为已有表添加 email 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_profiles'::regclass
-    AND attname = 'email'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_profiles ADD COLUMN email TEXT;
-  END IF;
-END $$;
 
 -- 用 auth.users 回填已有用户邮箱
 UPDATE life_profiles p
@@ -75,8 +63,9 @@ CREATE TRIGGER on_auth_user_created
 
 -- ============================================================
 -- 2. 分类表 (life_categories)
--- user_id 为 NULL 表示系统预设，所有用户可见，不可删改
--- icon 字段存储 MaterialCommunityIcons 图标名称
+-- user_id 为 NULL = 系统预设，所有用户可见不可删改
+-- 支持 type 区分物品/待办分类，parent_id 实现层级
+-- icon 存储 MaterialCommunityIcons 名称，color 存储颜色值
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -89,50 +78,14 @@ CREATE TABLE IF NOT EXISTS life_categories (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 为已有表添加 icon 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_categories'::regclass
-    AND attname = 'icon'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_categories ADD COLUMN icon TEXT;
-  END IF;
-END $$;
-
--- 为已有表添加 color 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_categories'::regclass
-    AND attname = 'color'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_categories ADD COLUMN color TEXT;
-  END IF;
-END $$;
-
--- 为已有表添加 parent_id 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_categories'::regclass
-    AND attname = 'parent_id'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_categories ADD COLUMN parent_id UUID REFERENCES life_categories(id) ON DELETE CASCADE;
-  END IF;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_categories_type ON life_categories(type);
 CREATE INDEX IF NOT EXISTS idx_categories_user_id ON life_categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON life_categories(parent_id);
 
 -- ============================================================
 -- 3. 位置表 (life_locations)
--- user_id 为 NULL 表示系统预设，所有用户可见，不可删改
--- icon 字段存储 MaterialCommunityIcons 图标名称
+-- user_id 为 NULL = 系统预设，所有用户可见不可删改
+-- parent_id + level 实现位置层级（如 书房 → 书架 → 第三层）
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -144,35 +97,12 @@ CREATE TABLE IF NOT EXISTS life_locations (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 为已有表添加 icon 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_locations'::regclass
-    AND attname = 'icon'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_locations ADD COLUMN icon TEXT;
-  END IF;
-END $$;
-
--- 为已有表添加 parent_id 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_locations'::regclass
-    AND attname = 'parent_id'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_locations ADD COLUMN parent_id UUID REFERENCES life_locations(id) ON DELETE CASCADE;
-  END IF;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_locations_user_id ON life_locations(user_id);
 CREATE INDEX IF NOT EXISTS idx_locations_parent_id ON life_locations(parent_id);
 
 -- ============================================================
 -- 4. 物品表 (life_items)
+-- 核心业务表，记录物品的名称、位置、分类、图片、条码、价值、AI 建议等信息
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -182,6 +112,22 @@ CREATE TABLE IF NOT EXISTS life_items (
   category_id UUID REFERENCES life_categories(id) ON DELETE SET NULL,
   images TEXT[],
   barcode TEXT,
+  expiry_date TIMESTAMPTZ,
+  reminder_enabled BOOLEAN DEFAULT FALSE,
+  reminder_days_before INTEGER DEFAULT 7,
+  -- 借用状态（由借用模块维护）
+  is_borrowed BOOLEAN DEFAULT FALSE,
+  borrowed_by TEXT,
+  -- 价值追踪字段 (T47)
+  purchase_price DECIMAL(10, 2),
+  purchase_date TIMESTAMPTZ,
+  current_value DECIMAL(10, 2),
+  currency TEXT DEFAULT 'CNY',
+  depreciation_rate DECIMAL(5, 2) DEFAULT 0,
+  -- AI 识别字段 (T48，当前为模拟建议)
+  ai_suggestions JSONB,
+  ai_confidence DECIMAL(5, 2),
+  -- 所有者
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -190,112 +136,11 @@ CREATE TABLE IF NOT EXISTS life_items (
 CREATE INDEX IF NOT EXISTS idx_items_user_id ON life_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_items_category_id ON life_items(category_id);
 CREATE INDEX IF NOT EXISTS idx_items_location_id ON life_items(location_id);
-
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'barcode'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN barcode TEXT;
-  END IF;
-END $$;
-
--- 为已有表添加 expiry_date 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'expiry_date'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN expiry_date TIMESTAMPTZ;
-  END IF;
-END $$;
-
--- 为已有表添加 reminder_enabled 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'reminder_enabled'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN reminder_enabled BOOLEAN DEFAULT FALSE;
-  END IF;
-END $$;
-
--- 为已有表添加 reminder_days_before 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'reminder_days_before'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN reminder_days_before INTEGER DEFAULT 7;
-  END IF;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_items_expiry_date ON life_items(expiry_date) WHERE expiry_date IS NOT NULL;
-
--- T47: 物品价值追踪字段
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'purchase_price' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN purchase_price DECIMAL(10, 2);
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'purchase_date' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN purchase_date TIMESTAMPTZ;
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'current_value' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN current_value DECIMAL(10, 2);
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'currency' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN currency TEXT DEFAULT 'CNY';
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'depreciation_rate' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN depreciation_rate DECIMAL(5, 2) DEFAULT 0;
-  END IF;
-END $$;
-
--- T48: AI 识别字段
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'ai_suggestions' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN ai_suggestions JSONB;
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'life_items'::regclass AND attname = 'ai_confidence' AND NOT attisdropped) THEN
-    ALTER TABLE life_items ADD COLUMN ai_confidence DECIMAL(5, 2);
-  END IF;
-END $$;
-
--- ============================================================
--- 6.8 价值历史记录表 (life_value_history)
--- ============================================================
-CREATE TABLE IF NOT EXISTS life_value_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  item_id UUID NOT NULL REFERENCES life_items(id) ON DELETE CASCADE,
-  value DECIMAL(10, 2) NOT NULL,
-  reason TEXT,
-  recorded_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_value_history_item ON life_value_history(item_id);
-CREATE INDEX IF NOT EXISTS idx_value_history_user ON life_value_history(user_id);
 
 -- ============================================================
 -- 5. 待办表 (life_todos)
+-- 记录待办事项的标题、优先级、截止时间、提醒、排序和完成状态
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_todos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -314,31 +159,20 @@ CREATE TABLE IF NOT EXISTS life_todos (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 为已有表添加 sort_order 列（如果不存在）
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_todos'::regclass
-    AND attname = 'sort_order'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_todos ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
-  END IF;
-END $$;
-
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON life_todos(user_id);
 CREATE INDEX IF NOT EXISTS idx_todos_category_id ON life_todos(category_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON life_todos(completed);
 
 -- ============================================================
 -- 6. 提醒日志表 (life_reminder_logs)
--- 用于追踪已发送的提醒，避免重复推送
+-- 追踪已发送的提醒，通过 reminder_key 防重复推送
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_reminder_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   resource_type TEXT NOT NULL CHECK (resource_type IN ('item', 'todo')),
   resource_id UUID NOT NULL,
   reminder_type TEXT NOT NULL CHECK (reminder_type IN ('expiry', 'due_date', 'custom')),
+  reminder_key TEXT,
   sent_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
@@ -346,10 +180,11 @@ CREATE TABLE IF NOT EXISTS life_reminder_logs (
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_resource ON life_reminder_logs(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_user ON life_reminder_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON life_reminder_logs(sent_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_logs_key ON life_reminder_logs(reminder_key) WHERE reminder_key IS NOT NULL;
 
 -- ============================================================
--- 6.5 借用记录表 (life_borrowings)
--- 记录物品的借出/归还情况
+-- 7. 借用记录表 (life_borrowings)
+-- 记录物品的借出/归还情况，关联 life_items
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_borrowings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -371,32 +206,10 @@ CREATE INDEX IF NOT EXISTS idx_borrowings_user ON life_borrowings(user_id);
 CREATE INDEX IF NOT EXISTS idx_borrowings_status ON life_borrowings(status);
 CREATE INDEX IF NOT EXISTS idx_borrowings_expected_return ON life_borrowings(expected_return_date);
 
--- 为 life_items 添加借用状态字段
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'is_borrowed'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN is_borrowed BOOLEAN DEFAULT FALSE;
-  END IF;
-END $$;
-
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_items'::regclass
-    AND attname = 'borrowed_by'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_items ADD COLUMN borrowed_by TEXT;
-  END IF;
-END $$;
-
 -- ============================================================
--- 6.6 共享关系表 (life_shares)
--- 记录用户之间的资源共享关系
+-- 8. 共享关系表 (life_shares)
+-- 记录用户之间的资源（物品/待办）共享关系，支持 view/edit 权限
+-- 共享入口收拢到消息好友操作和资源编辑上下文
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_shares (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -405,6 +218,7 @@ CREATE TABLE IF NOT EXISTS life_shares (
   resource_type TEXT NOT NULL CHECK (resource_type IN ('item', 'todo')),
   resource_id UUID NOT NULL,
   permission TEXT NOT NULL CHECK (permission IN ('view', 'edit')) DEFAULT 'view',
+  conversation_id UUID REFERENCES life_conversations(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(owner_id, shared_with_id, resource_type, resource_id)
 );
@@ -412,10 +226,11 @@ CREATE TABLE IF NOT EXISTS life_shares (
 CREATE INDEX IF NOT EXISTS idx_shares_owner ON life_shares(owner_id);
 CREATE INDEX IF NOT EXISTS idx_shares_shared_with ON life_shares(shared_with_id);
 CREATE INDEX IF NOT EXISTS idx_shares_resource ON life_shares(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_shares_conversation ON life_shares(conversation_id);
 
 -- ============================================================
--- 6.7 模板表 (life_templates)
--- 用户自定义的物品/待办模板
+-- 9. 模板表 (life_templates)
+-- 用户自定义的物品/待办模板，支持从当前记录保存和套用预填
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -436,7 +251,24 @@ CREATE INDEX IF NOT EXISTS idx_templates_user ON life_templates(user_id);
 CREATE INDEX IF NOT EXISTS idx_templates_type ON life_templates(template_type);
 
 -- ============================================================
--- 7. 反馈表 (life_feedback)
+-- 10. 价值历史记录表 (life_value_history)
+-- 记录物品估值的变化历史，用于资产页展示价值趋势
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_value_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID NOT NULL REFERENCES life_items(id) ON DELETE CASCADE,
+  value DECIMAL(10, 2) NOT NULL,
+  reason TEXT,
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_value_history_item ON life_value_history(item_id);
+CREATE INDEX IF NOT EXISTS idx_value_history_user ON life_value_history(user_id);
+
+-- ============================================================
+-- 11. 反馈表 (life_feedback)
+-- 用户提交的反馈建议
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_feedback (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -447,46 +279,7 @@ CREATE TABLE IF NOT EXISTS life_feedback (
 );
 
 -- ============================================================
--- 8. 系统预设数据
--- ============================================================
-
--- 7.1 预设物品分类（5 个，user_id 为 NULL）
-INSERT INTO life_categories (id, name, icon, type, user_id) VALUES
-  ('a0000000-0000-0000-0000-000000000001', '电子产品', 'laptop',          'item', NULL),
-  ('a0000000-0000-0000-0000-000000000002', '书籍',     'book',            'item', NULL),
-  ('a0000000-0000-0000-0000-000000000003', '日用品',   'shopping',        'item', NULL),
-  ('a0000000-0000-0000-0000-000000000004', '衣物',     'tshirt-crew',     'item', NULL),
-  ('a0000000-0000-0000-0000-000000000005', '其他',     'dots-horizontal', 'item', NULL)
-ON CONFLICT (id) DO NOTHING;
-
--- 7.2 预设位置（5 个，user_id 为 NULL）
-INSERT INTO life_locations (id, name, icon, level, user_id) VALUES
-  ('b0000000-0000-0000-0000-000000000001', '书房', 'book-open-variant',    0, NULL),
-  ('b0000000-0000-0000-0000-000000000002', '卧室', 'bed',                  0, NULL),
-  ('b0000000-0000-0000-0000-000000000003', '客厅', 'sofa',                 0, NULL),
-  ('b0000000-0000-0000-0000-000000000004', '厨房', 'pot-steam',            0, NULL),
-  ('b0000000-0000-0000-0000-000000000005', '随身', 'bag-personal-outline', 0, NULL)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================
--- 9. Storage Bucket（图片上传）
--- ============================================================
-INSERT INTO storage.buckets (id, name, public) VALUES ('items-images', 'items-images', TRUE)
-ON CONFLICT (id) DO NOTHING;
-
-DROP POLICY IF EXISTS "Users can upload images" ON storage.objects;
-CREATE POLICY "Users can upload images" ON storage.objects
-  FOR INSERT WITH CHECK (
-    bucket_id = 'items-images'
-    AND auth.role() = 'authenticated'
-  );
-
-DROP POLICY IF EXISTS "Public read images" ON storage.objects;
-CREATE POLICY "Public read images" ON storage.objects
-  FOR SELECT USING (bucket_id = 'items-images');
-
--- ============================================================
--- 10. 对话表 (life_conversations) — v1.1.0 新增
+-- 12. 对话表 (life_conversations)
 -- 双人对话，参与者为两个用户
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_conversations (
@@ -503,7 +296,8 @@ CREATE TABLE IF NOT EXISTS life_conversations (
 CREATE INDEX IF NOT EXISTS idx_conversations_participant ON life_conversations(participant_ids);
 
 -- ============================================================
--- 11. 消息表 (life_messages) — v1.1.0 新增
+-- 13. 消息表 (life_messages)
+-- 聊天消息，支持文字、物品卡片、待办卡片和系统通知四种类型
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -521,23 +315,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON life_messages(conversati
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON life_messages(sender_id);
 
 -- ============================================================
--- 12. shares 表新增 conversation_id 关联 — v1.1.0
--- ============================================================
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_attribute
-    WHERE attrelid = 'life_shares'::regclass
-    AND attname = 'conversation_id'
-    AND NOT attisdropped
-  ) THEN
-    ALTER TABLE life_shares ADD COLUMN conversation_id UUID REFERENCES life_conversations(id);
-  END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS idx_shares_conversation ON life_shares(conversation_id);
-
--- ============================================================
--- 12.1 好友关系与申请表 — v1.4.1
+-- 14. 好友关系与申请表 (life_friendships)
+-- 一个关系记录表示双向好友申请/关系，status 区分 pending/accepted/rejected
+-- 双方独立控制置顶，同意好友后才能建立对话和配置共享权限
 -- ============================================================
 CREATE TABLE IF NOT EXISTS life_friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -558,10 +338,49 @@ CREATE INDEX IF NOT EXISTS idx_friendships_requester ON life_friendships(request
 CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON life_friendships(addressee_id, status);
 
 -- ============================================================
--- 13. RLS 策略 — conversations + messages
+-- 15. 系统预设数据
 -- ============================================================
 
--- conversations: 参与者可以读写
+-- 15.1 预设物品分类（5 个，user_id 为 NULL）
+INSERT INTO life_categories (id, name, icon, color, type, user_id) VALUES
+  ('a0000000-0000-0000-0000-000000000001', '电子产品', 'laptop',          '#3B82F6', 'item', NULL),
+  ('a0000000-0000-0000-0000-000000000002', '书籍',     'book',            '#10B981', 'item', NULL),
+  ('a0000000-0000-0000-0000-000000000003', '日用品',   'shopping',        '#F59E0B', 'item', NULL),
+  ('a0000000-0000-0000-0000-000000000004', '衣物',     'tshirt-crew',     '#8B5CF6', 'item', NULL),
+  ('a0000000-0000-0000-0000-000000000005', '其他',     'dots-horizontal', '#6B7280', 'item', NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- 15.2 预设位置（5 个，user_id 为 NULL）
+INSERT INTO life_locations (id, name, icon, level, user_id) VALUES
+  ('b0000000-0000-0000-0000-000000000001', '书房', 'book-open-variant',    0, NULL),
+  ('b0000000-0000-0000-0000-000000000002', '卧室', 'bed',                  0, NULL),
+  ('b0000000-0000-0000-0000-000000000003', '客厅', 'sofa',                 0, NULL),
+  ('b0000000-0000-0000-0000-000000000004', '厨房', 'pot-steam',            0, NULL),
+  ('b0000000-0000-0000-0000-000000000005', '随身', 'bag-personal-outline', 0, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 16. Storage Bucket（图片上传）
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public) VALUES ('items-images', 'items-images', TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Users can upload images" ON storage.objects;
+CREATE POLICY "Users can upload images" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'items-images'
+    AND auth.role() = 'authenticated'
+  );
+
+DROP POLICY IF EXISTS "Public read images" ON storage.objects;
+CREATE POLICY "Public read images" ON storage.objects
+  FOR SELECT USING (bucket_id = 'items-images');
+
+-- ============================================================
+-- 17. RLS 策略
+-- ============================================================
+
+-- 17.1 life_conversations: 参与者可读写
 DROP POLICY IF EXISTS "Participants can view conversations" ON life_conversations;
 CREATE POLICY "Participants can view conversations" ON life_conversations
   FOR SELECT USING (
@@ -580,7 +399,7 @@ CREATE POLICY "Participants can create conversations" ON life_conversations
     auth.uid() = ANY(participant_ids)
   );
 
--- messages: 参与者可以读写
+-- 17.2 life_messages: 参与者可读写
 DROP POLICY IF EXISTS "Participants can view messages" ON life_messages;
 CREATE POLICY "Participants can view messages" ON life_messages
   FOR SELECT USING (
@@ -597,7 +416,7 @@ CREATE POLICY "Participants can create messages" ON life_messages
     auth.uid() = sender_id
   );
 
--- friendships: 申请双方可以读，申请人可创建，双方可更新相关状态
+-- 17.3 life_friendships: 申请双方可读写
 ALTER TABLE life_friendships ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Friend participants can view friendships" ON life_friendships;
@@ -625,7 +444,7 @@ CREATE POLICY "Friend participants can delete friendships" ON life_friendships
   );
 
 -- ============================================================
--- 14. 自动更新 updated_at 触发器
+-- 18. 自动更新 updated_at 触发器
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
@@ -635,11 +454,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- life_conversations
 DROP TRIGGER IF EXISTS update_conversations_updated_at ON life_conversations;
 CREATE TRIGGER update_conversations_updated_at
   BEFORE UPDATE ON life_conversations
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
+-- life_friendships
 DROP TRIGGER IF EXISTS update_friendships_updated_at ON life_friendships;
 CREATE TRIGGER update_friendships_updated_at
   BEFORE UPDATE ON life_friendships

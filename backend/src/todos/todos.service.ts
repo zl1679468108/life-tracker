@@ -1,29 +1,28 @@
-import { Injectable, Inject, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
 import { toUtcIso, convertTimesToBeijing } from '../common/utils/time';
+import { SharesService } from '../shares/shares.service';
 
 @Injectable()
 export class TodosService {
   constructor(
     @Inject(SUPABASE_CLIENT) private supabase: SupabaseClient,
     private readonly eventsGateway: EventsGateway,
+    private readonly sharesService: SharesService,
   ) {}
 
-  async findAll(userId: string) {
-    const { data, error } = await this.supabase
-      .from('life_todos')
-      .select('*')
-      .eq('user_id', userId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
-
-    if (error) throw new InternalServerErrorException(error.message);
-    return (data || []).map(convertTimesToBeijing);
+  private withAccessMeta(todo: any, userId: string, permission: 'owner' | 'view' | 'edit') {
+    return {
+      ...convertTimesToBeijing(todo),
+      is_shared_resource: todo.user_id !== userId,
+      share_permission: permission,
+      can_edit: permission === 'owner' || permission === 'edit',
+    };
   }
 
-  async findOne(id: string) {
+  private async getAccessibleTodo(id: string, userId: string) {
     const { data, error } = await this.supabase
       .from('life_todos')
       .select('*')
@@ -34,7 +33,56 @@ export class TodosService {
       if (error.code === 'PGRST116') throw new BadRequestException('待办不存在');
       throw new InternalServerErrorException(error.message);
     }
-    return convertTimesToBeijing(data);
+
+    if (data.user_id === userId) {
+      return { todo: data, permission: 'owner' as const };
+    }
+
+    const access = await this.sharesService.checkPermission(userId, 'todo', id);
+    if (!access.hasAccess || !access.permission) {
+      throw new ForbiddenException('无权访问该待办');
+    }
+
+    return { todo: data, permission: access.permission };
+  }
+
+  async findAll(userId: string) {
+    const { data, error } = await this.supabase
+      .from('life_todos')
+      .select('*')
+      .eq('user_id', userId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) throw new InternalServerErrorException(error.message);
+    const ownTodos = (data || []).map((todo) => this.withAccessMeta(todo, userId, 'owner'));
+
+    const { data: shares, error: sharesError } = await this.supabase
+      .from('life_shares')
+      .select('resource_id, permission')
+      .eq('shared_with_id', userId)
+      .eq('resource_type', 'todo');
+
+    if (sharesError) throw new InternalServerErrorException(sharesError.message);
+
+    const resourceIds = Array.from(new Set((shares || []).map((share) => share.resource_id)));
+    if (resourceIds.length === 0) return ownTodos;
+
+    const { data: sharedTodos, error: sharedError } = await this.supabase
+      .from('life_todos')
+      .select('*')
+      .in('id', resourceIds);
+
+    if (sharedError) throw new InternalServerErrorException(sharedError.message);
+
+    const permissionById = new Map((shares || []).map((share) => [share.resource_id, share.permission as 'view' | 'edit']));
+    const visibleSharedTodos = (sharedTodos || []).map((todo) => this.withAccessMeta(todo, userId, permissionById.get(todo.id) || 'view'));
+    return [...ownTodos, ...visibleSharedTodos];
+  }
+
+  async findOne(id: string, userId: string) {
+    const { todo, permission } = await this.getAccessibleTodo(id, userId);
+    return this.withAccessMeta(todo, userId, permission);
   }
 
   async create(todo: any) {
@@ -54,7 +102,12 @@ export class TodosService {
     return convertTimesToBeijing(data);
   }
 
-  async update(id: string, updates: any) {
+  async update(id: string, updates: any, userId: string) {
+    const { permission } = await this.getAccessibleTodo(id, userId);
+    if (permission === 'view') {
+      throw new ForbiddenException('只有查看权限，不能编辑该待办');
+    }
+
     const storeUpdates = { ...updates };
     if (storeUpdates.due_date) storeUpdates.due_date = toUtcIso(storeUpdates.due_date);
     if (storeUpdates.reminder_date) storeUpdates.reminder_date = toUtcIso(storeUpdates.reminder_date);
@@ -74,7 +127,12 @@ export class TodosService {
     return convertTimesToBeijing(data);
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string) {
+    const { todo } = await this.getAccessibleTodo(id, userId);
+    if (todo.user_id !== userId) {
+      throw new ForbiddenException('只有所有者可以删除该待办');
+    }
+
     // 先查出 user_id 用于广播
     const { data: existing } = await this.supabase
       .from('life_todos')

@@ -43,7 +43,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
           loading: false,
         }));
       } else {
-        set({ error: res.message || '创建模板失败', loading: false });
+        const message = res.message || '创建模板失败';
+        set({ error: message, loading: false });
+        throw new Error(message);
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

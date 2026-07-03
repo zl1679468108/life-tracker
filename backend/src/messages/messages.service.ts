@@ -440,6 +440,13 @@ export class MessagesService {
     if (error) throw new InternalServerErrorException(error.message);
 
     const otherId = existing.requester_id === userId ? existing.addressee_id : existing.requester_id;
+    const { error: sharesError } = await this.supabase
+      .from('life_shares')
+      .delete()
+      .or(`and(owner_id.eq.${userId},shared_with_id.eq.${otherId}),and(owner_id.eq.${otherId},shared_with_id.eq.${userId})`);
+
+    if (sharesError) throw new InternalServerErrorException(sharesError.message);
+
     this.eventsGateway.emitFriendRequestUpdated(userId, { type: 'friend_deleted', friendship_id: friendshipId });
     this.eventsGateway.emitFriendRequestUpdated(otherId, { type: 'friend_deleted', friendship_id: friendshipId });
     return { success: true };

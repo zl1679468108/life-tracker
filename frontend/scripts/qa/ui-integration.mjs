@@ -1090,7 +1090,7 @@ async function main() {
     ['borrowings', '/settings/borrowings', '借用管理', ['/api/borrowings', '/api/items']],
     ['borrowing-create', '/settings/borrowing-create', '新增借用', ['/api/items']],
     ['calendar', '/settings/calendar', '日历视图', ['/api/calendar']],
-    ['widgets', '/settings/widgets', '桌面小组件', ['/api/widgets/stats', '/api/widgets/todos']],
+    ['widgets', '/settings/widgets', '桌面快捷入口', ['/api/widgets/stats', '/api/widgets/todos']],
     ['message-detail', '/message/conv-qa-1', '对话', ['/api/messages/conversations/conv-qa-1', '/api/messages/conversations']],
   ];
 

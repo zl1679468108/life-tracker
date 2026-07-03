@@ -6,7 +6,7 @@ import { useTemplateStore } from '../stores/templateStore';
 import { useBorrowingStore } from '../stores/borrowingStore';
 import { useAuthStore } from '../stores/authStore';
 import { Platform } from 'react-native';
-import type { BackupExportData, ImportResult } from '../types';
+import type { BackupExportData, ImportPreview, ImportResult } from '../types';
 
 export type ExportFormat = 'json' | 'csv';
 
@@ -152,23 +152,132 @@ export const parseImportData = (content: string): BackupExportData | null => {
   }
 };
 
+const normalizeText = (value: unknown) => String(value || '').trim().toLowerCase();
+const categoryKey = (category: any) => `${category?.type || 'item'}:${normalizeText(category?.name)}`;
+const locationKey = (location: any, parentId?: string) => `${parentId || 'root'}:${normalizeText(location?.name)}`;
+const itemKey = (item: any, categoryId?: string, locationId?: string) =>
+  `${normalizeText(item?.name)}:${categoryId || ''}:${locationId || ''}:${normalizeText(item?.barcode)}`;
+const todoKey = (todo: any, categoryId?: string) =>
+  `${normalizeText(todo?.title)}:${categoryId || ''}:${todo?.due_date || ''}`;
+
+const getCurrentData = () => ({
+  categories: useCategoryStore.getState().categories,
+  locations: useLocationStore.getState().locations,
+  items: useItemStore.getState().items,
+  todos: useTodoStore.getState().todos,
+});
+
+type ImportPlan = {
+  data: BackupExportData;
+  preview: ImportPreview;
+  categoryIdMap: Map<string, string>;
+  locationIdMap: Map<string, string>;
+  categoryActions: Array<{ source: any; action: 'skip' | 'create'; existingId?: string }>;
+  locationActions: Array<{ source: any; action: 'skip' | 'create'; existingId?: string; parentId?: string }>;
+};
+
+const buildImportPlan = (data: BackupExportData): ImportPlan => {
+  const current = getCurrentData();
+  const categoryIdMap = new Map<string, string>();
+  const locationIdMap = new Map<string, string>();
+  const categoryByKey = new Map(current.categories.map((category: any) => [categoryKey(category), category.id]));
+  const locationByKey = new Map(current.locations.map((location: any) => [locationKey(location, location.parent_id), location.id]));
+  const categoryActions: ImportPlan['categoryActions'] = [];
+  const locationActions: ImportPlan['locationActions'] = [];
+
+  for (const category of data.categories || []) {
+    const key = categoryKey(category);
+    const existingId = categoryByKey.get(key);
+    if (category.id && existingId) categoryIdMap.set(category.id, existingId);
+    categoryActions.push({ source: category, action: existingId ? 'skip' : 'create', existingId });
+  }
+
+  const sortedLocations = [...(data.locations || [])].sort((a, b) => (a.level || 1) - (b.level || 1));
+  for (const location of sortedLocations) {
+    const mappedParentId = location.parent_id ? locationIdMap.get(location.parent_id) : undefined;
+    const key = locationKey(location, mappedParentId);
+    const existingId = locationByKey.get(key);
+    if (location.id && existingId) locationIdMap.set(location.id, existingId);
+    locationActions.push({ source: location, action: existingId ? 'skip' : 'create', existingId, parentId: mappedParentId });
+  }
+
+  const currentItemKeys = new Set(current.items.map((item: any) => itemKey(item, item.category_id, item.location_id)));
+  const currentTodoKeys = new Set(current.todos.map((todo: any) => todoKey(todo, todo.category_id)));
+  const importedItemKeys = new Set<string>();
+  const importedTodoKeys = new Set<string>();
+  const sourceCategoryIds = new Set((data.categories || []).map((category) => category.id).filter(Boolean));
+  const sourceLocationIds = new Set((data.locations || []).map((location) => location.id).filter(Boolean));
+
+  let duplicateItems = 0;
+  let duplicateTodos = 0;
+  let remappedItemCategories = 0;
+  let remappedItemLocations = 0;
+  let remappedTodoCategories = 0;
+
+  for (const item of data.items || []) {
+    const mappedCategoryId = item.category_id ? categoryIdMap.get(item.category_id) || item.category_id : undefined;
+    const mappedLocationId = item.location_id ? locationIdMap.get(item.location_id) || item.location_id : undefined;
+    if (item.category_id && sourceCategoryIds.has(item.category_id)) remappedItemCategories++;
+    if (item.location_id && sourceLocationIds.has(item.location_id)) remappedItemLocations++;
+    const key = itemKey(item, mappedCategoryId, mappedLocationId);
+    if (currentItemKeys.has(key) || importedItemKeys.has(key)) duplicateItems++;
+    importedItemKeys.add(key);
+  }
+
+  for (const todo of data.todos || []) {
+    const mappedCategoryId = todo.category_id ? categoryIdMap.get(todo.category_id) || todo.category_id : undefined;
+    if (todo.category_id && sourceCategoryIds.has(todo.category_id)) remappedTodoCategories++;
+    const key = todoKey(todo, mappedCategoryId);
+    if (currentTodoKeys.has(key) || importedTodoKeys.has(key)) duplicateTodos++;
+    importedTodoKeys.add(key);
+  }
+
+  const duplicateCategories = categoryActions.filter((action) => action.action === 'skip').length;
+  const duplicateLocations = locationActions.filter((action) => action.action === 'skip').length;
+
+  return {
+    data,
+    preview: {
+      items_count: data.items?.length || 0,
+      todos_count: data.todos?.length || 0,
+      categories_count: data.categories?.length || 0,
+      locations_count: data.locations?.length || 0,
+      duplicate_items: duplicateItems,
+      duplicate_todos: duplicateTodos,
+      duplicate_categories: duplicateCategories,
+      duplicate_locations: duplicateLocations,
+      new_items: (data.items?.length || 0) - duplicateItems,
+      new_todos: (data.todos?.length || 0) - duplicateTodos,
+      new_categories: categoryActions.length - duplicateCategories,
+      new_locations: locationActions.length - duplicateLocations,
+      remapped_item_categories: remappedItemCategories,
+      remapped_item_locations: remappedItemLocations,
+      remapped_todo_categories: remappedTodoCategories,
+    },
+    categoryIdMap,
+    locationIdMap,
+    categoryActions,
+    locationActions,
+  };
+};
+
+const refreshImportDependencies = async () => {
+  await Promise.all([
+    useCategoryStore.getState().fetchCategories(undefined, true),
+    useLocationStore.getState().fetchLocations(true),
+    useItemStore.getState().fetchItems(),
+    useTodoStore.getState().fetchTodos(),
+  ]);
+};
+
 /**
  * 预览导入数据
  */
-export const previewImportData = (content: string): {
-  items_count: number;
-  todos_count: number;
-  categories_count: number;
-  locations_count: number;
-} | null => {
+export const previewImportData = async (content: string): Promise<ImportPreview | null> => {
   const data = parseImportData(content);
   if (!data) return null;
-  return {
-    items_count: data.items?.length || 0,
-    todos_count: data.todos?.length || 0,
-    categories_count: data.categories?.length || 0,
-    locations_count: data.locations?.length || 0,
-  };
+  await refreshImportDependencies();
+  return buildImportPlan(data).preview;
 };
 
 /**
@@ -184,6 +293,10 @@ export const importFromJSON = async (
     imported_todos: 0,
     imported_categories: 0,
     imported_locations: 0,
+    skipped_items: 0,
+    skipped_todos: 0,
+    skipped_categories: 0,
+    skipped_locations: 0,
     errors: [],
   };
 
@@ -193,11 +306,20 @@ export const importFromJSON = async (
   }
 
   try {
+    await refreshImportDependencies();
+    const plan = buildImportPlan(data);
+
     // 导入分类
-    if (data.categories?.length > 0) {
+    if (plan.categoryActions.length > 0) {
       onProgress?.('正在导入分类...');
       const categoryStore = useCategoryStore.getState();
-      for (const cat of data.categories) {
+      for (const action of plan.categoryActions) {
+        const cat = action.source;
+        if (action.action === 'skip') {
+          if (cat.id && action.existingId) plan.categoryIdMap.set(cat.id, action.existingId);
+          result.skipped_categories = (result.skipped_categories || 0) + 1;
+          continue;
+        }
         try {
           await categoryStore.addCategory({
             name: cat.name,
@@ -206,6 +328,8 @@ export const importFromJSON = async (
             type: cat.type,
             user_id: cat.user_id,
           });
+          const created = useCategoryStore.getState().categories.find((category: any) => categoryKey(category) === categoryKey(cat));
+          if (cat.id && created?.id) plan.categoryIdMap.set(cat.id, created.id);
           result.imported_categories++;
         } catch (e) {
           result.errors.push({ row: 0, message: `分类 ${cat.name} 导入失败` });
@@ -214,18 +338,27 @@ export const importFromJSON = async (
     }
 
     // 导入位置
-    if (data.locations?.length > 0) {
+    if (plan.locationActions.length > 0) {
       onProgress?.('正在导入位置...');
       const locationStore = useLocationStore.getState();
-      for (const loc of data.locations) {
+      for (const action of plan.locationActions) {
+        const loc = action.source;
+        const parentId = loc.parent_id ? plan.locationIdMap.get(loc.parent_id) : undefined;
+        if (action.action === 'skip') {
+          if (loc.id && action.existingId) plan.locationIdMap.set(loc.id, action.existingId);
+          result.skipped_locations = (result.skipped_locations || 0) + 1;
+          continue;
+        }
         try {
           await locationStore.addLocation({
             name: loc.name,
             icon: loc.icon,
-            parent_id: loc.parent_id,
+            parent_id: parentId,
             level: loc.level || 1,
             user_id: loc.user_id,
           });
+          const created = useLocationStore.getState().locations.find((location: any) => locationKey(location, location.parent_id) === locationKey(loc, parentId));
+          if (loc.id && created?.id) plan.locationIdMap.set(loc.id, created.id);
           result.imported_locations++;
         } catch (e) {
           result.errors.push({ row: 0, message: `位置 ${loc.name} 导入失败` });
@@ -238,17 +371,34 @@ export const importFromJSON = async (
       onProgress?.('正在导入物品...');
       const itemStore = useItemStore.getState();
       const { user } = useAuthStore.getState();
+      const existingKeys = new Set(useItemStore.getState().items.map((item: any) => itemKey(item, item.category_id, item.location_id)));
       for (const item of data.items) {
+        const mappedCategoryId = item.category_id ? plan.categoryIdMap.get(item.category_id) || item.category_id : undefined;
+        const mappedLocationId = item.location_id ? plan.locationIdMap.get(item.location_id) || item.location_id : undefined;
+        const key = itemKey(item, mappedCategoryId, mappedLocationId);
+        if (existingKeys.has(key)) {
+          result.skipped_items = (result.skipped_items || 0) + 1;
+          continue;
+        }
         try {
           await itemStore.addItem({
             name: item.name,
             description: item.description,
-            category_id: item.category_id,
-            location_id: item.location_id,
+            category_id: mappedCategoryId,
+            location_id: mappedLocationId,
             images: item.images,
             barcode: item.barcode,
+            expiry_date: item.expiry_date,
+            reminder_enabled: item.reminder_enabled,
+            reminder_days_before: item.reminder_days_before,
+            purchase_price: item.purchase_price,
+            purchase_date: item.purchase_date,
+            current_value: item.current_value,
+            currency: item.currency,
+            depreciation_rate: item.depreciation_rate,
             user_id: user?.id || item.user_id || '',
           });
+          existingKeys.add(key);
           result.imported_items++;
         } catch (e) {
           result.errors.push({ row: 0, message: `物品 ${item.name} 导入失败` });
@@ -261,17 +411,27 @@ export const importFromJSON = async (
       onProgress?.('正在导入待办...');
       const todoStore = useTodoStore.getState();
       const { user } = useAuthStore.getState();
+      const existingKeys = new Set(useTodoStore.getState().todos.map((todo: any) => todoKey(todo, todo.category_id)));
       for (const todo of data.todos) {
+        const mappedCategoryId = todo.category_id ? plan.categoryIdMap.get(todo.category_id) || todo.category_id : undefined;
+        const key = todoKey(todo, mappedCategoryId);
+        if (existingKeys.has(key)) {
+          result.skipped_todos = (result.skipped_todos || 0) + 1;
+          continue;
+        }
         try {
           await todoStore.addTodo({
             title: todo.title,
             description: todo.description,
             priority: todo.priority,
             due_date: todo.due_date,
-            category_id: todo.category_id,
+            reminder_date: todo.reminder_date,
+            images: todo.images,
+            category_id: mappedCategoryId,
             user_id: user?.id || todo.user_id || '',
             completed: todo.completed || false,
           });
+          existingKeys.add(key);
           result.imported_todos++;
         } catch (e) {
           result.errors.push({ row: 0, message: `待办 ${todo.title} 导入失败` });

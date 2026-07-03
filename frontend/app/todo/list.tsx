@@ -12,7 +12,26 @@ import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
 type FilterType = 'all' | 'pending' | 'completed';
+type FocusFilterType = 'all' | 'today' | 'overdue' | 'reminder';
 type SortType = 'time' | 'priority' | 'title';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+const getDayDiff = (dateValue?: string) => {
+  if (!dateValue) return null;
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.floor((startOfDay(date) - startOfDay(new Date())) / DAY_MS);
+};
+
+const formatDueLabel = (dateValue?: string) => {
+  const diff = getDayDiff(dateValue);
+  if (diff === null) return '';
+  if (diff < 0) return `逾期 ${Math.abs(diff)} 天`;
+  if (diff === 0) return '今天截止';
+  if (diff === 1) return '明天截止';
+  return `${new Date(dateValue!).toLocaleDateString('zh-CN')} 截止`;
+};
 
 export default function TodoListScreen() {
   const router = useRouter();
@@ -20,6 +39,7 @@ export default function TodoListScreen() {
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos } = useTodoStore();
   const [filter, setFilter] = useState<FilterType>('all');
+  const [focusFilter, setFocusFilter] = useState<FocusFilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('time');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +64,14 @@ export default function TodoListScreen() {
     if (filter === 'completed') return t.completed;
     return true;
   }).filter((t) => {
+    if (focusFilter === 'today') return getDayDiff(t.due_date) === 0;
+    if (focusFilter === 'overdue') {
+      const diff = getDayDiff(t.due_date);
+      return !t.completed && diff !== null && diff < 0;
+    }
+    if (focusFilter === 'reminder') return Boolean(t.reminder_date);
+    return true;
+  }).filter((t) => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
     return t.title.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q);
@@ -63,6 +91,25 @@ export default function TodoListScreen() {
     if (p === 3) return 'high';
     if (p === 2) return 'medium';
     return 'low';
+  };
+
+  const focusFilters: { key: FocusFilterType; label: string; count: number }[] = [
+    { key: 'all', label: '全部范围', count: todos.length },
+    { key: 'today', label: '今日', count: todos.filter((todo) => getDayDiff(todo.due_date) === 0).length },
+    { key: 'overdue', label: '逾期', count: todos.filter((todo) => !todo.completed && (getDayDiff(todo.due_date) ?? 0) < 0 && getDayDiff(todo.due_date) !== null).length },
+    { key: 'reminder', label: '有提醒', count: todos.filter((todo) => Boolean(todo.reminder_date)).length },
+  ];
+
+  const activeFilterCount = [
+    filter !== 'all',
+    focusFilter !== 'all',
+    searchQuery.trim(),
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setFilter('all');
+    setFocusFilter('all');
+    setSearchQuery('');
   };
 
   const handleDeleteTodo = (todo: LifeTodo) => {
@@ -101,12 +148,22 @@ export default function TodoListScreen() {
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
-        {item.due_date && (
+        {(item.due_date || item.reminder_date) && (
           <View style={styles.todoFooter}>
-            <MaterialCommunityIcons name="calendar-outline" size={14} color={palette.textMuted} />
-            <Text style={[styles.todoDate, { color: palette.textMuted }]}>
-              截止: {new Date(item.due_date).toLocaleDateString('zh-CN')}
-            </Text>
+            {item.due_date && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="calendar-outline" size={14} color={(getDayDiff(item.due_date) ?? 1) < 0 ? palette.danger : palette.textMuted} />
+                <Text style={[styles.todoDate, { color: (getDayDiff(item.due_date) ?? 1) < 0 ? palette.danger : palette.textMuted }]}>
+                  {formatDueLabel(item.due_date)}
+                </Text>
+              </View>
+            )}
+            {item.reminder_date && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="bell-outline" size={14} color={palette.warning} />
+                <Text style={[styles.todoDate, { color: palette.warning }]}>有提醒</Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
@@ -135,12 +192,22 @@ export default function TodoListScreen() {
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
-        {item.due_date && (
+        {(item.due_date || item.reminder_date) && (
           <View style={styles.todoFooter}>
-            <MaterialCommunityIcons name="calendar-outline" size={14} color={palette.textMuted} />
-            <Text style={[styles.todoDate, { color: palette.textMuted }]}>
-              截止: {new Date(item.due_date).toLocaleDateString('zh-CN')}
-            </Text>
+            {item.due_date && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="calendar-outline" size={14} color={(getDayDiff(item.due_date) ?? 1) < 0 ? palette.danger : palette.textMuted} />
+                <Text style={[styles.todoDate, { color: (getDayDiff(item.due_date) ?? 1) < 0 ? palette.danger : palette.textMuted }]}>
+                  {formatDueLabel(item.due_date)}
+                </Text>
+              </View>
+            )}
+            {item.reminder_date && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="bell-outline" size={14} color={palette.warning} />
+                <Text style={[styles.todoDate, { color: palette.warning }]}>有提醒</Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
@@ -222,6 +289,35 @@ export default function TodoListScreen() {
               )}
             </View>
           )}
+          <View style={styles.focusFilters}>
+            {focusFilters.map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[
+                  styles.focusFilterChip,
+                  { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+                  focusFilter === item.key && { backgroundColor: palette.surface, borderColor: palette.orange },
+                ]}
+                onPress={() => setFocusFilter(item.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.focusFilterText, { color: focusFilter === item.key ? palette.orange : palette.textMuted }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.focusFilterCount, { color: focusFilter === item.key ? palette.orange : palette.textDisabled }]}>
+                  {item.count}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {activeFilterCount > 0 && (
+            <View style={styles.filterSummary}>
+              <Text style={[styles.filterSummaryText, { color: palette.textMuted }]}>已启用 {activeFilterCount} 个筛选</Text>
+              <TouchableOpacity onPress={clearFilters} activeOpacity={0.75}>
+                <Text style={[styles.clearFilterText, { color: palette.orange }]}>清除</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -243,8 +339,8 @@ export default function TodoListScreen() {
             error={todosError}
             empty={!loading && filtered.length === 0}
             emptyIcon="check-circle-outline"
-            emptyTitle={filter === 'all' ? '暂无待办事项' : filter === 'pending' ? '没有待完成的事项' : '没有已完成的事项'}
-            emptyMessage="点击下方按钮添加第一个待办"
+            emptyTitle={activeFilterCount === 0 ? '暂无待办事项' : '没有匹配的待办'}
+            emptyMessage={activeFilterCount === 0 ? '点击下方按钮添加第一个待办' : '调整筛选条件或清空搜索后再看看'}
             onEmptyAction={() => router.push('/todo/create')}
             emptyActionLabel="添加待办"
             onRetry={fetchTodos}
@@ -348,6 +444,47 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     padding: 0,
   },
+  focusFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  focusFilterChip: {
+    minHeight: 34,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  focusFilterText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+  },
+  focusFilterCount: {
+    fontSize: fontSize.xs,
+    lineHeight: 16,
+    fontWeight: fontWeight.bold,
+  },
+  filterSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  filterSummaryText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.medium,
+  },
+  clearFilterText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.bold,
+  },
   filterTab: {
     flex: 1,
     paddingVertical: spacing.md,
@@ -405,6 +542,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.md,
     marginLeft: 34,
+    flexWrap: 'wrap',
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
   todoDate: {
     fontSize: fontSize.sm,

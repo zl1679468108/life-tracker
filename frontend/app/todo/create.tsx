@@ -6,6 +6,7 @@ import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useShareStore } from '../../stores/shareStore';
+import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { FormActions, Input, ImagePicker, DatePicker, ShareDialog, FormSection } from '../../components/ui';
@@ -17,7 +18,7 @@ import { uploadImages } from '../../lib/upload';
 export default function CreateTodoScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; templateId?: string }>();
   const { todos, addTodo, updateTodo, loading } = useTodoStore();
   const { categories, fetchCategories, addCategory } = useCategoryStore();
   const {
@@ -28,6 +29,8 @@ export default function CreateTodoScreen() {
     updateShare,
     deleteShare,
   } = useShareStore();
+  const { templates: todoTemplates, fetchTemplates: fetchTodoTemplates, createTemplate } = useTemplateStore();
+  const currentUser = useAuthStore((state) => state.user);
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const [title, setTitle] = useState('');
@@ -38,11 +41,17 @@ export default function CreateTodoScreen() {
   const [reminderDate, setReminderDate] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; category?: string; description?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; category?: string; description?: string; dueDate?: string; reminderDate?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
   const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [resourceOwnerId, setResourceOwnerId] = useState<string | null>(null);
+  const [sharePermission, setSharePermission] = useState<'owner' | 'view' | 'edit' | null>(null);
   const [prefillAttempted, setPrefillAttempted] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
@@ -63,9 +72,12 @@ export default function CreateTodoScreen() {
   const todoCategories = categories.filter((c) => c.type === 'todo');
   const selectedCategory = todoCategories.find((item) => item.id === categoryId);
   const selectedPriority = priorities.find((item) => item.value === priority);
+  const isReadOnlyShared = Boolean(isEdit && resourceOwnerId && currentUser?.id && resourceOwnerId !== currentUser.id && sharePermission === 'view');
+  const canManageResource = Boolean(isEdit && params.id && resourceOwnerId && currentUser?.id && resourceOwnerId === currentUser.id);
 
   useEffect(() => {
     fetchCategories('todo');
+    fetchTodoTemplates('todo');
   }, []);
 
   useEffect(() => {
@@ -84,6 +96,8 @@ export default function CreateTodoScreen() {
       setCompleted(todo.completed);
       setDueDate(todo.due_date || '');
       setReminderDate(todo.reminder_date || '');
+      setResourceOwnerId(todo.user_id || null);
+      setSharePermission(todo.share_permission || (todo.user_id === currentUser?.id ? 'owner' : null));
     };
 
     if (!isEdit || !params.id || prefillAttempted) return;
@@ -113,13 +127,75 @@ export default function CreateTodoScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, params.id, todos, prefillAttempted]);
+  }, [isEdit, params.id, todos, prefillAttempted, currentUser?.id]);
+
+  const handleUseTemplate = (template: any) => {
+    const data = template.data || {};
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.priority) setPriority(data.priority as 1 | 2 | 3);
+    if (data.category_id) setCategoryId(data.category_id);
+    if (data.due_date) setDueDate(data.due_date);
+    if (data.reminder_date) setReminderDate(data.reminder_date);
+    if (data.images) setImages(data.images);
+    setErrors({});
+    setShowTemplatePicker(false);
+  };
+
+  useEffect(() => {
+    if (isEdit || !params.templateId || appliedTemplateId === params.templateId || todoTemplates.length === 0) return;
+    const template = todoTemplates.find((item) => item.id === params.templateId);
+    if (!template) return;
+    handleUseTemplate(template);
+    setAppliedTemplateId(params.templateId);
+  }, [isEdit, params.templateId, appliedTemplateId, todoTemplates]);
+
+  const handleSaveTemplate = async () => {
+    if (!title.trim()) {
+      showAlert('提示', '请先填写待办标题');
+      return;
+    }
+    const finalName = templateName.trim() || `${title.trim()}模板`;
+    const data: Record<string, any> = {
+      title: title.trim(),
+      priority,
+    };
+    if (description.trim()) data.description = description.trim();
+    if (categoryId) data.category_id = categoryId;
+    if (dueDate) data.due_date = dueDate;
+    if (reminderDate) data.reminder_date = reminderDate;
+    if (images.length > 0) data.images = images.filter((item) => item.startsWith('http'));
+
+    await createTemplate({
+      name: finalName,
+      description: description.trim() || undefined,
+      template_type: 'todo',
+      data,
+      icon: 'checkbox-marked-circle-outline',
+      color: palette.warning,
+    });
+    setTemplateName('');
+    setShowSaveTemplateModal(false);
+    await fetchTodoTemplates('todo');
+    showAlert('已保存', '待办模板已保存，可在创建页套用');
+  };
 
   const validate = (): boolean => {
-    const newErrors: { title?: string; category?: string; description?: string } = {};
+    const newErrors: typeof errors = {};
     if (!title.trim()) newErrors.title = '请输入待办标题';
     if (!categoryId) newErrors.category = '请选择分类';
     if (!description.trim()) newErrors.description = '请输入描述';
+    if (dueDate && Number.isNaN(new Date(dueDate).getTime())) newErrors.dueDate = '截止日期无效';
+    if (reminderDate) {
+      const reminder = new Date(reminderDate);
+      if (Number.isNaN(reminder.getTime())) {
+        newErrors.reminderDate = '提醒时间无效';
+      } else if (reminder.getTime() < Date.now() - 60 * 1000) {
+        newErrors.reminderDate = '提醒时间不能早于当前时间';
+      } else if (dueDate && !Number.isNaN(new Date(dueDate).getTime()) && reminder.getTime() > new Date(dueDate).getTime()) {
+        newErrors.reminderDate = '提醒时间不能晚于截止日期';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -167,9 +243,9 @@ export default function CreateTodoScreen() {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        user_id: user.id,
         completed: isEdit ? completed : false,
       };
+      if (!isEdit) todoData.user_id = user.id;
       if (categoryId) todoData.category_id = categoryId;
       if (dueDate) todoData.due_date = dueDate;
       if (reminderDate) todoData.reminder_date = reminderDate;
@@ -203,6 +279,34 @@ export default function CreateTodoScreen() {
     });
   }, [navigation, title, loading, handleSubmit, router, isEdit]);
 
+  if (isReadOnlyShared) {
+    return (
+      <View style={[styles.container, { backgroundColor: palette.bg }]}>
+        <ScrollView
+          style={{ backgroundColor: palette.bg }}
+          contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
+        >
+          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>共享待办</Text>
+            <Text style={[styles.readOnlyTitle, { color: palette.text }]}>{title || '未命名待办'}</Text>
+            {description ? <Text style={[styles.readOnlyDesc, { color: palette.textMuted }]}>{description}</Text> : null}
+            <View style={styles.readOnlyRows}>
+              <ReadOnlyRow icon="tag-outline" label="分类" value={selectedCategory?.name || '未设置'} palette={palette} />
+              <ReadOnlyRow icon={(selectedPriority?.icon || 'alert-outline') as string} label="优先级" value={selectedPriority?.label || '普通'} palette={palette} />
+              <ReadOnlyRow icon="calendar" label="截止" value={dueDate || '未设置'} palette={palette} />
+              <ReadOnlyRow icon="bell-outline" label="提醒" value={reminderDate || '未设置'} palette={palette} />
+              <ReadOnlyRow icon="check-circle-outline" label="状态" value={completed ? '已完成' : '待完成'} palette={palette} />
+            </View>
+          </View>
+          <View style={[styles.readOnlyNotice, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+            <MaterialCommunityIcons name="eye-outline" size={18} color={palette.textMuted} />
+            <Text style={[styles.readOnlyNoticeText, { color: palette.textMuted }]}>你拥有查看权限，不能编辑、删除或继续共享该待办。</Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <KeyboardAvoidingView
@@ -216,6 +320,55 @@ export default function CreateTodoScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
+          {!isEdit && todoTemplates.length > 0 && (
+            <TouchableOpacity
+              style={[styles.templateBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+              onPress={() => setShowTemplatePicker(true)}
+            >
+              <MaterialCommunityIcons name="file-document-outline" size={20} color={palette.violet} />
+              <Text style={[styles.templateBtnText, { color: palette.text }]}>从模板创建</Text>
+              <MaterialCommunityIcons name="chevron-down" size={20} color={palette.textMuted} />
+            </TouchableOpacity>
+          )}
+
+          {!isEdit && (
+            <TouchableOpacity
+              style={[styles.templateBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+              onPress={() => {
+                setTemplateName(title.trim() ? `${title.trim()}模板` : '');
+                setShowSaveTemplateModal(true);
+              }}
+            >
+              <MaterialCommunityIcons name="content-save-outline" size={20} color={palette.orange} />
+              <Text style={[styles.templateBtnText, { color: palette.text }]}>保存为模板</Text>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+            </TouchableOpacity>
+          )}
+
+          {showTemplatePicker && (
+            <View style={[styles.templatePicker, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              {todoTemplates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={[styles.templateItem, { borderBottomColor: palette.border }]}
+                  onPress={() => handleUseTemplate(template)}
+                >
+                  <MaterialCommunityIcons name={(template.icon || 'checkbox-marked-circle-outline') as any} size={20} color={palette.orange} />
+                  <View style={styles.templateItemCopy}>
+                    <Text style={[styles.templateItemTitle, { color: palette.text }]} numberOfLines={1}>{template.name}</Text>
+                    <Text style={[styles.templateItemMeta, { color: palette.textMuted }]}>使用 {template.usage_count} 次</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.templateItem, { justifyContent: 'center' }]}
+                onPress={() => setShowTemplatePicker(false)}
+              >
+                <Text style={[styles.templateItemTitle, { color: palette.textMuted }]}>取消</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
             <Input
@@ -294,21 +447,23 @@ export default function CreateTodoScreen() {
             <DatePicker
               label="截止日期"
               value={dueDate}
-              onChange={setDueDate}
+              onChange={(value) => { setDueDate(value); if (errors.dueDate || errors.reminderDate) setErrors((e) => ({ ...e, dueDate: undefined, reminderDate: undefined })); }}
               icon="calendar"
               mode="date"
               placeholder="选择截止日期"
               minDate={new Date()}
+              error={errors.dueDate}
             />
 
             <DatePicker
               label="提醒时间"
               value={reminderDate}
-              onChange={setReminderDate}
+              onChange={(value) => { setReminderDate(value); if (errors.reminderDate) setErrors((e) => ({ ...e, reminderDate: undefined })); }}
               icon="bell"
               mode="datetime"
               placeholder="设置提醒时间"
               minDate={new Date()}
+              error={errors.reminderDate}
             />
           </View>
 
@@ -335,7 +490,7 @@ export default function CreateTodoScreen() {
             </FormSection>
           </View>
 
-          {isEdit && params.id && (
+          {canManageResource && (
             <View style={styles.contextActions}>
               <TouchableOpacity
                 style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
@@ -346,6 +501,21 @@ export default function CreateTodoScreen() {
                 <View style={styles.contextActionText}>
                   <Text style={[styles.contextActionTitle, { color: palette.text }]}>共享设置</Text>
                   <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>给好友授权查看或编辑</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.contextAction, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                onPress={() => {
+                  setTemplateName(title.trim() ? `${title.trim()}模板` : '');
+                  setShowSaveTemplateModal(true);
+                }}
+                activeOpacity={0.82}
+              >
+                <MaterialCommunityIcons name="content-save-outline" size={20} color={palette.orange} />
+                <View style={styles.contextActionText}>
+                  <Text style={[styles.contextActionTitle, { color: palette.text }]}>保存为模板</Text>
+                  <Text style={[styles.contextActionDesc, { color: palette.textMuted }]}>下次新增待办时快速预填</Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
               </TouchableOpacity>
@@ -371,12 +541,12 @@ export default function CreateTodoScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {isEdit && params.id && (
+      {canManageResource && (
         <ShareDialog
           visible={showShareDialog}
           onClose={() => setShowShareDialog(false)}
           resourceType="todo"
-          resourceId={params.id}
+          resourceId={params.id!}
           shares={resourceShares}
           loading={sharesLoading}
           onShare={async (friendId, permission) => {
@@ -393,6 +563,27 @@ export default function CreateTodoScreen() {
           }}
         />
       )}
+
+      <Modal visible={showSaveTemplateModal} transparent animationType="fade" onRequestClose={() => setShowSaveTemplateModal(false)}>
+        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSaveTemplateModal(false)}>
+          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>保存为模板</Text>
+            <Input
+              label="模板名称"
+              value={templateName}
+              onChangeText={setTemplateName}
+              placeholder="例如：采购待办模板"
+              leftIcon="file-document-outline"
+            />
+            <FormActions
+              onCancel={() => setShowSaveTemplateModal(false)}
+              onSubmit={handleSaveTemplate}
+              submitLabel="保存模板"
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* 分类选择弹窗 */}
       <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
@@ -488,6 +679,26 @@ export default function CreateTodoScreen() {
   );
 }
 
+function ReadOnlyRow({
+  icon,
+  label,
+  value,
+  palette,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  palette: typeof appDesign.dark;
+}) {
+  return (
+    <View style={styles.readOnlyRow}>
+      <MaterialCommunityIcons name={icon as any} size={18} color={palette.textMuted} />
+      <Text style={[styles.readOnlyLabel, { color: palette.textMuted }]}>{label}</Text>
+      <Text style={[styles.readOnlyValue, { color: palette.text }]} numberOfLines={1}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -506,6 +717,47 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semiBold,
     marginBottom: spacing.sm,
+  },
+  readOnlyTitle: {
+    fontSize: fontSize['3xl'],
+    fontWeight: fontWeight.bold,
+    marginBottom: spacing.sm,
+  },
+  readOnlyDesc: {
+    fontSize: fontSize.base,
+    lineHeight: 22,
+    marginBottom: spacing.md,
+  },
+  readOnlyRows: {
+    gap: spacing.sm,
+  },
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 34,
+  },
+  readOnlyLabel: {
+    width: 56,
+    fontSize: fontSize.sm,
+  },
+  readOnlyValue: {
+    flex: 1,
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  readOnlyNotice: {
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  readOnlyNoticeText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
   },
   compactInput: {
     minHeight: 44,
@@ -545,6 +797,46 @@ const styles = StyleSheet.create({
   selectorHint: {
     fontSize: fontSize.sm,
     marginTop: 1,
+  },
+  templateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    marginBottom: spacing.sm,
+  },
+  templateBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  templatePicker: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  templateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+  },
+  templateItemCopy: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    minWidth: 0,
+  },
+  templateItemTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.medium,
+  },
+  templateItemMeta: {
+    fontSize: fontSize.xs,
+    marginTop: 2,
   },
   contextActions: {
     gap: spacing.sm,

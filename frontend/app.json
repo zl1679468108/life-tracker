@@ -27,8 +27,8 @@
       "name": "Life Tracker",
       "shortName": "LifeTracker",
       "description": "Personal life tracking app",
-      "themeColor": "#007AFF",
-      "backgroundColor": "#ffffff"
+      "themeColor": "#F36F3C",
+      "backgroundColor": "#F6F8FC"
     },
     "plugins": [
       "expo-router",
@@ -37,7 +37,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FFF0E9"
         }
       ],
       "@react-native-community/datetimepicker"

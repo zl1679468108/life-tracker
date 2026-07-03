@@ -306,13 +306,23 @@ export class SharesService {
   ): Promise<{ hasAccess: boolean; permission?: 'view' | 'edit' }> {
     const { data: share } = await this.supabase
       .from('life_shares')
-      .select('permission')
+      .select('permission, owner_id')
       .eq('shared_with_id', userId)
       .eq('resource_type', resourceType)
       .eq('resource_id', resourceId)
       .single();
 
     if (share) {
+      const { data: friendship, error: friendshipError } = await this.supabase
+        .from('life_friendships')
+        .select('id')
+        .or(`and(requester_id.eq.${share.owner_id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${share.owner_id})`)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      if (friendshipError) throw new InternalServerErrorException(friendshipError.message);
+      if (!friendship) return { hasAccess: false };
+
       return { hasAccess: true, permission: share.permission };
     }
 

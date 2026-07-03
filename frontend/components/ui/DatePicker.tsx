@@ -12,6 +12,7 @@ interface DatePickerProps {
   mode?: 'date' | 'datetime';
   placeholder?: string;
   minDate?: Date;
+  error?: string;
 }
 
 export function DatePicker({
@@ -22,6 +23,7 @@ export function DatePicker({
   mode = 'date',
   placeholder,
   minDate,
+  error,
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showNative, setShowNative] = useState(false);
@@ -91,7 +93,7 @@ export function DatePicker({
         <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{label}</Text>
         <View style={styles.webContainer}>
           <TouchableOpacity
-            style={[styles.dateInput, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}
+            style={[styles.dateInput, { borderColor: error ? palette.danger : palette.border, backgroundColor: palette.surfaceSoft }]}
             onPress={handleClick}
           >
             <MaterialCommunityIcons name={icon as any} size={20} color={displayValue ? palette.orange : palette.textMuted} />
@@ -99,6 +101,7 @@ export function DatePicker({
               {displayValue || placeholder || `选择${label}`}
             </Text>
           </TouchableOpacity>
+          {error ? <Text style={[styles.errorText, { color: palette.danger }]}>{error}</Text> : null}
           <input
             ref={inputRef}
             type={mode === 'datetime' ? 'datetime-local' : 'date'}
@@ -123,12 +126,13 @@ export function DatePicker({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionLabel, { color: palette.textSecondary }]}>{label}</Text>
-      <TouchableOpacity style={[styles.dateInput, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+      <TouchableOpacity style={[styles.dateInput, { borderColor: error ? palette.danger : palette.border, backgroundColor: palette.surfaceSoft }]}>
         <MaterialCommunityIcons name={icon as any} size={20} color={displayValue ? palette.orange : palette.textMuted} />
         <Text style={[styles.dateText, { color: palette.textMuted }, displayValue ? { color: palette.text } : null]}>
           {displayValue || placeholder || `选择${label}`}
         </Text>
       </TouchableOpacity>
+      {error ? <Text style={[styles.errorText, { color: palette.danger }]}>{error}</Text> : null}
     </View>
   );
 }
@@ -155,5 +159,11 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: fontSize.xl,
+  },
+  errorText: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+    fontWeight: fontWeight.medium,
   },
 });

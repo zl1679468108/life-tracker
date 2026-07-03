@@ -12,12 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { SwipeableRow } from '../../components/SwipeableRow';
-import { AppHeader } from '../../components/ui';
+import { AppHeader, MessagesBackground } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
@@ -313,11 +314,21 @@ export default function MessagesScreen() {
 
   return (
     <SafeScreen backgroundColor={palette.bg}>
-      <View style={[styles.container, { backgroundColor: palette.bg }]}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} colors={[palette.orange]} />}
-        >
+      <View style={[styles.pageWrap, { backgroundColor: 'transparent' }]}>
+        {/* 氛围背景层 */}
+        <View style={styles.atmosphereArea} pointerEvents="none">
+          <LinearGradient
+            colors={palette.bg === appDesign.dark.bg
+              ? ['rgba(124,92,252,0.06)', 'rgba(16,166,110,0.03)', palette.bg]
+              : ['#F0EDFF', '#ECFDF5', palette.bg]
+            }
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <MessagesBackground />
+        </View>
+
+        <View style={[styles.stickyHeader, { backgroundColor: 'transparent' }]}>
           <AppHeader
             title="消息"
             actions={[
@@ -325,6 +336,11 @@ export default function MessagesScreen() {
               { icon: 'plus-circle-outline', label: '打开添加好友', onPress: () => setShowNewChat(true) },
             ]}
           />
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} colors={[palette.orange]} />}
+        >
 
           <View style={styles.storyRow}>
             <TouchableOpacity
@@ -704,18 +720,30 @@ function UserPickRow({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  pageWrap: {
     flex: 1,
+    position: 'relative',
+  },
+  atmosphereArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  stickyHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    zIndex: 10,
+  },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 112,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: 112,
   },
   storyRow: {
     flexDirection: 'row',

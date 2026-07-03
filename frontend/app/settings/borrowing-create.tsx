@@ -34,7 +34,7 @@ export default function CreateBorrowingScreen() {
     }
   }, [params.itemId, fetchItems]);
 
-  const availableItems = items.filter((i) => !i.is_borrowed || !params.itemId);
+  const availableItems = items.filter((i) => !i.is_borrowed || i.id === params.itemId);
 
   const handleSubmit = async () => {
     Keyboard.dismiss();
@@ -57,6 +57,7 @@ export default function CreateBorrowingScreen() {
       if (notes.trim()) data.notes = notes.trim();
 
       await createBorrowing(data);
+      await fetchItems();
       setToastVisible(true);
       setTimeout(() => {
         setToastVisible(false);
@@ -169,8 +170,12 @@ export default function CreateBorrowingScreen() {
             <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
             <Text style={[styles.pickerTitle, { color: palette.text }]}>选择物品</Text>
             <ScrollView style={styles.pickerList}>
-              {items.map((item) => {
-                const disabled = item.is_borrowed;
+              {availableItems.length === 0 ? (
+                <View style={styles.pickerEmpty}>
+                  <Text style={[styles.pickerEmptyText, { color: palette.textMuted }]}>暂无可借出的物品</Text>
+                </View>
+              ) : availableItems.map((item) => {
+                const disabled = Boolean(item.is_borrowed && item.id !== params.itemId);
                 const selected = selectedItemId === item.id;
                 return (
                   <TouchableOpacity
@@ -292,6 +297,14 @@ const styles = StyleSheet.create({
   },
   pickerList: {
     maxHeight: 360,
+  },
+  pickerEmpty: {
+    minHeight: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerEmptyText: {
+    fontSize: fontSize.sm,
   },
   pickerItem: {
     flexDirection: 'row',

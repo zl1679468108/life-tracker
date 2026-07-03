@@ -102,6 +102,15 @@ export default function CategoryManageScreen() {
       showAlert(t('common.error'), t('categories.nameRequired'));
       return;
     }
+    const duplicate = categories.some((category) =>
+      category.type === newType &&
+      category.parent_id === newParentId &&
+      category.name.trim().toLowerCase() === newName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      showAlert(t('common.error'), '同一层级下已存在同名分类');
+      return;
+    }
     try {
       await addCategory({ name: newName.trim(), type: newType, icon: newIcon, color: newColor, parent_id: newParentId });
       setNewName('');
@@ -137,6 +146,17 @@ export default function CategoryManageScreen() {
       return;
     }
     if (!editingId) return;
+    const editingCategory = categories.find((category) => category.id === editingId);
+    const duplicate = categories.some((category) =>
+      category.id !== editingId &&
+      category.type === editingCategory?.type &&
+      category.parent_id === editingCategory?.parent_id &&
+      category.name.trim().toLowerCase() === editName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      showAlert(t('common.error'), '同一层级下已存在同名分类');
+      return;
+    }
     try {
       await updateCategory(editingId, { name: editName.trim(), icon: editIcon, color: editColor });
       setEditingId(null);

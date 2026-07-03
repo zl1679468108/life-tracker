@@ -34,7 +34,7 @@ export default function WidgetsScreen() {
       }
       return;
     }
-    showAlert('安装提示', '当前平台可通过系统桌面小组件或快捷方式访问 LifeTracker。');
+    showAlert('安装提示', '当前平台可通过系统桌面快捷方式访问 LifeTracker；原生小组件暂未开放。');
   };
 
   const priorityColors: Record<number, string> = {
@@ -49,7 +49,7 @@ export default function WidgetsScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: palette.text }]}>桌面小组件</Text>
+            <Text style={[styles.title, { color: palette.text }]}>桌面快捷入口</Text>
           </View>
         </View>
       </View>
@@ -60,7 +60,7 @@ export default function WidgetsScreen() {
             <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>预览卡片</Text>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>快速统计</Text>
           </View>
-          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>模拟桌面首屏信息</Text>
+          <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>摘要预览</Text>
         </View>
 
         <View style={styles.statsGrid}>
@@ -95,7 +95,7 @@ export default function WidgetsScreen() {
           <View style={[styles.emptyPanel, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color={palette.textMuted} />
             <Text style={[styles.emptyTitle, { color: palette.text }]}>暂无待办</Text>
-            <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>添加待办后，这里会生成适合小组件展示的摘要列表。</Text>
+            <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>添加待办后，这里会生成适合快捷查看的摘要列表。</Text>
           </View>
         ) : (
           <View style={styles.todoList}>
@@ -137,19 +137,19 @@ export default function WidgetsScreen() {
       >
         <View style={[styles.installIconWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
           <MaterialCommunityIcons
-            name={Platform.OS === 'web' ? 'monitor-arrow-down' : 'widgets-outline'}
+            name={Platform.OS === 'web' ? 'monitor-arrow-down' : 'cellphone-link'}
             size={20}
             color={palette.violet}
           />
         </View>
         <View style={styles.installCopy}>
           <Text style={[styles.installTitle, { color: palette.text }]}>
-            {Platform.OS === 'web' ? '安装到桌面' : '系统快捷入口'}
+            {Platform.OS === 'web' ? '安装到桌面' : '添加快捷入口'}
           </Text>
           <Text style={[styles.installDesc, { color: palette.textMuted }]}>
             {Platform.OS === 'web'
-              ? '将 LifeTracker 安装为桌面应用，获得更接近原生小组件的访问体验。'
-              : '当前平台通过系统桌面快捷方式或原生小组件承载 LifeTracker 快速入口。'}
+              ? '将 LifeTracker 安装为桌面应用，获得独立窗口和快捷启动体验。'
+              : '当前平台可通过系统桌面快捷方式打开 LifeTracker，原生小组件暂未开放。'}
           </Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
@@ -159,18 +159,18 @@ export default function WidgetsScreen() {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={[styles.sectionEyebrow, { color: palette.textSecondary }]}>使用说明</Text>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>关于桌面小组件</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>关于快捷入口</Text>
           </View>
           <Text style={[styles.sectionMeta, { color: palette.textMuted }]}>
-            {Platform.OS === 'web' ? 'PWA 体验可用' : '原生入口可用'}
+            {Platform.OS === 'web' ? 'PWA 可用' : '快捷方式可用'}
           </Text>
         </View>
 
         <View style={styles.bulletList}>
           {[
-            '首页统计卡和待办摘要适合放入桌面快捷入口。',
+            '首页统计卡和待办摘要会在这里作为快捷查看预览。',
             'Web 端可通过浏览器安装为桌面应用，保留独立窗口体验。',
-            '原生 Android / iOS 小组件将继续沿用当前统计与待办信息结构。',
+            'Android / iOS 原生小组件暂不作为当前版本稳定能力。',
           ].map((line) => (
             <View key={line} style={styles.bulletRow}>
               <MaterialCommunityIcons name="check-circle-outline" size={16} color={palette.success} />

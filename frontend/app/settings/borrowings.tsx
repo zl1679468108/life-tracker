@@ -18,26 +18,35 @@ export default function BorrowingsScreen() {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { borrowings, fetchBorrowings, fetchByItemId, returnBorrowing, deleteBorrowing } = useBorrowingStore();
-  const { fetchItems } = useItemStore();
+  const { items, fetchItems } = useItemStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const itemContextId = params.itemId;
+  const contextItem = itemContextId ? items.find((item) => item.id === itemContextId) : undefined;
+  const goCreateBorrowing = () => {
+    router.push({
+      pathname: '/settings/borrowing-create',
+      params: itemContextId ? { itemId: itemContextId } : {},
+    });
+  };
 
   useEffect(() => {
-    if (params.itemId) {
-      fetchByItemId(params.itemId);
+    if (itemContextId) {
+      fetchByItemId(itemContextId);
     } else {
       fetchBorrowings();
     }
     fetchItems();
-  }, [params.itemId]);
+  }, [itemContextId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    if (params.itemId) {
-      await fetchByItemId(params.itemId);
+    if (itemContextId) {
+      await fetchByItemId(itemContextId);
     } else {
       await fetchBorrowings();
     }
+    await fetchItems();
     setRefreshing(false);
   };
 
@@ -48,11 +57,12 @@ export default function BorrowingsScreen() {
         text: '确认归还',
         onPress: async () => {
           await returnBorrowing(id);
-          if (params.itemId) {
-            await fetchByItemId(params.itemId);
+          if (itemContextId) {
+            await fetchByItemId(itemContextId);
           } else {
             await fetchBorrowings();
           }
+          await fetchItems();
         },
       },
     ]);
@@ -66,11 +76,12 @@ export default function BorrowingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteBorrowing(id);
-          if (params.itemId) {
-            await fetchByItemId(params.itemId);
+          if (itemContextId) {
+            await fetchByItemId(itemContextId);
           } else {
             await fetchBorrowings();
           }
+          await fetchItems();
         },
       },
     ]);
@@ -101,7 +112,22 @@ export default function BorrowingsScreen() {
               <Text style={[styles.title, { color: palette.text }]}>借用管理</Text>
             </View>
           </View>
-          {!params.itemId && (
+          {itemContextId && (
+            <View style={[styles.contextCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={[styles.contextIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="package-variant" size={18} color={palette.orange} />
+              </View>
+              <View style={styles.contextCopy}>
+                <Text style={[styles.contextTitle, { color: palette.text }]} numberOfLines={1}>
+                  {contextItem?.name || '当前物品'}
+                </Text>
+                <Text style={[styles.contextMeta, { color: palette.textMuted }]}>
+                  {borrowings.length} 条记录 · {borrowings.some((b) => b.status !== 'returned') ? '借出中' : '当前可借出'}
+                </Text>
+              </View>
+            </View>
+          )}
+          {!itemContextId && (
             <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
               {tabs.map((tab) => (
                 <TouchableOpacity
@@ -125,16 +151,10 @@ export default function BorrowingsScreen() {
           <EmptyState
             icon="package-variant"
             title="暂无借用记录"
-            description={params.itemId ? '该物品暂无借用历史' : '点击右下角添加借用记录'}
-            actionLabel={params.itemId ? '刷新记录' : '新增借用'}
+            description={itemContextId ? '该物品暂无借用历史，可直接发起借出' : '点击右下角添加借用记录'}
+            actionLabel="新增借用"
             buttonVariant="secondary"
-            onAction={() => {
-              if (params.itemId) {
-                onRefresh();
-                return;
-              }
-              router.push('/settings/borrowing-create');
-            }}
+            onAction={goCreateBorrowing}
           />
         ) : (
           filteredBorrowings.map((borrowing) => (
@@ -152,7 +172,7 @@ export default function BorrowingsScreen() {
       <View style={[styles.actionBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
         <Button
           title="新增借用"
-          onPress={() => router.push('/settings/borrowing-create')}
+          onPress={goCreateBorrowing}
           variant="primary"
           icon={<MaterialCommunityIcons name="plus-circle" size={16} color="#FFFFFF" style={styles.actionIcon} />}
         />
@@ -184,6 +204,35 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize['4xl'],
     fontWeight: fontWeight.bold,
+  },
+  contextCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  contextIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contextCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  contextTitle: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semiBold,
+  },
+  contextMeta: {
+    fontSize: fontSize.sm,
+    marginTop: 2,
   },
   filterTabs: {
     flexDirection: 'row',

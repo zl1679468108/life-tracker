@@ -40,8 +40,22 @@ interface NotificationState {
   /** 判断是否已读 */
   isRead: (id: string) => boolean;
   /** 添加一条推送通知 */
-  addPushNotification: (notification: Notification) => void;
+  addPushNotification: (notification: Notification) => Promise<void>;
 }
+
+const loadStoredPushNotifications = async (): Promise<Notification[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(PUSH_NOTIFICATIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistPushNotifications = async (notifications: Notification[]) => {
+  const pushNotifications = notifications.filter((n) => n.id.startsWith('push-') || n.id.startsWith('msg-')).slice(0, 50);
+  await AsyncStorage.setItem(PUSH_NOTIFICATIONS_KEY, JSON.stringify(pushNotifications));
+};
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
@@ -107,6 +121,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       } else {
         set({ loaded: true });
       }
+      const pushNotifications = await loadStoredPushNotifications();
+      if (pushNotifications.length > 0) {
+        set((state) => ({
+          notifications: [
+            ...pushNotifications,
+            ...state.notifications.filter((n) => !pushNotifications.some((push) => push.id === n.id)),
+          ],
+        }));
+      }
       // 加载完成后刷新通知列表
       get().refreshNotifications();
     } catch {
@@ -137,14 +160,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     return get().readIds.includes(id);
   },
 
-  addPushNotification: (notification) => {
+  addPushNotification: async (notification) => {
     const existing = get().notifications;
     // 避免重复添加
     if (existing.some((n) => n.id === notification.id)) return;
+    const nextNotifications = [notification, ...existing];
     set({
-      notifications: [notification, ...existing],
+      notifications: nextNotifications,
       pushTrigger: get().pushTrigger + 1,
     });
+    await persistPushNotifications(nextNotifications);
   },
 
   /** 处理通知点击，导航到深度链接 */
@@ -189,18 +214,24 @@ useItemStore.subscribe((state) => {
 });
 
 // 监听 socket 提醒事件，推送通知到达时添加到通知中心并触发铃铛抖动
-socketService.onReminderFired((todo) => {
+socketService.onReminderFired((payload) => {
+  const isItemReminder = payload.resource_type === 'item' || payload.reminder_type === 'expiry';
+  const title = isItemReminder ? '物品到期提醒' : '待办提醒';
+  const desc = payload.title || payload.name || '提醒时间到了';
   const notification: Notification = {
-    id: `push-${todo.id}-${Date.now()}`,
-    icon: 'bell-ring',
+    id: payload.reminder_log_id ? `push-${payload.reminder_log_id}` : `push-${payload.id}-${payload.reminder_type || 'reminder'}-${Date.now()}`,
+    icon: isItemReminder ? 'package-variant-closed-alert' : 'bell-ring',
     iconBg: '#FF6B35',
-    title: '待办提醒',
-    desc: todo.title,
+    title,
+    desc: isItemReminder && typeof payload.days_remaining === 'number'
+      ? `${desc}，${payload.days_remaining} 天后到期`
+      : desc,
     time: '刚刚',
+    link: isItemReminder ? `/item/${payload.id}` : `/todo/${payload.id}`,
   };
-  useNotificationStore.getState().addPushNotification(notification);
+  void useNotificationStore.getState().addPushNotification(notification);
   // Web 端显示浏览器通知
-  showWebNotification('待办提醒', todo.title);
+  showWebNotification(title, notification.desc);
 });
 
 // 监听 socket 新消息事件，自动添加通知（v1.1.0）
@@ -216,5 +247,5 @@ socketService.onMessageCreated((message: any) => {
     // 深度链接：点击后跳转到对话页
     link: `/message/${message.conversation_id}`,
   };
-  store.addPushNotification(notification);
+  void store.addPushNotification(notification);
 });

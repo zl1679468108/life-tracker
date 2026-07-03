@@ -4,9 +4,12 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
 import { useColors } from '../stores/themeStore';
+import { useCategoryStore } from '../stores/categoryStore';
 import { useItemStore } from '../stores/itemStore';
+import { useLocationStore } from '../stores/locationStore';
 import { useTodoStore } from '../stores/todoStore';
 import { SafeScreen } from './SafeScreen';
+import type { LifeCategory, LifeItem, LifeLocation, LifeTodo } from '../types';
 
 interface GlobalSearchProps {
   visible: boolean;
@@ -14,8 +17,17 @@ interface GlobalSearchProps {
 }
 
 type SearchResult =
-  | { type: 'item' | 'todo'; data: any }
+  | { type: 'item'; data: LifeItem }
+  | { type: 'todo'; data: LifeTodo }
+  | { type: 'category'; data: LifeCategory }
+  | { type: 'location'; data: LifeLocation }
   | { type: 'feature'; data: { id: string; title: string; description: string; route: string; icon: keyof typeof MaterialCommunityIcons.glyphMap } };
+
+type ResultGroup = {
+  key: SearchResult['type'];
+  title: string;
+  results: SearchResult[];
+};
 
 const featureEntries: SearchResult[] = [
   { type: 'feature', data: { id: 'items', title: '物品', description: '列表 / 新增 / 编辑', route: '/item/list', icon: 'package-variant' } },
@@ -30,7 +42,7 @@ const featureEntries: SearchResult[] = [
   { type: 'feature', data: { id: 'notifications', title: '通知中心', description: '全部、未读、已读通知', route: '/settings/notifications', icon: 'bell-outline' } },
   { type: 'feature', data: { id: 'data', title: '数据管理', description: '备份、恢复、导入、导出', route: '/settings/data', icon: 'database-outline' } },
   { type: 'feature', data: { id: 'assets', title: '资产总览', description: '资产总值和分类分布', route: '/settings/assets', icon: 'wallet-outline' } },
-  { type: 'feature', data: { id: 'widgets', title: '桌面小组件', description: 'PWA 小组件和快捷入口', route: '/settings/widgets', icon: 'widgets-outline' } },
+  { type: 'feature', data: { id: 'widgets', title: '桌面快捷入口', description: 'PWA 安装和摘要预览', route: '/settings/widgets', icon: 'cellphone-link' } },
 ];
 
 export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
@@ -39,12 +51,21 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { items } = useItemStore();
   const { todos } = useTodoStore();
+  const { categories, fetchCategories } = useCategoryStore();
+  const { locations, fetchLocations } = useLocationStore();
   const [searchText, setSearchText] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [groups, setGroups] = useState<ResultGroup[]>([]);
+
+  useEffect(() => {
+    if (visible) {
+      void fetchCategories(undefined, true);
+      void fetchLocations(true);
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (!searchText.trim()) {
-      setResults([]);
+      setGroups([]);
       return;
     }
 
@@ -65,13 +86,33 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
       .slice(0, 5)
       .map(todo => ({ type: 'todo' as const, data: todo }));
 
+    const matchedCategories = categories
+      .filter((category) =>
+        category.name.toLowerCase().includes(query) ||
+        category.type.toLowerCase().includes(query)
+      )
+      .slice(0, 5)
+      .map((category) => ({ type: 'category' as const, data: category }));
+
+    const matchedLocations = locations
+      .filter((location) => location.name.toLowerCase().includes(query))
+      .slice(0, 5)
+      .map((location) => ({ type: 'location' as const, data: location }));
+
     const matchedFeatures = featureEntries.filter((entry) => {
       if (entry.type !== 'feature') return false;
       return entry.data.title.toLowerCase().includes(query) || entry.data.description.toLowerCase().includes(query);
     }).slice(0, 8);
 
-    setResults([...matchedFeatures, ...matchedItems, ...matchedTodos]);
-  }, [searchText, items, todos]);
+    const nextGroups: ResultGroup[] = [
+      { key: 'feature', title: '功能入口', results: matchedFeatures },
+      { key: 'item', title: '物品', results: matchedItems },
+      { key: 'todo', title: '待办', results: matchedTodos },
+      { key: 'category', title: '分类', results: matchedCategories },
+      { key: 'location', title: '位置', results: matchedLocations },
+    ];
+    setGroups(nextGroups.filter((group) => group.results.length > 0));
+  }, [searchText, items, todos, categories, locations]);
 
   const handleResultPress = (result: SearchResult) => {
     onClose();
@@ -80,6 +121,10 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
       router.push(`/item/${result.data.id}`);
     } else if (result.type === 'todo') {
       router.push(`/todo/${result.data.id}`);
+    } else if (result.type === 'category') {
+      router.push('/settings/category-manage');
+    } else if (result.type === 'location') {
+      router.push('/settings/location-manage');
     } else {
       router.push(result.data.route as never);
     }
@@ -87,9 +132,11 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
 
   const handleClose = () => {
     setSearchText('');
-    setResults([]);
+    setGroups([]);
     onClose();
   };
+
+  const totalResults = groups.reduce((sum, group) => sum + group.results.length, 0);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleClose}>
@@ -102,7 +149,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
                 style={[styles.searchInput, { color: palette.text }]}
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder="搜索物品、待办或功能..."
+                placeholder="搜索物品、待办、分类、位置..."
                 placeholderTextColor={palette.textMuted}
                 autoFocus
                 returnKeyType="search"
@@ -122,53 +169,100 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
             {!searchText.trim() ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="text-search" size={46} color={palette.textDisabled} />
-                <Text style={[styles.emptyText, { color: palette.textMuted }]}>搜索物品、待办或工作台功能</Text>
+                <Text style={[styles.emptyText, { color: palette.textMuted }]}>搜索物品、待办、分类、位置或工作台功能</Text>
               </View>
-            ) : results.length === 0 ? (
+            ) : totalResults === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="text-search" size={46} color={palette.textDisabled} />
                 <Text style={[styles.emptyText, { color: palette.textMuted }]}>未找到相关结果</Text>
               </View>
             ) : (
-              results.map((result, index) => (
-                <TouchableOpacity
-                  key={`${result.type}-${result.data.id}-${index}`}
-                  style={[styles.resultItem, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                  onPress={() => handleResultPress(result)}
-                  activeOpacity={0.78}
-                >
-                  <View
-                    style={[
-                      styles.resultIcon,
-                      { backgroundColor: result.type === 'item' ? `${palette.orange}18` : result.type === 'todo' ? `${palette.success}18` : `${palette.violet}18` },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={result.type === 'item' ? 'package-variant' : result.type === 'todo' ? 'check-circle-outline' : result.data.icon}
-                      size={20}
-                      color={result.type === 'item' ? palette.orange : result.type === 'todo' ? palette.success : palette.violet}
+              groups.map((group) => (
+                <View key={group.key} style={styles.resultGroup}>
+                  <View style={styles.groupHeader}>
+                    <Text style={[styles.groupTitle, { color: palette.textSecondary }]}>{group.title}</Text>
+                    <Text style={[styles.groupCount, { color: palette.textMuted }]}>{group.results.length}</Text>
+                  </View>
+                  {group.results.map((result, index) => (
+                    <SearchResultRow
+                      key={`${result.type}-${result.data.id}-${index}`}
+                      result={result}
+                      palette={palette}
+                      onPress={() => handleResultPress(result)}
                     />
-                  </View>
-                  <View style={styles.resultContent}>
-                    <Text style={[styles.resultTitle, { color: palette.text }]} numberOfLines={1}>
-                      {result.type === 'item' ? result.data.name : result.data.title}
-                    </Text>
-                    <Text style={[styles.resultDesc, { color: palette.textMuted }]} numberOfLines={1}>
-                      {result.data.description || (result.type === 'feature' ? result.data.description : '')}
-                    </Text>
-                  </View>
-                  <View style={[styles.resultBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                    <Text style={[styles.resultBadgeText, { color: result.type === 'item' ? palette.orange : result.type === 'todo' ? palette.success : palette.violet }]}>
-                      {result.type === 'item' ? '物品' : result.type === 'todo' ? '待办' : '功能'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  ))}
+                </View>
               ))
             )}
           </ScrollView>
         </View>
       </SafeScreen>
     </Modal>
+  );
+}
+
+function getResultVisual(result: SearchResult, palette: typeof appDesign.dark) {
+  if (result.type === 'item') return { icon: 'package-variant' as const, color: palette.orange, label: '物品' };
+  if (result.type === 'todo') return { icon: 'check-circle-outline' as const, color: palette.success, label: '待办' };
+  if (result.type === 'category') return { icon: (result.data.icon || 'tag-outline') as keyof typeof MaterialCommunityIcons.glyphMap, color: result.data.color || palette.violet, label: result.data.type === 'item' ? '物品分类' : '待办分类' };
+  if (result.type === 'location') return { icon: (result.data.icon || 'map-marker-outline') as keyof typeof MaterialCommunityIcons.glyphMap, color: palette.warning, label: '位置' };
+  return { icon: result.data.icon, color: palette.violet, label: '功能' };
+}
+
+function getResultTitle(result: SearchResult) {
+  if (result.type === 'item') return result.data.name;
+  if (result.type === 'todo') return result.data.title;
+  if (result.type === 'category' || result.type === 'location') return result.data.name;
+  return result.data.title;
+}
+
+function getResultDescription(result: SearchResult) {
+  if (result.type === 'item') {
+    const parts = [result.data.description, result.data.expiry_date ? '有到期日期' : undefined].filter(Boolean);
+    return parts.join(' · ') || '打开物品编辑';
+  }
+  if (result.type === 'todo') {
+    const parts = [result.data.description, result.data.due_date ? '有截止日期' : undefined, result.data.completed ? '已完成' : '待完成'].filter(Boolean);
+    return parts.join(' · ');
+  }
+  if (result.type === 'category') return result.data.user_id ? '自定义分类' : '系统预设分类';
+  if (result.type === 'location') return result.data.level > 0 ? `层级 ${result.data.level}` : '顶级位置';
+  return result.data.description;
+}
+
+function SearchResultRow({
+  result,
+  palette,
+  onPress,
+}: {
+  result: SearchResult;
+  palette: typeof appDesign.dark;
+  onPress: () => void;
+}) {
+  const visual = getResultVisual(result, palette);
+  return (
+    <TouchableOpacity
+      style={[styles.resultItem, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
+      <View style={[styles.resultIcon, { backgroundColor: `${visual.color}18` }]}>
+        <MaterialCommunityIcons name={visual.icon} size={20} color={visual.color} />
+      </View>
+      <View style={styles.resultContent}>
+        <Text style={[styles.resultTitle, { color: palette.text }]} numberOfLines={1}>
+          {getResultTitle(result)}
+        </Text>
+        <Text style={[styles.resultDesc, { color: palette.textMuted }]} numberOfLines={1}>
+          {getResultDescription(result)}
+        </Text>
+      </View>
+      <View style={[styles.resultBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+        <Text style={[styles.resultBadgeText, { color: visual.color }]}>
+          {visual.label}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -217,6 +311,26 @@ const styles = StyleSheet.create({
     paddingBottom: 112,
     gap: spacing.sm,
   },
+  resultGroup: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+  },
+  groupTitle: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+  },
+  groupCount: {
+    fontSize: fontSize.xs,
+    lineHeight: 16,
+    fontWeight: fontWeight.medium,
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -242,6 +356,7 @@ const styles = StyleSheet.create({
   },
   resultContent: {
     flex: 1,
+    minWidth: 0,
     marginLeft: spacing.md,
   },
   resultTitle: {

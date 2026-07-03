@@ -2,12 +2,18 @@
 
 新对话开始时，先读取本文件。
 
-## 1. 优先级
+## 1. 文档优先级
 
-1. **产品方向**: 以 [docs/PRD.md](./docs/PRD.md) 为准。
-2. **任务状态**: 以 [docs/TASKS.md](./docs/TASKS.md) 为准。
-3. **数据库结构**: 以 [docs/database-init.sql](./docs/database-init.sql) 为准。
-4. **实现细节**: 以当前代码为准，先读代码再改。
+所有 AI 开发决策按以下优先级裁决：
+
+| 优先级 | 文档 | 用途 |
+|---|---|---|
+| 1 | [docs/PRD.md](./docs/PRD.md) | 产品需求规范：功能定义、模块边界、入口矩阵、交互/视觉规范 |
+| 2 | [docs/PROTOTYPE.md](./docs/PROTOTYPE.md) | 原型方案：页面布局、路由映射、交互流、异常状态 |
+| 3 | [docs/TASKS.md](./docs/TASKS.md) | 当前任务状态：仅包含未完成的待办任务 |
+| 4 | [docs/database-init.sql](./docs/database-init.sql) | 数据库表结构：表名、字段、约束、索引、RLS 策略 |
+| — | [docs/QA_ACCOUNTS.md](./docs/QA_ACCOUNTS.md) | QA 测试账号（供 AI 记忆，新建对话时读取） |
+| 5 | 当前代码 | 实现细节：以实际代码为准，先读代码再修改 |
 
 不要把长篇部署步骤、产品说明或数据库 SQL 复制回 `AGENTS.md`。本文件只保留 agent 开发时必须遵守的规则和索引。
 
@@ -63,35 +69,102 @@ eas build --platform android --profile development
 ```text
 frontend/
   app/                 expo-router 页面
-    (tabs)/            首页、物品、待办、设置
-    auth/              登录、注册、重置密码、OAuth 回调
-    item/              物品创建和详情
-    todo/              待办创建和详情
-    settings/          设置二级页
+    (tabs)/            首页、工作台、消息、我的
+    auth/              登录、注册、重置密码
+    item/              物品创建（复用编辑）
+    todo/              待办创建（复用编辑）
+    settings/          设置二级页（分类/位置/模板/借用/日历/统计/通知/数据/资产/小组件/账号/主题/语言/反馈）
   components/          通用组件
-  components/ui/       基础 UI 组件
-  stores/              Zustand stores
+  components/ui/       基础 UI 组件（在 index.ts 统一导出）
+  stores/              Zustand stores（auth/item/todo/category/location/notification/message 等）
   lib/                 API、上传、通知、缓存、分享等工具
-  types/               类型定义
+  types/               类型定义（api.ts + index.ts）
   constants/theme.ts   主题、颜色、间距、字体
 
 backend/
   src/
-    auth/
-    items/
-    todos/
-    categories/
-    locations/
-    feedback/
-    common/
+    auth/              认证模块（controller + service）
+    items/             物品模块
+    todos/             待办模块
+    categories/        分类模块
+    locations/         位置模块
+    borrowings/        借用模块
+    templates/         模板模块
+    messages/          消息模块
+    shares/            共享模块
+    feedback/          反馈模块
+    calendar/          日历模块（无独立 service，逻辑在 controller）
+    stats/             统计模块（无独立 service）
+    widgets/           桌面小组件模块（无独立 service）
+    upload/            上传模块
+    ai/                AI 建议模块（当前为模拟）
+    common/            公共模块
+      supabase/        Supabase 客户端
+      auth/            认证守卫和装饰器
+      events/          WebSocket 网关
+      reminder/        提醒调度器（每分钟检查 + 防重复推送）
+      mail/            邮件服务
+      monitoring/      错误监控
+      utils/           工具函数
 
 docs/
-  PRD.md               产品需求和路线
-  TASKS.md             任务状态
-  database-init.sql    Supabase 初始化脚本
+  PRD.md               产品需求和路线（当前版本 + 后续增强）
+  PROTOTYPE.md         原型方案（页面布局、路由、交互流）
+  TASKS.md             当前任务看板（仅未完成任务）
+  database-init.sql    数据库初始化脚本（权威建表基准）
+  design/              设计源文件
+  qa/                  QA 记录和截图
+  QA_ACCOUNTS.md       测试账号清单（供 AI 记忆，首次新建对话时读取）
+
+scripts/
+  qa/                  QA 自动化脚本（冒烟测试、种子数据等）
 ```
 
-## 5. 前端规则
+## 5. AI 工作分工
+
+### 5.1 跨文档协作规则
+
+修改任何功能时，按以下顺序更新文档：
+
+1. 先确认 `PRD.md` 中是否有该功能的定义
+2. 查看 `PROTOTYPE.md` 了解页面结构和路由
+3. 查看 `database-init.sql` 确认表结构
+4. 查看 `TASKS.md` 确认任务状态
+5. 读当前代码确认实现细节
+6. 修改代码后同步更新受影响的文档
+
+### 5.2 代码修改分工
+
+| 改动范围 | 需要修改的文件 |
+|---|---|
+| 新增/修改后端 API | controller + service + module + 注册到 app.module.ts |
+| 新增/修改数据库字段 | database-init.sql + frontend/types/ + 后端 service/controller + 前端 API/store |
+| 新增/修改前端页面 | 页面文件 + app/_layout.tsx Stack.Screen + api.ts + store（可选） |
+| 新增/修改 UI 组件 | components/ui/ + components/ui/index.ts |
+| 新增/修改业务逻辑 | 对应 store + lib/api.ts 或后端 service/controller |
+| 修改路由/导航 | 页面文件 + app/_layout.tsx Stack.Screen + (tabs)/_layout.tsx |
+
+### 5.3 验证分工
+
+| 角色 | 负责验证 |
+|---|---|
+| TypeScript | `cd frontend && npx tsc --noEmit`（所有前端改动） |
+| Web 构建 | `cd frontend && npm run build:web`（涉及 Web 兼容性） |
+| 后端构建 | `cd backend && npm run build`（所有后端改动） |
+| 关键接口 | 浏览器 Network 或 `curl` 验证响应结构 |
+| 数据库改动 | 先在 Supabase SQL Editor 验证 SQL 语法，再本地测试 |
+
+### 5.4 文档维护分工
+
+| 文档 | 维护时机 | 维护内容 |
+|---|---|---|
+| PRD.md | 新增/修改功能后 | 同步更新功能详述、入口矩阵、附录 |
+| PROTOTYPE.md | 页面/路由/交互变化后 | 同步更新页面布局、路由映射、交互流 |
+| TASKS.md | 任务开始/完成/阻塞时 | 更新任务状态和验收记录 |
+| database-init.sql | 表结构变化后 | 同步增删改字段、索引、RLS |
+| AGENTS.md | 项目规则/结构变化后 | 同步更新目录索引、规范、流程 |
+
+## 6. 前端规则
 
 - 路由使用 `expo-router` 文件系统路由；二级页必须在 `frontend/app/_layout.tsx` 注册 `Stack.Screen`，避免默认标题显示路径。
 - Tab 页放在 `frontend/app/(tabs)/`；详情页使用 `[id].tsx`。
@@ -102,7 +175,7 @@ docs/
 - 基础组件放在 `frontend/components/ui/`，并在 `frontend/components/ui/index.ts` 导出。
 - 图片选择、压缩、上传走 `frontend/lib/upload.ts` 和现有图片组件。
 
-## 6. 跨平台规则
+## 7. 跨平台规则
 
 项目同时面向 Android 和 Web PWA：
 
@@ -112,7 +185,7 @@ docs/
 - 页面底色、SafeArea、ScrollView、KeyboardAvoidingView 需要在暗黑模式下保持一致，避免底部露白。
 - Web 端需要支持浏览器 URL 和刷新后的状态恢复。
 
-## 7. 后端规则
+## 8. 后端规则
 
 - REST API 基础路径为 `/api`。
 - 资源模块遵循统一 CRUD：
@@ -126,7 +199,7 @@ docs/
 - Supabase 错误要转换为明确的 HTTP 异常。
 - 数据库表统一使用 `life_` 前缀。
 
-## 8. 时间规则
+## 9. 时间规则
 
 项目所有时间字段遵循同一规则：
 
@@ -136,7 +209,7 @@ docs/
 - 公共转换函数在 `backend/src/common/utils/time.ts`。
 - 调度器比较时间时使用 UTC。
 
-## 9. 数据库规则
+## 10. 数据库规则
 
 - 开发和生产目前共用 Supabase 表，修改表结构必须谨慎。
 - 初始化和迁移参考 [docs/database-init.sql](./docs/database-init.sql)。
@@ -148,7 +221,7 @@ docs/
   - 后端 service/controller
   - 前端 API 和 store
 
-## 10. 常见开发流程
+## 11. 常见开发流程
 
 新增业务模块：
 
@@ -168,14 +241,7 @@ docs/
 3. 在 `components/ui/index.ts` 导出。
 4. 检查浅色、深色、Web、Android。
 
-新增设置二级页：
-
-1. 在 `frontend/app/settings/` 新增页面。
-2. 在 `frontend/app/_layout.tsx` 注册 `Stack.Screen`。
-3. 使用统一 `subPageOptions`。
-4. 页面背景使用 `colors.gray[50]`。
-
-## 11. 验证要求
+## 12. 验证要求
 
 改动完成后按风险选择验证：
 
@@ -186,10 +252,10 @@ docs/
 
 如果验证失败，说明是本次改动导致还是项目已有问题。
 
-## 12. 注意事项
+## 13. 注意事项
 
 - 敏感信息只放环境变量，不要硬编码。
 - 保持代码简洁，能用现有模式就不要造新抽象。
 - 不要重构无关文件。
 - 修改共享 store、API 响应结构、主题、路由布局时要检查影响面。
-- 文档职责分明：产品写 PRD，任务写 TASKS，数据库写 SQL，本文件只写 agent 必读规则。
+- 文档职责分明：产品写 PRD，原型写 PROTOTYPE，任务写 TASKS，数据库写 SQL，本文件只写 agent 必读规则。

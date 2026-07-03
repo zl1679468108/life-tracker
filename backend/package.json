@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "qa:v141-social": "node ../scripts/qa/v141-social-flow.mjs",
+    "qa:t79-real-smoke": "node ../scripts/qa/t79-real-smoke.mjs",
     "qa:ui-audit-seed": "node ../scripts/qa/ui-audit-seed.mjs"
   },
   "dependencies": {

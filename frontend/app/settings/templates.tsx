@@ -15,7 +15,7 @@ export default function TemplatesScreen() {
   const router = useRouter();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const { templates, fetchTemplates, deleteTemplate, useTemplate } = useTemplateStore();
+  const { templates, fetchTemplates, deleteTemplate } = useTemplateStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,18 +43,11 @@ export default function TemplatesScreen() {
     ]);
   };
 
-  const handleUse = async (template: any) => {
-    try {
-      const newId = await useTemplate(template.id);
-      // 跳转到创建的物品/待办详情页
-      if (template.template_type === 'item') {
-        router.push(`/item/${newId}`);
-      } else {
-        router.push(`/todo/${newId}`);
-      }
-    } catch (e) {
-      // error handled in store
-    }
+  const handleUse = (template: any) => {
+    router.push({
+      pathname: template.template_type === 'item' ? '/item/create' : '/todo/create',
+      params: { templateId: template.id },
+    });
   };
 
   const filteredTemplates = templates.filter((t) => {
@@ -110,9 +103,9 @@ export default function TemplatesScreen() {
             icon="file-document-outline"
             title="暂无模板"
             description="从物品或待办详情页点击「保存为模板」创建"
-            actionLabel="刷新模板"
+            actionLabel="添加物品"
             buttonVariant="secondary"
-            onAction={onRefresh}
+            onAction={() => router.push('/item/create')}
           />
         ) : (
           filteredTemplates.map((template) => (

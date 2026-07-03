@@ -77,6 +77,9 @@ export interface LifeItem {
   created_at: string;
   updated_at: string;
   user_id: string;
+  is_shared_resource?: boolean;
+  share_permission?: 'owner' | 'view' | 'edit';
+  can_edit?: boolean;
 }
 
 export interface LifeTodo {
@@ -94,6 +97,9 @@ export interface LifeTodo {
   created_at: string;
   updated_at: string;
   user_id: string;
+  is_shared_resource?: boolean;
+  share_permission?: 'owner' | 'view' | 'edit';
+  can_edit?: boolean;
 }
 
 export interface LifeLocation {
@@ -325,7 +331,29 @@ export interface ImportResult {
   imported_todos: number;
   imported_categories: number;
   imported_locations: number;
+  skipped_items?: number;
+  skipped_todos?: number;
+  skipped_categories?: number;
+  skipped_locations?: number;
   errors: Array<{ row: number; message: string }>;
+}
+
+export interface ImportPreview {
+  items_count: number;
+  todos_count: number;
+  categories_count: number;
+  locations_count: number;
+  duplicate_items: number;
+  duplicate_todos: number;
+  duplicate_categories: number;
+  duplicate_locations: number;
+  new_items: number;
+  new_todos: number;
+  new_categories: number;
+  new_locations: number;
+  remapped_item_categories: number;
+  remapped_item_locations: number;
+  remapped_todo_categories: number;
 }
 
 // T47: 价值追踪类型
@@ -343,7 +371,9 @@ export interface UpdateItemValueRequest {
   current_value?: number;
   purchase_price?: number;
   purchase_date?: string;
+  currency?: string;
   depreciation_rate?: number;
+  reason?: string;
 }
 
 export interface RecordValueHistoryRequest {
@@ -355,6 +385,16 @@ export interface TotalValueResponse {
   total_purchase_price: number;
   total_current_value: number;
   total_depreciation: number;
+  currency?: string;
+  recent_changes?: Array<{
+    item_id: string;
+    item_name: string;
+    value: number;
+    previous_value: number | null;
+    delta: number | null;
+    reason?: string | null;
+    recorded_at: string;
+  }>;
   by_category: Array<{
     category_id: string;
     category_name: string;
@@ -421,7 +461,7 @@ export interface CalendarMonthData {
   days: CalendarDay[];
 }
 
-// T53: 桌面小组件类型
+// T53: 桌面快捷入口与摘要预览类型
 export interface WidgetTodoData {
   id: string;
   title: string;

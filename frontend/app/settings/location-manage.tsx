@@ -86,12 +86,24 @@ export default function LocationManageScreen() {
       showAlert(t('common.error'), t('locations.nameRequired'));
       return;
     }
-    await addLocation({ name: newName.trim(), icon: newIcon, parent_id: newParentId, level: newParentId ? 1 : 0, user_id: undefined });
-    setNewName('');
-    setNewIcon('map-marker');
-    setNewParentId(undefined);
-    setShowAdd(false);
-    fetchLocations(true);
+    const duplicate = locations.some((location) =>
+      location.parent_id === newParentId &&
+      location.name.trim().toLowerCase() === newName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      showAlert(t('common.error'), '同一层级下已存在同名位置');
+      return;
+    }
+    try {
+      await addLocation({ name: newName.trim(), icon: newIcon, parent_id: newParentId, level: newParentId ? 1 : 0, user_id: undefined });
+      setNewName('');
+      setNewIcon('map-marker');
+      setNewParentId(undefined);
+      setShowAdd(false);
+      await fetchLocations(true);
+    } catch (error) {
+      showAlert(t('common.error'), error instanceof Error ? error.message : '创建位置失败');
+    }
   };
 
   const handleStartEdit = (loc: typeof customLocations[0]) => {
@@ -112,19 +124,37 @@ export default function LocationManageScreen() {
       return;
     }
     if (!editingId) return;
-    await updateLocation(editingId, { name: editName.trim(), icon: editIcon });
-    setEditingId(null);
-    setEditName('');
-    setEditIcon('');
-    fetchLocations(true);
+    const editingLocation = locations.find((location) => location.id === editingId);
+    const duplicate = locations.some((location) =>
+      location.id !== editingId &&
+      location.parent_id === editingLocation?.parent_id &&
+      location.name.trim().toLowerCase() === editName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      showAlert(t('common.error'), '同一层级下已存在同名位置');
+      return;
+    }
+    try {
+      await updateLocation(editingId, { name: editName.trim(), icon: editIcon });
+      setEditingId(null);
+      setEditName('');
+      setEditIcon('');
+      await fetchLocations(true);
+    } catch (error) {
+      showAlert(t('common.error'), error instanceof Error ? error.message : '更新位置失败');
+    }
   };
 
   const handleDelete = (id: string, name: string) => {
     showAlert(t('locations.deleteConfirm'), `${name}`, [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: async () => {
-        await deleteLocation(id);
-        await fetchLocations(true);
+        try {
+          await deleteLocation(id);
+          await fetchLocations(true);
+        } catch (error) {
+          showAlert(t('common.error'), error instanceof Error ? error.message : '删除位置失败');
+        }
       }},
     ]);
   };

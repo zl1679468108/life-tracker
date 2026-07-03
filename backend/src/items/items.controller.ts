@@ -29,8 +29,8 @@ export class ItemsController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.itemsService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.findOne(id, user.id);
   }
 
   @Post()
@@ -39,13 +39,13 @@ export class ItemsController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.itemsService.update(id, body);
+  async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.update(id, body, user.id);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.itemsService.remove(id);
+  async remove(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.remove(id, user.id);
   }
 
   @Get(':id/borrowings')

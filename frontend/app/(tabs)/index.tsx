@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -7,13 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
-import { AppHeader } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { api } from '../../lib/api';
+import { AppHeader, HomeBackground } from '../../components/ui';
+import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useItemStore } from '../../stores/itemStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useTodoStore } from '../../stores/todoStore';
@@ -23,19 +24,17 @@ export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const isDark = palette.bg === appDesign.dark.bg;
   const { items, fetchItems, error: itemsError } = useItemStore();
-  const { todos, fetchTodos, toggleComplete, error: todosError } = useTodoStore();
-  const { getUnreadCount, loadReadIds, loaded, pushTrigger, refreshNotifications } = useNotificationStore();
+  const { todos, fetchTodos, error: todosError } = useTodoStore();
+  const { getUnreadCount, loaded } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
 
   const pendingTodos = todos.filter((todo) => !todo.completed).length;
   const completedTodos = todos.filter((todo) => todo.completed).length;
   const unreadCount = loaded ? getUnreadCount() : 0;
-  const recentTodos = [...todos]
-    .sort((a, b) => Number(a.completed) - Number(b.completed))
-    .slice(0, 3);
-  const recentTodoCountLabel = `${recentTodos.length} 条`;
+
   const quickActions = [
     { title: '添加物品', icon: 'plus', color: palette.orange, route: '/item/create' as const, hint: '记录新物品' },
     { title: '添加待办', icon: 'check', color: palette.violet, route: '/todo/create' as const, hint: '安排今天事项' },
@@ -44,15 +43,7 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchItems();
     fetchTodos();
-    loadReadIds();
-    api.items.getExpiring(30).catch(() => undefined);
   }, []);
-
-  useEffect(() => {
-    if (loaded) {
-      refreshNotifications();
-    }
-  }, [loaded, items.length, todos.length, pushTrigger]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -60,114 +51,79 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const priorityText = (priority: number) => {
-    if (priority >= 3) return '紧急';
-    if (priority === 2) return '普通';
-    return '低';
-  };
-
   return (
     <SafeScreen backgroundColor={palette.bg} error={itemsError || todosError}>
-      <ScrollView
-        style={[styles.container, { backgroundColor: palette.bg }]}
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} />}
-      >
-        <AppHeader
-          title="今日总览"
-          actions={[
-            { icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) },
-            { icon: 'bell-outline', label: '通知中心', onPress: () => router.push('/settings/notifications'), unreadDot: unreadCount > 0 },
-          ]}
-        />
+      <View style={styles.pageWrap}>
+        {/* 氛围背景层：渐变 + 漂浮装饰 */}
+        <View style={styles.atmosphereArea} pointerEvents="none">
+          <LinearGradient
+            colors={isDark
+              ? ['rgba(243,111,60,0.12)', 'rgba(243,111,60,0.04)', palette.bg]
+              : ['#FFF0E9', '#FFF6F0', palette.bg]
+            }
+            locations={[0, 0.4, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <HomeBackground style={styles.decorations} />
+        </View>
+
+        <View style={[styles.stickyHeader, { backgroundColor: 'transparent' }]}>
+          <AppHeader
+            title="今日总览"
+            actions={[
+              { icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) },
+              { icon: 'bell-outline', label: '通知中心', onPress: () => router.push('/settings/notifications'), unreadDot: unreadCount > 0 },
+            ]}
+          />
+        </View>
+        <ScrollView
+          style={[styles.container, { backgroundColor: 'transparent' }]}
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} />}
+        >
 
         <View style={styles.stats}>
           <Stat label="物品总数" value={items.length} palette={palette} meta="管理中" onPress={() => router.push('/item/list')} />
-          <Stat label="待办未完成" value={pendingTodos} palette={palette} meta="优先处理" onPress={() => router.push('/todo/list')} tone="accent" />
+          <Stat label="待办未完成" value={pendingTodos} palette={palette} meta="优先处理" onPress={() => router.push('/todo/list')} />
           <Stat label="已完成" value={completedTodos} palette={palette} meta="今日记录" />
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>快捷操作</Text>
-          </View>
-          <View style={styles.quickGrid}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.title}
-                style={[styles.quickCard, { backgroundColor: action.color }]}
-                onPress={() => router.push(action.route)}
-                activeOpacity={0.84}
-              >
-                <View style={styles.quickCardTop}>
-                  <View style={styles.quickIconWrap}>
-                    <MaterialCommunityIcons name={action.icon as any} size={22} color="#FFFFFF" />
-                  </View>
-                  <MaterialCommunityIcons name="arrow-top-right" size={18} color="rgba(255,255,255,0.86)" />
-                </View>
-                <View style={styles.quickCardText}>
-                  <Text style={styles.quickTitle}>{action.title}</Text>
-                  <Text style={styles.quickHint}>{action.hint}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.quickCard, { backgroundColor: palette.surface, borderColor: palette.border, ...shadows.md }]}>
+            <TouchableOpacity
+              style={styles.quickHalf}
+              onPress={() => router.push(quickActions[0].route)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickIconCircle, { backgroundColor: `${palette.orange}18` }]}>
+                <MaterialCommunityIcons name="plus" size={22} color={palette.orange} />
+              </View>
+              <View style={styles.quickText}>
+                <Text style={[styles.quickTitle, { color: palette.text }]}>添加物品</Text>
+                <Text style={[styles.quickHint, { color: palette.textMuted }]}>记录新物品</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={16} color={palette.textMuted} />
+            </TouchableOpacity>
+            <View style={[styles.quickDivider, { backgroundColor: palette.border }]} />
+            <TouchableOpacity
+              style={styles.quickHalf}
+              onPress={() => router.push(quickActions[1].route)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickIconCircle, { backgroundColor: `${palette.violet}18` }]}>
+                <MaterialCommunityIcons name="check" size={22} color={palette.violet} />
+              </View>
+              <View style={styles.quickText}>
+                <Text style={[styles.quickTitle, { color: palette.text }]}>添加待办</Text>
+                <Text style={[styles.quickHint, { color: palette.textMuted }]}>安排今天事项</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={16} color={palette.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
-
-        {recentTodos.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <View style={styles.sectionHeadMain}>
-                <Text style={[styles.sectionTitle, { color: palette.text }]}>最近待办</Text>
-                <View style={[styles.sectionCountBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                  <Text style={[styles.sectionCountText, { color: palette.textMuted }]}>{recentTodoCountLabel}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => router.push('/todo/list')} activeOpacity={0.75}>
-                <Text style={[styles.sectionLink, { color: palette.orange }]}>查看全部</Text>
-              </TouchableOpacity>
-            </View>
-            {recentTodos.map((todo) => (
-              <TouchableOpacity
-                key={todo.id}
-                style={[styles.todoRow, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                onPress={() => router.push(`/todo/${todo.id}`)}
-                activeOpacity={0.82}
-              >
-                <TouchableOpacity onPress={() => toggleComplete(todo.id)} activeOpacity={0.75}>
-                  <View
-                    style={[
-                      styles.checkbox,
-                      { borderColor: todo.completed ? palette.success : palette.borderStrong },
-                      todo.completed && { backgroundColor: palette.success },
-                    ]}
-                  >
-                    {todo.completed && <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />}
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.todoContent}>
-                  <Text
-                    style={[styles.todoTitle, { color: todo.completed ? palette.textDisabled : palette.text }]}
-                    numberOfLines={1}
-                  >
-                    {todo.title}
-                  </Text>
-                  <View style={styles.todoMetaRow}>
-                    <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={1}>
-                      {todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置日期'}
-                    </Text>
-                    <View style={[styles.todoPriorityBadge, { backgroundColor: palette.surfaceSoft }]}>
-                      <Text style={[styles.todoPriorityText, { color: palette.textSecondary }]}>{priorityText(todo.priority)}</Text>
-                    </View>
-                  </View>
-                </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </ScrollView>
       <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
+    </View>
     </SafeScreen>
   );
 }
@@ -178,193 +134,156 @@ function Stat({
   palette,
   meta,
   onPress,
-  tone = 'default',
 }: {
   label: string;
   value: number;
   palette: typeof appDesign.dark;
   meta: string;
   onPress?: () => void;
-  tone?: 'default' | 'accent';
 }) {
   const Wrapper = onPress ? TouchableOpacity : View;
-  const isAccent = tone === 'accent';
+  const iconColor = label === '物品总数' ? palette.orange : label === '待办未完成' ? palette.warning : palette.success;
+  const iconName = label === '物品总数' ? 'package-variant-closed' : label === '待办未完成' ? 'checkbox-marked-circle-outline' : 'check-circle-outline';
+  const iconBg = label === '物品总数' ? `${palette.orange}18` : label === '待办未完成' ? `${palette.warning}18` : `${palette.success}18`;
   return (
-    <Wrapper
+      <Wrapper
       style={[
         styles.statCard,
-        {
-          backgroundColor: isAccent ? '#FFF4EC' : palette.surface,
-          borderColor: isAccent ? palette.orange : palette.border,
-        },
+        { backgroundColor: palette.surface, borderColor: palette.border, ...shadows.md },
       ]}
       onPress={onPress}
-      activeOpacity={onPress ? 0.82 : 1}
+      activeOpacity={onPress ? 0.7 : 1}
       accessibilityRole={onPress ? 'button' : undefined}
     >
-      <Text style={[styles.statLabel, { color: palette.textMuted }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: isAccent ? palette.orange : palette.text }]}>{value}</Text>
-      <Text style={[styles.statMeta, { color: palette.textMuted }]}>{meta}</Text>
+      <View style={styles.statTop}>
+        <View style={[styles.statIconWrap, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons name={iconName} size={18} color={iconColor} />
+        </View>
+        <Text style={[styles.statValue, { color: iconColor }]}>{value}</Text>
+      </View>
+      <View style={styles.statTextBlock}>
+        <Text style={[styles.statLabel, { color: palette.textMuted }]}>{label}</Text>
+        <Text style={[styles.statMeta, { color: palette.textMuted }]}>{meta}</Text>
+      </View>
     </Wrapper>
   );
 }
 
 const styles = StyleSheet.create({
+  pageWrap: {
+    flex: 1,
+  },
+  atmosphereArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
+  },
+  decorations: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
+  },
+  stickyHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    zIndex: 10,
+  },
   container: {
     flex: 1,
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: 112,
   },
   stats: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    gap: 12,
+    marginBottom: spacing.lg,
   },
   statCard: {
     flex: 1,
-    minHeight: 80,
+    minHeight: 100,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'column',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  statTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statTextBlock: {
+    gap: 3,
   },
   statLabel: {
     fontSize: fontSize.sm,
     lineHeight: 16,
   },
   statValue: {
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: fontWeight.extraBold,
   },
   statMeta: {
     fontSize: fontSize.xs,
     lineHeight: 16,
   },
-  quickGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  section: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
   quickCard: {
-    flex: 1,
-    minHeight: 78,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    justifyContent: 'space-between',
+    flexDirection: 'row',
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  quickCardTop: {
+  quickDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+  },
+  quickHalf: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
-  quickIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  quickIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickCardText: {
+  quickText: {
+    flex: 1,
+    minWidth: 0,
     gap: 2,
   },
   quickTitle: {
-    color: '#FFFFFF',
     fontSize: fontSize.base,
     lineHeight: 20,
     fontWeight: fontWeight.bold,
   },
   quickHint: {
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-  },
-  section: {
-    marginTop: 0,
-    marginBottom: spacing.lg,
-  },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  sectionHeadMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    fontWeight: fontWeight.semiBold,
-  },
-  sectionCountBadge: {
-    borderWidth: 1,
-    borderRadius: borderRadius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  sectionCountText: {
-    fontSize: fontSize.xs,
-    lineHeight: 14,
-    fontWeight: fontWeight.semiBold,
-  },
-  sectionLink: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: fontWeight.bold,
-  },
-  todoRow: {
-    minHeight: 58,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: 8,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todoContent: {
-    flex: 1,
-  },
-  todoTitle: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    fontWeight: fontWeight.semiBold,
-  },
-  todoMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: 3,
-  },
-  todoDesc: {
     fontSize: fontSize.xs,
     lineHeight: 16,
-  },
-  todoPriorityBadge: {
-    borderRadius: borderRadius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  todoPriorityText: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: fontWeight.semiBold,
   },
 });
