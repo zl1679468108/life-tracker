@@ -9,9 +9,9 @@
 | 账号 | 密码 | 说明 |
 |---|---|---|
 | `1679468108@qq.com` | `zl123456` | 项目所有者真实账号，含真实数据 |
-| `qa-t78-real@example.com` | — | T78 遗留测试账号（密码未知） |
-| `qa-a-1782646063680@lifetracker.local` | — | 早期 QA 双账号中的 A（密码未知） |
-| `qa-b-1782646063680@lifetracker.local` | — | 早期 QA 双账号中的 B（密码未知） |
+| `qa-t78-real@example.com` | `Qauxvxxt!88` | T78 遗留测试账号 |
+| `qa-a-1782646063680@lifetracker.local` | `Qadur7in!72` | 早期 QA 双账号中的 A |
+| `qa-b-1782646063680@lifetracker.local` | `Qa8k44k3!44` | 早期 QA 双账号中的 B |
 
 ## 自动化测试临时账号
 

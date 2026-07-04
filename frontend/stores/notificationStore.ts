@@ -77,6 +77,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         title: '待办提醒',
         desc: todo.title,
         time: todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置截止日期',
+        link: `/todo/${todo.id}`,
       });
     });
 
@@ -88,6 +89,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         title: '物品统计',
         desc: `您共有 ${items.length} 件物品`,
         time: '刚刚',
+        link: '/item/list',
       });
     }
 

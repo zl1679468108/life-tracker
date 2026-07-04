@@ -29,6 +29,57 @@ export class MessagesService {
   ) {}
 
   /**
+   * 批量获取用户资料，并从 auth.users 补充 email 作为兜底
+   */
+  private async getUserInfoMap(userIds: string[]) {
+    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+    const map = new Map<
+      string,
+      { display_name?: string; email?: string; avatar_url?: string }
+    >();
+    if (uniqueIds.length === 0) return map;
+
+    // 1. 查 life_profiles
+    const { data: profiles } = await this.supabase
+      .from('life_profiles')
+      .select('id, display_name, email, avatar_url')
+      .in('id', uniqueIds);
+
+    for (const profile of profiles || []) {
+      map.set(profile.id, {
+        display_name: profile.display_name || undefined,
+        email: profile.email || undefined,
+        avatar_url: profile.avatar_url || undefined,
+      });
+    }
+
+    // 2. 对仍缺少 email 的用户，从 auth.users 补充（兼容 admin API 创建的账号）
+    const missingIds = uniqueIds.filter((id) => !map.get(id)?.email);
+    if (missingIds.length > 0) {
+      try {
+        const { data: authUsers } = await this.supabase
+          .schema('auth')
+          .from('users')
+          .select('id, email')
+          .in('id', missingIds);
+
+        for (const user of authUsers || []) {
+          const existing = map.get(user.id) || {};
+          map.set(user.id, { ...existing, email: user.email || undefined });
+        }
+      } catch {
+        // schema('auth') 若不可用也不影响主流程
+      }
+    }
+
+    return map;
+  }
+
+  private resolveDisplayName(userInfo: { display_name?: string; email?: string }) {
+    return userInfo.display_name || userInfo.email?.split('@')[0] || '未知用户';
+  }
+
+  /**
    * 获取当前用户参与的对话列表（按最后消息时间排序）
    */
   async findConversations(userId: string) {
@@ -44,17 +95,30 @@ export class MessagesService {
 
     if (!conversations || conversations.length === 0) return [];
 
-    // 2. 获取每个对话的最后一条消息和对方用户信息
+    // 2. 批量获取用户信息
+    const otherUserIds = conversations.map(
+      (conv) => conv.participant_ids.find((id: string) => id !== userId),
+    );
+    const userInfoMap = await this.getUserInfoMap(otherUserIds);
+
+    // 3. 批量获取已读状态
+    const conversationIds = conversations.map((conv) => conv.id);
+    const { data: readStatuses } = await this.supabase
+      .from('life_conversation_reads')
+      .select('conversation_id, last_read_at')
+      .eq('user_id', userId)
+      .in('conversation_id', conversationIds);
+
+    const readAtMap = new Map<string, string>();
+    for (const status of readStatuses || []) {
+      readAtMap.set(status.conversation_id, status.last_read_at);
+    }
+
+    // 4. 组装结果
     const enriched = await Promise.all(
       conversations.map(async (conv) => {
         const otherUserId = conv.participant_ids.find((id: string) => id !== userId);
-
-        // 获取对方用户资料
-        const { data: profile } = await this.supabase
-          .from('life_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', otherUserId)
-          .single();
+        const userInfo = userInfoMap.get(otherUserId) || {};
 
         // 获取最后一条消息
         const { data: lastMsg } = await this.supabase
@@ -65,26 +129,36 @@ export class MessagesService {
           .limit(1)
           .single();
 
-        // 计算未读数
-        const { count: unreadCount } = await this.supabase
+        const lastReadAt = readAtMap.get(conv.id);
+
+        // 计算未读数：对方发送且晚于最后已读时间的消息
+        let unreadQuery = this.supabase
           .from('life_messages')
           .select('*', { count: 'exact', head: true })
           .eq('conversation_id', conv.id)
           .eq('sender_id', otherUserId);
 
+        if (lastReadAt) {
+          unreadQuery = unreadQuery.gt('created_at', lastReadAt);
+        }
+
+        const { count: unreadCount } = await unreadQuery;
+
         return {
           ...conv,
           other_user: {
             user_id: otherUserId,
-            display_name: profile?.display_name || '未知用户',
-            avatar_url: profile?.avatar_url || null,
+            display_name: this.resolveDisplayName(userInfo),
+            avatar_url: userInfo.avatar_url || null,
           },
-          last_message: lastMsg ? {
-            type: lastMsg.type,
-            content: lastMsg.content,
-            card_data: lastMsg.card_data,
-            created_at: lastMsg.created_at,
-          } : null,
+          last_message: lastMsg
+            ? {
+                type: lastMsg.type,
+                content: lastMsg.content,
+                card_data: lastMsg.card_data,
+                created_at: lastMsg.created_at,
+              }
+            : null,
           unread_count: unreadCount || 0,
         };
       }),
@@ -122,24 +196,20 @@ export class MessagesService {
 
     if (error) throw new InternalServerErrorException(error.message);
 
-    // 获取发送者信息
-    const enriched = await Promise.all(
-      (messages || []).map(async (msg) => {
-        const { data: profile } = await this.supabase
-          .from('life_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', msg.sender_id)
-          .single();
+    // 批量获取发送者信息
+    const senderIds = (messages || []).map((msg) => msg.sender_id);
+    const userInfoMap = await this.getUserInfoMap(senderIds);
 
-        return {
-          ...convertTimesToBeijing(msg),
-          sender: {
-            display_name: profile?.display_name || '未知用户',
-            avatar_url: profile?.avatar_url || null,
-          },
-        };
-      }),
-    );
+    const enriched = (messages || []).map((msg) => {
+      const userInfo = userInfoMap.get(msg.sender_id) || {};
+      return {
+        ...convertTimesToBeijing(msg),
+        sender: {
+          display_name: this.resolveDisplayName(userInfo),
+          avatar_url: userInfo.avatar_url || null,
+        },
+      };
+    });
 
     return enriched;
   }
@@ -212,15 +282,20 @@ export class MessagesService {
     // 获取对话参与者以推送 WebSocket 事件
     const { data: convParticipants } = await this.supabase
       .from('life_conversations')
-      .select('participant_ids')
+      .select('*')
       .eq('id', conversationId)
       .single();
 
     if (convParticipants) {
       const participantIds = convParticipants.participant_ids;
-      // 通知对话中所有参与者
+      // 只通知对方（发送者已通过 API 响应更新本地列表）
+      const receiverIds = participantIds.filter((pid) => pid !== senderId);
+      this.eventsGateway.emitMessageCreated(receiverIds, msg);
+
+      // 通知双方刷新对话列表（最后消息时间/内容已变更）
+      const conv = convertTimesToBeijing(convParticipants);
       for (const pid of participantIds) {
-        this.eventsGateway.emitMessageCreated(conversationId, msg);
+        this.eventsGateway.emitConversationUpdated(pid, conv);
       }
     }
 
@@ -228,8 +303,7 @@ export class MessagesService {
   }
 
   /**
-   * 标记对话为已读（通过创建一条系统消息记录阅读时间）
-   * 简化方案：返回成功即可，未读数由前端本地管理
+   * 标记对话为已读：记录当前用户在该对话的最后已读时间
    */
   async markAsRead(conversationId: string, userId: string) {
     // 验证权限
@@ -242,6 +316,20 @@ export class MessagesService {
     if (!conv || !conv.participant_ids.includes(userId)) {
       throw new NotFoundException('对话不存在或无权限');
     }
+
+    //  upsert 已读记录
+    const { error } = await this.supabase
+      .from('life_conversation_reads')
+      .upsert(
+        {
+          user_id: userId,
+          conversation_id: conversationId,
+          last_read_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,conversation_id' },
+      );
+
+    if (error) throw new InternalServerErrorException(error.message);
 
     return { success: true };
   }
@@ -270,6 +358,92 @@ export class MessagesService {
     }));
   }
 
+  /**
+   * 搜索消息模块：好友 + 聊天记录
+   */
+  async searchMessages(userId: string, query: string) {
+    if (!query || query.length < 1) {
+      return { friends: [], messages: [] };
+    }
+
+    const q = query.trim().toLowerCase();
+
+    // 1. 获取当前用户的所有对话
+    const { data: conversations, error: convError } = await this.supabase
+      .from('life_conversations')
+      .select('id, participant_ids')
+      .contains('participant_ids', [userId])
+      .limit(200);
+
+    if (convError) throw new InternalServerErrorException(convError.message);
+
+    const conversationIds = (conversations || []).map((c) => c.id);
+    const conversationMap = new Map((conversations || []).map((c) => [c.id, c]));
+
+    // 2. 搜索聊天记录
+    let messages: any[] = [];
+    if (conversationIds.length > 0) {
+      const { data: foundMessages, error: msgError } = await this.supabase
+        .from('life_messages')
+        .select('id, conversation_id, sender_id, type, content, created_at')
+        .in('conversation_id', conversationIds)
+        .ilike('content', `%${q}%`)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (msgError) throw new InternalServerErrorException(msgError.message);
+      messages = foundMessages || [];
+    }
+
+    // 3. 搜索已接受好友（用户名/邮箱）
+    const { data: friendships, error: friendError } = await this.supabase
+      .from('life_friendships')
+      .select('*')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .eq('status', 'accepted');
+
+    if (friendError) throw new InternalServerErrorException(friendError.message);
+
+    const friendIds = (friendships || []).map((row) =>
+      row.requester_id === userId ? row.addressee_id : row.requester_id,
+    );
+    const friendInfoMap = await this.getUserInfoMap(friendIds);
+
+    const matchedFriends = (friendships || []).filter((row) => {
+      const friendId = row.requester_id === userId ? row.addressee_id : row.requester_id;
+      const info = friendInfoMap.get(friendId);
+      const displayName = (info?.display_name || '').toLowerCase();
+      const email = (info?.email || '').toLowerCase();
+      return displayName.includes(q) || email.includes(q);
+    });
+
+    // 4. 补充消息发送者信息
+    const senderIds = messages.map((m) => m.sender_id);
+    const senderInfoMap = await this.getUserInfoMap(senderIds);
+
+    const enrichedMessages = messages.map((msg) => {
+      const conv = conversationMap.get(msg.conversation_id);
+      const otherUserId = conv?.participant_ids?.find((id: string) => id !== userId);
+      const otherInfo = otherUserId ? friendInfoMap.get(otherUserId) || senderInfoMap.get(otherUserId) || {} : {};
+      const senderInfo = senderInfoMap.get(msg.sender_id) || {};
+      return {
+        ...convertTimesToBeijing(msg),
+        conversation_id: msg.conversation_id,
+        sender_name: this.resolveDisplayName(senderInfo),
+        other_user_name: otherUserId ? this.resolveDisplayName(otherInfo) : '',
+      };
+    });
+
+    const enrichedFriends = await Promise.all(
+      matchedFriends.map((row) => this.enrichFriendship(row, userId)),
+    );
+
+    return {
+      friends: enrichedFriends,
+      messages: enrichedMessages,
+    };
+  }
+
   private async ensureAcceptedFriend(userId: string, friendId: string) {
     const { data, error } = await this.supabase
       .from('life_friendships')
@@ -285,20 +459,17 @@ export class MessagesService {
 
   private async enrichFriendship(row: any, userId: string) {
     const friendId = row.requester_id === userId ? row.addressee_id : row.requester_id;
-    const { data: profile } = await this.supabase
-      .from('life_profiles')
-      .select('id, email, display_name, avatar_url')
-      .eq('id', friendId)
-      .single();
+    const userInfoMap = await this.getUserInfoMap([friendId]);
+    const userInfo = userInfoMap.get(friendId) || {};
 
     return {
       id: row.id,
       status: row.status as FriendshipStatus,
       friend: {
         id: friendId,
-        email: profile?.email || null,
-        display_name: profile?.display_name || profile?.email?.split('@')[0] || '未知用户',
-        avatar_url: profile?.avatar_url || null,
+        email: userInfo.email || null,
+        display_name: this.resolveDisplayName(userInfo),
+        avatar_url: userInfo.avatar_url || null,
       },
       pinned: row.requester_id === userId ? row.requester_pinned : row.addressee_pinned,
       request_message: row.request_message || null,
@@ -560,7 +731,7 @@ export class MessagesService {
       createdMessage = convertTimesToBeijing(msg);
 
       // 推送 WebSocket 事件
-      this.eventsGateway.emitMessageCreated(conv.id, createdMessage);
+      this.eventsGateway.emitMessageCreated(data.participant_ids.filter((pid) => pid !== userId), createdMessage);
       for (const pid of data.participant_ids) {
         this.eventsGateway.emitConversationUpdated(pid, convertTimesToBeijing(conv));
       }
@@ -626,8 +797,8 @@ export class MessagesService {
       })
       .eq('id', conv.id);
 
-    // 4. 向双方推送消息事件
-    this.eventsGateway.emitMessageCreated(conv.id, msg);
+    // 4. 向对方推送消息事件（发送者已通过 API 响应更新本地列表）
+    this.eventsGateway.emitMessageCreated([sharedWithId], msg);
     for (const pid of [ownerId, sharedWithId]) {
       this.eventsGateway.emitConversationUpdated(pid, convertTimesToBeijing(conv));
     }

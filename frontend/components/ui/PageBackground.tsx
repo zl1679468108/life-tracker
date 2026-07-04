@@ -215,85 +215,28 @@ export function WorkbenchBackground({ style }: PageBackgroundProps) {
         </Defs>
         <Rect x="0" y="0" width="480" height="300" fill="url(#workbenchTint)" />
 
-        <G transform="translate(15, 80)" opacity={0.38}>
-          <Rect x={18} y={32} width={105} height={75} rx={6} fill="#5DCAA5" />
-          <Path d="M 123 32 L 148 20 L 148 88 L 123 100 Z" fill="#4AB898" />
-          <Path d="M 18 32 L 44 14 L 148 20 L 123 32 Z" fill="#70D8B8" />
-          <Rect x={58} y={30} width={26} height={80} rx={4} fill="#90E8D0" opacity={0.7} />
-          <Rect x={38} y={52} width={36} height={22} rx={4} fill="#FFF5E8" />
-          <Line x1={45} y1={60} x2={67} y2={60} stroke="#E8C8A0" strokeWidth={2.5} strokeLinecap="round" />
-          <Line x1={45} y1={68} x2={62} y2={68} stroke="#E8C8A0" strokeWidth={2.5} strokeLinecap="round" />
+        {/* 左上角小星星（不抢核心按钮视觉） */}
+        <G transform="translate(8, 8)" opacity={0.18}>
+          <Circle cx={4} cy={4} r={3} fill="#FAC775" />
         </G>
-        <G transform="translate(370, 55)" opacity={0.38}>
-          <Rect x={12} y={35} width={70} height={55} rx={6} fill="#85B7EB" />
-          <Rect x={4} y={20} width={86} height={20} rx={5} fill="#A0C8F0" />
-          <Path d="M 30 20 Q 30 5 47 5 Q 64 5 64 20" fill="none" stroke="#70A8D8" strokeWidth={3.5} strokeLinecap="round" />
-          <Circle cx={33} cy={56} r={8} fill="#C0E0F8" opacity={0.8} />
-          <Rect x={47} y={50} width={24} height={5} rx={2} fill="#C0E0F8" opacity={0.8} />
-          <Rect x={47} y={62} width={18} height={5} rx={2} fill="#C0E0F8" opacity={0.8} />
+        <G transform="translate(64, 14)" opacity={0.14}>
+          <Circle cx={3} cy={3} r={2.5} fill="#F4C0D1" />
         </G>
-        <G transform="translate(130, 140)" opacity={0.36}>
-          <Ellipse cx={28} cy={48} rx={26} ry={10} fill="#F4C0D1" />
-          <Rect x={2} y={20} width={52} height={28} rx={3} fill="#E8A8B8" />
-          <Ellipse cx={28} cy={20} rx={26} ry={10} fill="#F4D0E0" />
-          <Ellipse cx={28} cy={16} rx={30} ry={8} fill="#F8E0E8" />
-          <Rect x={12} y={30} width={32} height={12} rx={3} fill="#FFF5E8" />
-          <Line x1={18} y1={36} x2={38} y2={36} stroke="#E8C8A0" strokeWidth={2} strokeLinecap="round" />
+        {/* 顶部中央小光点（位于 header 文字下方留白区） */}
+        <G transform="translate(232, 12)" opacity={0.16}>
+          <Circle cx={3} cy={3} r={2.5} fill="#85B7EB" />
         </G>
-        <G transform="translate(330, 155)" opacity={0.28}>
-          <Ellipse cx={20} cy={36} rx={18} ry={7} fill="#B5D4F4" />
-          <Rect x={2} y={14} width={36} height={22} rx={2} fill="#A0C0E8" />
-          <Ellipse cx={20} cy={14} rx={18} ry={7} fill="#C8E0F8" />
-          <Ellipse cx={20} cy={11} rx={20} ry={5} fill="#E0F0FF" />
-          <Rect x={8} y={22} width={24} height={8} rx={2} fill="#FFF5E8" />
-          <Line x1={12} y1={26} x2={28} y2={26} stroke="#E8C8A0" strokeWidth={1.5} strokeLinecap="round" />
+        {/* 右上角小光点（避开核心按钮） */}
+        <G transform="translate(444, 18)" opacity={0.16}>
+          <Circle cx={3} cy={3} r={2.5} fill="#F0997B" />
         </G>
-        <G opacity={0.32}>
-          <G transform="translate(250, 65)">
-            <Rect x={4} y={4} width={52} height={38} rx={4} fill="#FFE8C8" />
-            <Rect x={30} y={4} width={26} height={12} rx={2} fill="#FFE0B0" />
-            <Line x1={12} y1={18} x2={48} y2={18} stroke="#F5D0A0" strokeWidth={2.5} strokeLinecap="round" />
-            <Line x1={12} y1={26} x2={42} y2={26} stroke="#F5D0A0" strokeWidth={2.5} strokeLinecap="round" />
-            <Line x1={12} y1={34} x2={38} y2={34} stroke="#F5D0A0" strokeWidth={2.5} strokeLinecap="round" />
-          </G>
-          <G transform="translate(300, 75) rotate(12, 32, 24)">
-            <Rect x={4} y={4} width={48} height={32} rx={4} fill="#D0E8F5" />
-            <Line x1={12} y1={18} x2={44} y2={18} stroke="#B0D8E8" strokeWidth={2.5} strokeLinecap="round" />
-            <Line x1={12} y1={26} x2={36} y2={26} stroke="#B0D8E8" strokeWidth={2.5} strokeLinecap="round" />
-          </G>
+        <G transform="translate(414, 8)" opacity={0.14}>
+          <Circle cx={3} cy={3} r={2.5} fill="#5DCAA5" />
         </G>
-        <G opacity={0.32}>
-          <G transform="translate(210, 28)">
-            <Rect x={6} y={10} width={24} height={42} rx={5} fill="#F0997B" />
-            <Circle cx={18} cy={18} r={3} fill="#FFF5E8" />
-            <Line x1={18} y1={10} x2={18} y2={0} stroke="#F0997B" strokeWidth={2} />
-            <Line x1={11} y1={32} x2={25} y2={32} stroke="#FFF5E8" strokeWidth={2} strokeLinecap="round" />
-            <Line x1={11} y1={40} x2={25} y2={40} stroke="#FFF5E8" strokeWidth={2} strokeLinecap="round" />
-          </G>
-          <G transform="translate(100, 45)">
-            <Rect x={6} y={8} width={18} height={35} rx={4} fill="#5DCAA5" opacity={0.8} />
-            <Circle cx={15} cy={15} r={2.5} fill="#FFF5E8" />
-            <Line x1={15} y1={8} x2={15} y2={0} stroke="#5DCAA5" strokeWidth={1.5} opacity={0.8} />
-          </G>
-        </G>
-        <G transform="translate(390, 172)" opacity={0.28}>
-          <Rect x={4} y={26} width={42} height={30} rx={4} fill="#F5D0A0" />
-          <Rect x={0} y={4} width={42} height={24} rx={4} fill="#FFE0B8" />
-          <Rect x={46} y={12} width={35} height={44} rx={4} fill="#B5D4F4" />
-        </G>
-        {/* 星星静态底 */}
-        <G opacity={0.16}>
-          <Path d="M 260 18 L 263 26 L 272 26 L 265 32 L 267 42 L 260 36 L 253 42 L 255 32 L 248 26 L 257 26 Z" fill="#FAC775" />
-          <Path d="M 380 20 L 382 26 L 388 26 L 384 30 L 385 36 L 380 32 L 375 36 L 376 30 L 372 26 L 378 26 Z" fill="#FAC775" />
-        </G>
-        <G opacity={0.25}>
-          <Circle cx={80} cy={50} r={6} fill="#5DCAA5" />
-          <Circle cx={180} cy={25} r={4} fill="#F4C0D1" />
-          <Circle cx={240} cy={60} r={3} fill="#85B7EB" />
-          <Circle cx={360} cy={45} r={6} fill="#F0997B" />
-          <Circle cx={430} cy={35} r={3} fill="#5DCAA5" />
-          <Circle cx={110} cy={140} r={3} fill="#85B7EB" />
-          <Circle cx={320} cy={55} r={4} fill="#F5D0A0" />
+        {/* 底部小色点（远离核心按钮，放在三个分组卡之间的空白处） */}
+        <G opacity={0.14}>
+          <Circle cx={70} cy={286} r={3} fill="#85B7EB" />
+          <Circle cx={410} cy={288} r={3} fill="#F0997B" />
         </G>
       </Svg>
 
@@ -357,121 +300,22 @@ export function MessagesBackground({ style }: PageBackgroundProps) {
         <Defs>
           <LinearGradient id="msgTint" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor="#D0E8F8" stopOpacity="0" />
-            <Stop offset="0.5" stopColor="#C8E0F0" stopOpacity="0.1" />
-            <Stop offset="1" stopColor="#E8D0F8" stopOpacity="0.06" />
+            <Stop offset="0.5" stopColor="#C8E0F0" stopOpacity="0.06" />
+            <Stop offset="1" stopColor="#E8D0F8" stopOpacity="0.04" />
           </LinearGradient>
         </Defs>
         <Rect x="0" y="0" width="480" height="300" fill="url(#msgTint)" />
 
-        <G transform="translate(15, 42)" opacity={0.35}>
-          <Rect x={12} y={12} width={88} height={48} rx={20} fill="#5DCAA5" />
-          <Path d="M 12 48 L 28 58 L 30 48 Z" fill="#5DCAA5" />
-          <Circle cx={30} cy={34} r={4} fill="#B8F0D8" opacity={0.8} />
-          <Line x1={42} y1={34} x2={88} y2={34} stroke="#B8F0D8" strokeWidth={3.5} strokeLinecap="round" />
-          <Line x1={42} y1={46} x2={75} y2={46} stroke="#B8F0D8" strokeWidth={3.5} strokeLinecap="round" />
-        </G>
-        <G transform="translate(385, 115)" opacity={0.35}>
-          <Rect x={8} y={12} width={78} height={46} rx={18} fill="#F08080" />
-          <Path d="M 86 36 L 74 52 L 72 36 Z" fill="#F08080" />
-          <Line x1={22} y1={32} x2={76} y2={32} stroke="#FFD0D0" strokeWidth={3.5} strokeLinecap="round" />
-          <Line x1={22} y1={44} x2={62} y2={44} stroke="#FFD0D0" strokeWidth={3.5} strokeLinecap="round" />
-        </G>
-        <G transform="translate(130, 92)" opacity={0.32}>
-          <Rect x={8} y={8} width={78} height={44} rx={18} fill="#AFA9EC" />
-          <Path d="M 86 34 L 72 46 L 70 34 Z" fill="#AFA9EC" />
-          <Line x1={22} y1={26} x2={76} y2={26} stroke="#E0D8F8" strokeWidth={3.5} strokeLinecap="round" />
-          <Line x1={22} y1={38} x2={62} y2={38} stroke="#E0D8F8" strokeWidth={3.5} strokeLinecap="round" />
-        </G>
-        <G transform="translate(280, 38)" opacity={0.32}>
-          <Rect x={12} y={18} width={74} height={52} rx={5} fill="#F0997B" />
-          <Path d="M 12 18 L 49 52 L 86 18 Z" fill="#E88868" />
-          <Rect x={30} y={4} width={42} height={20} rx={3} fill="#FFF5E8" />
-          <Line x1={36} y1={12} x2={66} y2={12} stroke="#F0D8B8" strokeWidth={2.5} strokeLinecap="round" />
-          <Line x1={36} y1={18} x2={58} y2={18} stroke="#F0D8B8" strokeWidth={2.5} strokeLinecap="round" />
-        </G>
-        {/* 铃铛 - 带动画底座 */}
-        <G transform="translate(430, 38)" opacity={0.18}>
-          <Path d="M 18 5 Q 5 5 5 24 L 5 42 Q 5 45 2 48 L 34 48 Q 31 45 31 42 L 31 24 Q 31 5 18 5 Z" fill="#FAC775" />
-          <Rect x={15} y={0} width={5} height={8} rx={3} fill="#EF9F27" />
-          <Circle cx={18} cy={52} r={4} fill="#EF9F27" />
-        </G>
-        <G transform="translate(370, 145)" opacity={0.35}>
-          <Path d="M 12 22 L 48 4 L 36 30 Z" fill="#85B7EB" />
-          <Path d="M 48 4 L 36 30 L 54 35 Z" fill="#70A0D0" />
-          <Path d="M 12 22 L 36 30 L 30 42 Z" fill="#A0C8F0" />
-          <Path d="M 48 4 L 58 1" stroke="#85B7EB" strokeWidth={1.5} strokeLinecap="round" opacity={0.4} />
-          <Path d="M 54 35 L 64 38" stroke="#85B7EB" strokeWidth={1.5} strokeLinecap="round" opacity={0.4} />
-        </G>
-        <G transform="translate(75, 28)" opacity={0.28}>
-          <Circle cx={16} cy={16} r={16} fill="#FAC775" />
-          <Circle cx={11} cy={13} r={2.5} fill="#E89460" />
-          <Circle cx={21} cy={13} r={2.5} fill="#E89460" />
-          <Path d="M 6 22 Q 16 28 26 22" fill="none" stroke="#E89460" strokeWidth={2.5} strokeLinecap="round" />
-          <Circle cx={7} cy={20} r={3} fill="#F08080" opacity={0.4} />
-          <Circle cx={25} cy={20} r={3} fill="#F08080" opacity={0.4} />
-        </G>
-        <G opacity={0.28}>
-          <G transform="translate(240, 145)">
-            <Rect x={4} y={4} width={48} height={24} rx={10} fill="#5DCAA5" />
-            <Line x1={14} y1={16} x2={42} y2={16} stroke="#D0F0E8" strokeWidth={2.5} strokeLinecap="round" />
-          </G>
-          <G transform="translate(340, 105)">
-            <Rect x={4} y={4} width={44} height={22} rx={8} fill="#F4C0D1" />
-            <Line x1={14} y1={15} x2={38} y2={15} stroke="#FFD0D8" strokeWidth={2.5} strokeLinecap="round" />
-          </G>
-          <G transform="translate(200, 178)">
-            <Rect x={4} y={4} width={40} height={20} rx={8} fill="#AFA9EC" />
-            <Line x1={14} y1={14} x2={34} y2={14} stroke="#E0D8F8" strokeWidth={2.5} strokeLinecap="round" />
-          </G>
-        </G>
-        <G transform="translate(180, 52) rotate(10, 20, 16)" opacity={0.26}>
-          <Rect x={4} y={4} width={30} height={22} rx={3} fill="#F0997B" />
-          <Path d="M 4 4 L 19 16 L 34 4 Z" fill="#E88868" />
-        </G>
-        <G opacity={0.18}>
-          <Path d="M 95 78 C 95 70, 86 64, 80 70 C 74 64, 65 70, 65 78 C 65 90, 80 100, 80 100 C 80 100, 95 90, 95 78 Z" fill="#F08080" />
-          <Path d="M 400 78 C 400 72, 394 68, 388 72 C 382 68, 376 72, 376 78 C 376 88, 388 96, 388 96 C 388 96, 400 88, 400 78 Z" fill="#F08080" opacity={0.7} />
-        </G>
-        <G opacity={0.25}>
-          <Circle cx={45} cy={28} r={4} fill="#5DCAA5" />
-          <Circle cx={155} cy={24} r={3} fill="#AFA9EC" />
-          <Circle cx={270} cy={55} r={6} fill="#F0997B" />
-          <Circle cx={380} cy={28} r={3} fill="#85B7EB" />
-          <Circle cx={355} cy={55} r={4} fill="#FAC775" />
-          <Circle cx={120} cy={140} r={3} fill="#F08080" />
-          <Circle cx={420} cy={95} r={4} fill="#5DCAA5" />
+        {/* 极简小色点 — 避开主内容区 */}
+        <G opacity={0.12}>
+          <Circle cx={30} cy={30} r={4} fill="#5DCAA5" />
+          <Circle cx={440} cy={28} r={3} fill="#85B7EB" />
+          <Circle cx={240} cy={18} r={3} fill="#FAC775" />
+          <Circle cx={420} cy={180} r={4} fill="#AFA9EC" />
+          <Circle cx={60} cy={220} r={3} fill="#F0997B" />
+          <Circle cx={380} cy={260} r={3} fill="#5DCAA5" />
         </G>
       </Svg>
-
-      {/* 铃铛抖动 */}
-      <Animated.View style={{ position: 'absolute', left: vx(428), top: vy(34), transform: [{ rotate: bellRotate }] }}>
-        <Svg width={vs(24)} height={vs(34)} viewBox="0 0 38 56">
-          <Path d="M 18 5 Q 5 5 5 24 L 5 42 Q 5 45 2 48 L 34 48 Q 31 45 31 42 L 31 24 Q 31 5 18 5 Z" fill="#FAC775" />
-          <Rect x={15} y={0} width={5} height={8} rx={3} fill="#EF9F27" />
-          <Circle cx={18} cy={52} r={4} fill="#EF9F27" />
-        </Svg>
-      </Animated.View>
-
-      {/* 心跳爱心 */}
-      <Animated.View style={{ position: 'absolute', left: vx(62), top: vy(74), transform: [{ scale: heartScale }], opacity: heartOp }}>
-        <Svg width={vs(28)} height={vs(26)} viewBox="0 0 36 36">
-          <Path d="M 18 8 C 18 4, 12 2, 8 6 C 4 2, -2 4, -2 8 C -2 14, 8 22, 8 22 C 8 22, 18 14, 18 8 Z" fill="#F08080" transform="translate(12, 2)" />
-        </Svg>
-      </Animated.View>
-      <Animated.View style={{ position: 'absolute', left: vx(376), top: vy(74), transform: [{ scale: heartScale }], opacity: heartOp }}>
-        <Svg width={vs(22)} height={vs(20)} viewBox="0 0 30 30">
-          <Path d="M 15 6 C 15 3, 10 1, 7 4 C 4 1, -1 3, -1 6 C -1 12, 7 18, 7 18 C 7 18, 15 12, 15 6 Z" fill="#F08080" transform="translate(6, 2)" />
-        </Svg>
-      </Animated.View>
-
-      {/* 纸飞机漂浮 */}
-      <Animated.View style={{ position: 'absolute', left: vx(368), top: planeY, opacity: planeOp }}>
-        <Svg width={vs(40)} height={vs(28)} viewBox="0 0 60 42">
-          <Path d="M 12 22 L 48 4 L 36 30 Z" fill="#85B7EB" />
-          <Path d="M 48 4 L 36 30 L 54 35 Z" fill="#70A0D0" />
-          <Path d="M 12 22 L 36 30 L 30 42 Z" fill="#A0C8F0" />
-        </Svg>
-      </Animated.View>
     </View>
   );
 }

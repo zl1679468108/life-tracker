@@ -585,6 +585,11 @@ export const api = {
       return request<{ id: string; email: string; display_name: string; avatar_url: string | null }[]>(`/api/messages/users/search?q=${encodeURIComponent(q)}`);
     },
 
+    // v1.4.4: 消息模块搜索（好友 + 聊天记录）
+    searchMessages: async (q: string): Promise<ApiResponse<{ friends: LifeFriend[]; messages: any[] }>> => {
+      return request<{ friends: LifeFriend[]; messages: any[] }>(`/api/messages/search?q=${encodeURIComponent(q)}`);
+    },
+
     // v1.2.0: 手动创建对话
     createManualConversation: async (data: { participant_ids: string[]; initial_message?: { type: string; content?: string; card_data?: any } }): Promise<ApiResponse<{ conversation: Conversation; message: Message | null }>> => {
       return request<{ conversation: Conversation; message: Message | null }>('/api/messages/conversations/manual', {

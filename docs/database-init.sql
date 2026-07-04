@@ -180,6 +180,9 @@ CREATE TABLE IF NOT EXISTS life_reminder_logs (
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_resource ON life_reminder_logs(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_user ON life_reminder_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON life_reminder_logs(sent_at);
+
+-- 兼容已有表：补充分组添加 reminder_key 列（表已创建但旧版本无此列）
+ALTER TABLE life_reminder_logs ADD COLUMN IF NOT EXISTS reminder_key TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_logs_key ON life_reminder_logs(reminder_key) WHERE reminder_key IS NOT NULL;
 
 -- ============================================================
@@ -315,6 +318,29 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON life_messages(conversati
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON life_messages(sender_id);
 
 -- ============================================================
+-- 13.5 消息已读追踪表 (life_conversation_reads)
+-- 记录每个用户在每个对话中最后已读的时间点
+-- ============================================================
+CREATE TABLE IF NOT EXISTS life_conversation_reads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  conversation_id UUID NOT NULL REFERENCES life_conversations(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, conversation_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_reads_user ON life_conversation_reads(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_reads_conversation ON life_conversation_reads(conversation_id);
+
+-- 自动更新 updated_at 触发器
+DROP TRIGGER IF EXISTS update_conversation_reads_updated_at ON life_conversation_reads;
+CREATE TRIGGER update_conversation_reads_updated_at
+  BEFORE UPDATE ON life_conversation_reads
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- ============================================================
 -- 14. 好友关系与申请表 (life_friendships)
 -- 一个关系记录表示双向好友申请/关系，status 区分 pending/accepted/rejected
 -- 双方独立控制置顶，同意好友后才能建立对话和配置共享权限
@@ -365,83 +391,24 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('items-images', 'items-images', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
-DROP POLICY IF EXISTS "Users can upload images" ON storage.objects;
-CREATE POLICY "Users can upload images" ON storage.objects
-  FOR INSERT WITH CHECK (
-    bucket_id = 'items-images'
-    AND auth.role() = 'authenticated'
-  );
-
-DROP POLICY IF EXISTS "Public read images" ON storage.objects;
-CREATE POLICY "Public read images" ON storage.objects
-  FOR SELECT USING (bucket_id = 'items-images');
-
 -- ============================================================
--- 17. RLS 策略
+-- 17. 禁用 RLS（后端使用 service_role 鉴权，不依赖行级安全）
 -- ============================================================
-
--- 17.1 life_conversations: 参与者可读写
-DROP POLICY IF EXISTS "Participants can view conversations" ON life_conversations;
-CREATE POLICY "Participants can view conversations" ON life_conversations
-  FOR SELECT USING (
-    auth.uid() = ANY(participant_ids)
-  );
-
-DROP POLICY IF EXISTS "Participants can update conversations" ON life_conversations;
-CREATE POLICY "Participants can update conversations" ON life_conversations
-  FOR UPDATE USING (
-    auth.uid() = ANY(participant_ids)
-  );
-
-DROP POLICY IF EXISTS "Participants can create conversations" ON life_conversations;
-CREATE POLICY "Participants can create conversations" ON life_conversations
-  FOR INSERT WITH CHECK (
-    auth.uid() = ANY(participant_ids)
-  );
-
--- 17.2 life_messages: 参与者可读写
-DROP POLICY IF EXISTS "Participants can view messages" ON life_messages;
-CREATE POLICY "Participants can view messages" ON life_messages
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM life_conversations
-      WHERE id = life_messages.conversation_id
-        AND auth.uid() = ANY(participant_ids)
-    )
-  );
-
-DROP POLICY IF EXISTS "Participants can create messages" ON life_messages;
-CREATE POLICY "Participants can create messages" ON life_messages
-  FOR INSERT WITH CHECK (
-    auth.uid() = sender_id
-  );
-
--- 17.3 life_friendships: 申请双方可读写
-ALTER TABLE life_friendships ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Friend participants can view friendships" ON life_friendships;
-CREATE POLICY "Friend participants can view friendships" ON life_friendships
-  FOR SELECT USING (
-    auth.uid() = requester_id OR auth.uid() = addressee_id
-  );
-
-DROP POLICY IF EXISTS "Users can create friend requests" ON life_friendships;
-CREATE POLICY "Users can create friend requests" ON life_friendships
-  FOR INSERT WITH CHECK (
-    auth.uid() = requester_id
-  );
-
-DROP POLICY IF EXISTS "Friend participants can update friendships" ON life_friendships;
-CREATE POLICY "Friend participants can update friendships" ON life_friendships
-  FOR UPDATE USING (
-    auth.uid() = requester_id OR auth.uid() = addressee_id
-  );
-
-DROP POLICY IF EXISTS "Friend participants can delete friendships" ON life_friendships;
-CREATE POLICY "Friend participants can delete friendships" ON life_friendships
-  FOR DELETE USING (
-    auth.uid() = requester_id OR auth.uid() = addressee_id
-  );
+ALTER TABLE life_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_locations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_todos DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_reminder_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_borrowings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_shares DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_templates DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_value_history DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_feedback DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_conversations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_messages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_friendships DISABLE ROW LEVEL SECURITY;
+ALTER TABLE life_conversation_reads DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- 18. 自动更新 updated_at 触发器

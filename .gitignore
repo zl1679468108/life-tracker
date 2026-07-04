@@ -5,11 +5,8 @@ node_modules/
 
 # Environment variables
 .env
-.env.*
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
 
 # CloudBase config (contains secrets)
 cloudbaserc.json
@@ -70,7 +67,9 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
+# WorkBuddy workspace memory & config
+.workbuddy/
+
 # Misc
 *.pem
 *.pub
-*.jks

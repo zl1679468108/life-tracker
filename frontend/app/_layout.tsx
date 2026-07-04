@@ -10,6 +10,7 @@ import { TouchableOpacity, ActivityIndicator, View, Platform } from 'react-nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { darkColors } from '../constants/theme';
 import { useAuthStore } from '../stores/authStore';
+import { useProfileStore } from '../stores/profileStore';
 import { useNavigation } from '@react-navigation/native';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { useTheme, useColors, useThemeStore } from '../stores/themeStore';
@@ -41,6 +42,8 @@ export default function RootLayout() {
     init();
     initTheme();
     i18n.init();
+    // 尽早加载缓存的头像 Base64
+    useProfileStore.getState().initCachedAvatar();
 
     // Web 平台注册 Service Worker 开启深度离线 PWA 缓存
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -99,6 +102,10 @@ export default function RootLayout() {
       const timer = setTimeout(() => router.replace('/(tabs)'), 100);
       return () => clearTimeout(timer);
     }
+    // 用户已登录时，触发头像转换
+    if (user) {
+      useProfileStore.getState().fetchProfile();
+    }
   }, [user, loading, loaded, segments]);
 
   const inAuthGroup = segments[0] === 'auth';
@@ -134,6 +141,16 @@ export default function RootLayout() {
         },
       };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   const subPageOptions = {
     headerShown: true as const,
     headerTitleAlign: 'center' as const,
@@ -141,13 +158,7 @@ export default function RootLayout() {
     headerTitleStyle: { fontWeight: '600' as const, fontSize: 17, color: colors.gray[900] },
     headerLeft: () => (
       <TouchableOpacity
-        onPress={() => {
-          if (navigation.canGoBack()) {
-            router.back();
-          } else {
-            router.replace('/');
-          }
-        }}
+        onPress={handleBack}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialCommunityIcons name="chevron-left" size={24} color={colors.gray[800]} />

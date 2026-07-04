@@ -41,4 +41,16 @@ body {
   body {
     background-color: #000;
   }
+}
+input:focus,
+textarea:focus,
+select:focus,
+[contenteditable]:focus {
+  outline: none;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
 }`;

@@ -8,6 +8,7 @@ export { Checkbox } from './Checkbox';
 export { FAB } from './FAB';
 export { Loading } from './Loading';
 export { EmptyState } from './EmptyState';
+export { Select, type SelectOption, type SelectProps } from './Select';
 export { Skeleton } from './Skeleton';
 export { Toast } from './Toast';
 export { ImagePicker } from './ImagePicker';

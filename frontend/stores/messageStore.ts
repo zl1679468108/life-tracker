@@ -9,6 +9,7 @@ interface MessageState {
   error: string | null;
   fetchMessages: (conversationId: string, limit?: number, before?: string) => Promise<void>;
   sendMessage: (conversationId: string, data: CreateMessageRequest) => Promise<Message | null>;
+  markAsRead: (conversationId: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
   clearMessages: () => void;
   // Socket 回调：收到新消息时追加
@@ -59,11 +60,22 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     }
   },
 
+  markAsRead: async (conversationId: string) => {
+    try {
+      await api.messages.markAsRead(conversationId);
+    } catch {
+      // 已读标记失败不影响主流程
+    }
+  },
+
   // 收到远程新消息时追加到列表
   addRemoteMessage: (message: Message) => {
     const state = get();
     // 只追加属于当前对话的消息
     if (state.currentConversationId && message.conversation_id === state.currentConversationId) {
+      // 防止重复：如果消息 ID 已存在，跳过
+      const exists = state.messages.some((m) => m.id === message.id);
+      if (exists) return;
       set((state) => ({
         messages: [...state.messages, message],
       }));

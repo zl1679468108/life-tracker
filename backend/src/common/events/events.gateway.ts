@@ -116,9 +116,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // ========== Messages 事件 (v1.1.0) ==========
 
-  emitMessageCreated(conversationId: string, message: any) {
-    // 对话中双方都收到新消息通知
-    this.server.to(`conversation:${conversationId}`).emit('messages:new', message);
+  emitMessageCreated(participantIds: string[], message: any) {
+    // 向对话中每个用户发送新消息事件
+    for (const pid of participantIds) {
+      this.server.to(`user:${pid}`).emit('messages:new', message);
+    }
   }
 
   emitConversationUpdated(userId: string, conversation: any) {

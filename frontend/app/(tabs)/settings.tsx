@@ -20,6 +20,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const isDark = palette.bg === appDesign.dark.bg;
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, avatarDataUri, initCachedAvatar } = useProfileStore();
@@ -130,7 +131,7 @@ export default function SettingsScreen() {
               <Text style={[styles.profileName, { color: palette.text }]} numberOfLines={1}>
                 {profileName}
               </Text>
-              <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.profileEmail, { color: palette.textMuted }]} numberOfLines={1} ellipsizeMode="tail">
                 {profileEmail}
               </Text>
             </View>
@@ -138,10 +139,10 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           {sections.map((section) => (
-            <View key={section.title} style={[styles.groupCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <View key={section.title} style={[styles.groupCard, { backgroundColor: palette.surface }, !isDark && shadows.sm]}>
               <View style={styles.groupHeader}>
                 <Text style={[styles.groupTitle, { color: palette.text }]}>{section.title}</Text>
-                <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft }]}>
                   <Text style={[styles.groupBadgeText, { color: palette.textMuted }]}>{section.entries.length}</Text>
                 </View>
               </View>
@@ -191,6 +192,7 @@ const styles = StyleSheet.create({
   stickyHeader: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
     zIndex: 10,
   },
   content: {
@@ -240,10 +242,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   groupCard: {
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
   },
   groupHeader: {
     flexDirection: 'row',
@@ -257,17 +259,16 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   groupBadge: {
-    minWidth: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
+    minWidth: 22,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
   },
   groupBadgeText: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
+    fontSize: fontSize.xs,
+    lineHeight: 14,
     fontWeight: fontWeight.semiBold,
   },
   grid: {

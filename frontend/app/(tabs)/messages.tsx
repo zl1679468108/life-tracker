@@ -16,19 +16,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
-import { GlobalSearch } from '../../components/GlobalSearch';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { AppHeader, MessagesBackground } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
+import { useDebounce } from '../../lib/hooks';
 import { showAlert } from '../../lib/alert';
 import { socketService } from '../../lib/socket';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
-import type { LifeFriend } from '../../types';
+import type { Conversation, LifeFriend } from '../../types';
 
 type Palette = typeof appDesign.dark;
+
+const AVATAR_COLORS = ['#F36F3C', '#7C5CFC', '#1E88E5', '#10A66E', '#E84A5F', '#D89400', '#8E24AA', '#43A047'];
+
+function avatarColor(name?: string): string {
+  if (!name) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 function formatTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -53,9 +62,10 @@ function getMessageSummary(msg: { type?: string; content?: string } | null) {
 }
 
 function AvatarWord({ name, palette }: { name?: string; palette: Palette }) {
+  const ac = avatarColor(name);
   return (
-    <View style={[styles.avatar, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-      <Text style={[styles.avatarText, { color: palette.orange }]}>{(name || '友').slice(0, 1).toUpperCase()}</Text>
+    <View style={[styles.avatar, { backgroundColor: `${ac}18` }]}>
+      <Text style={[styles.avatarText, { color: ac }]}>{(name || '友').slice(0, 1).toUpperCase()}</Text>
     </View>
   );
 }
@@ -64,7 +74,7 @@ function ConversationAvatar({
   name,
   avatarUrl,
   palette,
-  size = 56,
+  size = 50,
 }: {
   name?: string;
   avatarUrl?: string | null;
@@ -74,20 +84,21 @@ function ConversationAvatar({
   if (avatarUrl) {
     return <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
   }
+  const ac = avatarColor(name);
   return (
     <View
-      style={[
-        styles.avatar,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: palette.surfaceSoft,
-          borderColor: palette.border,
-        },
-      ]}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: `${ac}18`,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
-      <Text style={[styles.avatarText, { color: palette.orange }]}>{(name || '友').slice(0, 1).toUpperCase()}</Text>
+      <Text style={{ fontSize: size * 0.4, lineHeight: size * 0.48, fontWeight: '700', color: ac }}>
+        {(name || '友').slice(0, 1).toUpperCase()}
+      </Text>
     </View>
   );
 }
@@ -96,11 +107,13 @@ export default function MessagesScreen() {
   const router = useRouter();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const isDark = palette.bg === appDesign.dark.bg;
   const { conversations, loading, error, fetchConversations } = useConversationStore();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
-  const [newChatMode, setNewChatMode] = useState<'search' | 'friends'>('search');
+  const [newChatMode, setNewChatMode] = useState<'search' | 'records'>('search');
+  const [recordTab, setRecordTab] = useState<'pending' | 'accepted' | 'rejected'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -111,10 +124,29 @@ export default function MessagesScreen() {
   const [friendRequests, setFriendRequests] = useState<LifeFriend[]>([]);
   const [requestMessage, setRequestMessage] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState('');
+  const [messageSearchResults, setMessageSearchResults] = useState<{ friends: LifeFriend[]; messages: any[] }>({ friends: [], messages: [] });
+  const [messageSearching, setMessageSearching] = useState(false);
   const incomingRequests = friendRequests.filter((r) => r.direction === 'incoming');
-  const systemConversations = conversations.filter((conv) => (conv.last_message?.type || conv.last_message_type) === 'system');
-  const normalConversations = conversations.filter((conv) => (conv.last_message?.type || conv.last_message_type) !== 'system');
-  const featuredSystemConversation = systemConversations[0] ?? null;
+  // 消息列表只展示已通过验证的好友聊天；其余对话（非好友）不应出现在主列表
+  const acceptedFriendIds = new Set(friends.map((f) => f.friend.id));
+  const chatConversations = conversations.filter((conv) => {
+    const type = conv.last_message?.type || conv.last_message_type;
+    if (type === 'system') return false;
+    const otherUserId = conv.other_user?.user_id;
+    return otherUserId ? acceptedFriendIds.has(otherUserId) : false;
+  });
+
+  // 用好友列表的信息兜底显示名称/头像
+  const resolveUserInfo = (conv: Conversation) => {
+    const otherUserId = conv.other_user?.user_id;
+    const friend = otherUserId ? friends.find((f) => f.friend.id === otherUserId) : null;
+    return {
+      display_name: friend?.friend.display_name || conv.other_user?.display_name || '未知用户',
+      avatar_url: friend?.friend.avatar_url || conv.other_user?.avatar_url || null,
+    };
+  };
+
   const storyItems = (() => {
     if (friends.length > 0) {
       return friends.slice(0, 8).map((friend) => ({
@@ -123,18 +155,20 @@ export default function MessagesScreen() {
         avatarUrl: friend.friend.avatar_url,
         onPress: () => {
           setShowNewChat(true);
-          setNewChatMode('friends');
+          setNewChatMode('records');
+          setRecordTab('accepted');
           setSelectedUserId(friend.friend.id);
         },
       }));
     }
     const mapped = new Map<string, { key: string; name: string; avatarUrl?: string | null; conversationId: string }>();
-    normalConversations.forEach((conv) => {
+    chatConversations.forEach((conv) => {
+      const userInfo = resolveUserInfo(conv);
       if (!conv.other_user?.user_id || mapped.has(conv.other_user.user_id)) return;
       mapped.set(conv.other_user.user_id, {
         key: conv.other_user.user_id,
-        name: conv.other_user.display_name,
-        avatarUrl: conv.other_user.avatar_url,
+        name: userInfo.display_name,
+        avatarUrl: userInfo.avatar_url,
         conversationId: conv.id,
       });
     });
@@ -158,28 +192,59 @@ export default function MessagesScreen() {
     };
     socketService.onConversationUpdated(handleConversationUpdated);
     socketService.onFriendRequestUpdated(handleFriendUpdated);
-    return () => socketService.removeAllListeners();
+    return () => {
+      socketService.offConversationUpdated(handleConversationUpdated);
+      socketService.offFriendRequestUpdated(handleFriendUpdated);
+    };
   }, []);
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (!messageSearchQuery.trim()) {
+      setMessageSearchResults({ friends: [], messages: [] });
+      return;
+    }
+    const q = messageSearchQuery.trim();
+    const timer = setTimeout(async () => {
+      setMessageSearching(true);
+      try {
+        const res = await api.messages.searchMessages(q);
+        if (res.data) setMessageSearchResults(res.data);
+      } catch {
+        // ignore
+      } finally {
+        setMessageSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [messageSearchQuery]);
+
+  // 添加好友搜索：防抖
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  useEffect(() => {
+    if (!debouncedSearchQuery.trim()) {
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.trim();
+    const q = debouncedSearchQuery.trim();
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
         const res = await api.messages.searchUsers(q);
         if (res.data) setSearchResults(res.data);
       } catch {
-        // Search errors are non-blocking in the create-chat sheet.
+        // ignore
       } finally {
         setSearching(false);
       }
-    }, 300);
+    }, 0);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
+
+  const closeSearch = () => {
+    setSearchVisible(false);
+    setMessageSearchQuery('');
+    setMessageSearchResults({ friends: [], messages: [] });
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -193,8 +258,6 @@ export default function MessagesScreen() {
     setSelectedUserId(null);
     setSearchResults([]);
     setNewChatMode('search');
-    setFriends([]);
-    setFriendRequests([]);
     setRequestMessage('');
     Keyboard.dismiss();
   };
@@ -296,8 +359,9 @@ export default function MessagesScreen() {
     }
   };
 
-  const openFriends = async () => {
-    setNewChatMode('friends');
+  const openRecords = async () => {
+    setNewChatMode('records');
+    setRecordTab('pending');
     setSelectedUserId(null);
     await Promise.all([fetchFriends(), fetchFriendRequests()]);
   };
@@ -332,7 +396,7 @@ export default function MessagesScreen() {
           <AppHeader
             title="消息"
             actions={[
-              { icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) },
+              { icon: 'magnify', label: '搜索好友或聊天记录', onPress: () => setSearchVisible(true) },
               { icon: 'plus-circle-outline', label: '打开添加好友', onPress: () => setShowNewChat(true) },
             ]}
           />
@@ -342,54 +406,61 @@ export default function MessagesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.orange} colors={[palette.orange]} />}
         >
 
-          <View style={styles.storyRow}>
-            <TouchableOpacity
-              style={styles.storyItem}
-              onPress={() => {
-                setShowNewChat(true);
-                setNewChatMode('search');
-              }}
-              activeOpacity={0.82}
+          {storyItems.length > 0 && (
+            <View
+              style={[
+                styles.storyPanel,
+                { backgroundColor: palette.surface },
+                !isDark && shadows.sm,
+              ]}
             >
-              <View style={[styles.storyAvatarWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                <View style={[styles.storyAddDot, { backgroundColor: palette.success, borderColor: palette.bg }]}>
-                  <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
-                </View>
-                <MaterialCommunityIcons name="account-plus-outline" size={24} color={palette.orange} />
+              <View style={styles.storyPanelHeader}>
+                <Text style={[styles.storyPanelTitle, { color: palette.text }]}>最近联系人</Text>
               </View>
-              <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>
-                添加好友
-              </Text>
-            </TouchableOpacity>
-            <FlatList
-              data={storyItems}
-              keyExtractor={(item) => item.key}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.storyListContent}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.storyItem} onPress={item.onPress} activeOpacity={0.82}>
-                  <View style={[styles.storyAvatarWrap, { borderColor: palette.success }]}>
-                    <View style={[styles.storyAvatarRing, { borderColor: palette.orange }]}>
-                      <ConversationAvatar name={item.name} avatarUrl={item.avatarUrl} palette={palette} size={60} />
+              <View style={styles.storyRow}>
+                <TouchableOpacity
+                  style={styles.storyItem}
+                  onPress={() => {
+                    setShowNewChat(true);
+                    setNewChatMode('search');
+                  }}
+                  activeOpacity={0.82}
+                >
+                  <View style={[styles.storyAvatarWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                    <View style={[styles.storyAddDot, { backgroundColor: palette.success, borderColor: palette.bg }]}>
+                      <MaterialCommunityIcons name="plus" size={12} color="#FFFFFF" />
                     </View>
+                    <MaterialCommunityIcons name="account-plus-outline" size={20} color={palette.orange} />
                   </View>
-                  <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
+                  <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>添加好友</Text>
                 </TouchableOpacity>
-              )}
-            />
-          </View>
+                <FlatList
+                  data={storyItems}
+                  keyExtractor={(item) => item.key}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.storyListContent}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.storyItem} onPress={item.onPress} activeOpacity={0.82}>
+                      <View style={[styles.storyAvatarWrap, { borderColor: palette.success }]}>
+                        <ConversationAvatar name={item.name} avatarUrl={item.avatarUrl} palette={palette} size={48} />
+                      </View>
+                      <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+          )}
 
           {error && conversations.length === 0 ? (
-            <View style={[styles.emptyPanel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <View style={[styles.emptyPanel, { backgroundColor: palette.surface }, !isDark && shadows.sm]}>
               <MaterialCommunityIcons name="alert-circle-outline" size={28} color={palette.danger} />
               <Text style={[styles.emptyTitle, { color: palette.text }]}>消息加载失败</Text>
               <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>{error}</Text>
             </View>
-          ) : conversations.length === 0 ? (
-            <View style={[styles.emptyPanel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          ) : chatConversations.length === 0 && incomingRequests.length === 0 ? (
+            <View style={[styles.emptyPanel, { backgroundColor: palette.surface }, !isDark && shadows.sm]}>
               <MaterialCommunityIcons name="message-text-outline" size={30} color={palette.textMuted} />
               <Text style={[styles.emptyTitle, { color: palette.text }]}>暂无对话</Text>
               <Text style={[styles.emptyDesc, { color: palette.textMuted }]}>
@@ -401,70 +472,91 @@ export default function MessagesScreen() {
             </View>
           ) : (
             <View style={styles.list}>
-              {featuredSystemConversation && (
+              {incomingRequests.length > 0 && (
                 <TouchableOpacity
-                  style={[styles.featuredRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-                  onPress={() => router.push(`/message/${featuredSystemConversation.id}` as never)}
+                  style={[styles.featuredRow, { backgroundColor: `${palette.warning}0A` }]}
+          onPress={() => {
+            setShowNewChat(true);
+            setNewChatMode('records');
+            setRecordTab('pending');
+          }}
                   activeOpacity={0.82}
                 >
-                  <View style={[styles.featuredIcon, { backgroundColor: '#FF7A4518' }]}>
-                    <MaterialCommunityIcons name="bell-outline" size={18} color={palette.orange} />
+                  <View style={[styles.featuredIcon, { backgroundColor: `${palette.warning}18` }]}>
+                    <MaterialCommunityIcons name="account-clock-outline" size={18} color={palette.warning} />
                   </View>
                   <View style={styles.featuredContent}>
                     <View style={styles.featuredHead}>
-                      <Text style={[styles.featuredTitle, { color: palette.text }]}>系统消息</Text>
-                      <Text style={[styles.timeText, { color: palette.textMuted }]}>
-                        {featuredSystemConversation.last_message_at ? formatTime(featuredSystemConversation.last_message_at) : ''}
-                      </Text>
+                      <Text style={[styles.featuredTitle, { color: palette.text }]}>待处理好友申请</Text>
+                      <View style={[styles.unreadBadge, { backgroundColor: palette.warning }]}>
+                        <Text style={styles.unreadText}>{incomingRequests.length}</Text>
+                      </View>
                     </View>
                     <Text style={[styles.featuredSummary, { color: palette.textMuted }]} numberOfLines={1}>
-                      {getMessageSummary(featuredSystemConversation.last_message ?? null)}
+                      {incomingRequests.length} 位用户请求添加你为好友
                     </Text>
                   </View>
                 </TouchableOpacity>
               )}
-              {normalConversations.map((conv) => {
-                const otherUser = conv.other_user;
-                const lastMsg = conv.last_message;
-                const hasUnread = (conv.unread_count ?? 0) > 0;
-                return (
-                  <TouchableOpacity
-                    key={conv.id}
-                    style={[styles.row, { borderBottomColor: palette.border }]}
-                    onPress={() => router.push(`/message/${conv.id}` as never)}
-                    activeOpacity={0.82}
-                    testID={`conversation-row-${conv.id}`}
-                    accessibilityLabel={`打开对话 ${otherUser?.display_name || '未知用户'}`}
-                    accessibilityRole="button"
-                  >
-                    <ConversationAvatar name={otherUser?.display_name} avatarUrl={otherUser?.avatar_url} palette={palette} size={54} />
-                    <View style={styles.rowContent}>
-                      <View style={styles.rowHead}>
-                        <Text style={[styles.rowTitle, { color: palette.text }]} numberOfLines={1}>
-                          {otherUser?.display_name || '未知用户'}
-                        </Text>
-                        <Text style={[styles.timeText, { color: palette.textMuted }]}>
-                          {conv.last_message_at ? formatTime(conv.last_message_at) : ''}
-                        </Text>
-                      </View>
-                      <View style={styles.previewLine}>
+              <View
+                style={[
+                  styles.conversationPanel,
+                  { backgroundColor: palette.surface },
+                  !isDark && shadows.sm,
+                ]}
+              >
+                <View style={styles.conversationHeader}>
+                  <Text style={[styles.conversationHeaderTitle, { color: palette.text }]}>消息</Text>
+                  {chatConversations.length > 0 && (
+                    <View style={[styles.conversationHeaderBadge, { backgroundColor: palette.surfaceSoft }]}>
+                      <Text style={[styles.conversationHeaderBadgeText, { color: palette.textMuted }]}>{chatConversations.length}</Text>
+                    </View>
+                  )}
+                </View>
+                {chatConversations.map((conv, ci) => {
+                  const userInfo = resolveUserInfo(conv);
+                  const lastMsg = conv.last_message;
+                  const hasUnread = (conv.unread_count ?? 0) > 0;
+                  return (
+                    <TouchableOpacity
+                      key={conv.id}
+                      style={[
+                        styles.row,
+                        ci < chatConversations.length - 1 && { borderBottomColor: palette.border, borderBottomWidth: StyleSheet.hairlineWidth },
+                      ]}
+                      onPress={() => router.push(`/message/${conv.id}` as never)}
+                      activeOpacity={0.82}
+                      testID={`conversation-row-${conv.id}`}
+                      accessibilityLabel={`打开对话 ${userInfo.display_name}`}
+                      accessibilityRole="button"
+                    >
+                      <ConversationAvatar name={userInfo.display_name} avatarUrl={userInfo.avatar_url} palette={palette} size={50} />
+                      <View style={styles.rowContent}>
+                        <View style={styles.rowHead}>
+                          <Text style={[styles.rowTitle, { color: palette.text }]} numberOfLines={1}>
+                            {userInfo.display_name}
+                          </Text>
+                          <Text style={[styles.timeText, { color: palette.textMuted }]}>
+                            {conv.last_message_at ? formatTime(conv.last_message_at) : ''}
+                          </Text>
+                        </View>
                         <Text style={[styles.previewText, { color: palette.textMuted }]} numberOfLines={1}>
                           {getMessageSummary(lastMsg ?? null)}
                         </Text>
                       </View>
-                    </View>
-                    {hasUnread && (
-                      (conv.unread_count ?? 0) > 1 ? (
-                        <View style={[styles.unreadBadge, { backgroundColor: palette.danger }]}>
-                          <Text style={styles.unreadText}>{(conv.unread_count ?? 0) > 99 ? '99+' : String(conv.unread_count ?? 0)}</Text>
-                        </View>
-                      ) : (
-                        <View style={[styles.unreadDot, { backgroundColor: palette.danger }]} />
-                      )
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+                      {hasUnread && (
+                        (conv.unread_count ?? 0) > 1 ? (
+                          <View style={[styles.unreadBadge, { backgroundColor: palette.danger }]}>
+                            <Text style={styles.unreadText}>{(conv.unread_count ?? 0) > 99 ? '99+' : String(conv.unread_count ?? 0)}</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.unreadDot, { backgroundColor: palette.danger }]} />
+                        )
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
         </ScrollView>
@@ -474,7 +566,7 @@ export default function MessagesScreen() {
             <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSheet} />
             <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '好友列表'}</Text>
+                <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '申请记录'}</Text>
                 <TouchableOpacity style={styles.closeButton} onPress={closeSheet}>
                   <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
                 </TouchableOpacity>
@@ -496,15 +588,15 @@ export default function MessagesScreen() {
                   <Text style={[styles.segmentText, { color: newChatMode === 'search' ? palette.text : palette.textMuted }]}>添加好友</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.segmentItem, newChatMode === 'friends' && { backgroundColor: palette.surface, borderColor: palette.border }]}
-                  onPress={openFriends}
+                  style={[styles.segmentItem, newChatMode === 'records' && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                  onPress={openRecords}
                   activeOpacity={0.82}
-                  testID="messages-sheet-mode-friends"
-                  accessibilityLabel="切换到好友列表"
+                  testID="messages-sheet-mode-records"
+                  accessibilityLabel="切换到申请记录"
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="account-multiple-outline" size={16} color={newChatMode === 'friends' ? palette.orange : palette.textMuted} />
-                  <Text style={[styles.segmentText, { color: newChatMode === 'friends' ? palette.text : palette.textMuted }]}>好友列表</Text>
+                  <MaterialCommunityIcons name="account-clock-outline" size={16} color={newChatMode === 'records' ? palette.orange : palette.textMuted} />
+                  <Text style={[styles.segmentText, { color: newChatMode === 'records' ? palette.text : palette.textMuted }]}>申请记录</Text>
                 </TouchableOpacity>
               </View>
 
@@ -563,99 +655,260 @@ export default function MessagesScreen() {
                 </>
               ) : friendsLoading ? (
                 <SheetStatus palette={palette} text="加载中..." />
-              ) : friends.length === 0 && incomingRequests.length === 0 ? (
-                <SheetStatus palette={palette} text="暂无已通过好友，先发送好友申请" icon="account-group-outline" />
+              ) : (
+                <>
+                  <View style={[styles.segment, { backgroundColor: palette.surfaceSoft, marginBottom: spacing.md }]}>
+                    {(['pending', 'accepted', 'rejected'] as const).map((tab) => (
+                      <TouchableOpacity
+                        key={tab}
+                        style={[styles.segmentItem, recordTab === tab && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                        onPress={() => {
+                          setRecordTab(tab);
+                          setSelectedUserId(null);
+                        }}
+                        activeOpacity={0.82}
+                      >
+                        <Text style={[styles.segmentText, { color: recordTab === tab ? palette.text : palette.textMuted }]}>
+                          {tab === 'pending' ? '申请中' : tab === 'accepted' ? '已通过' : '已拒绝'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <ScrollView style={styles.resultList} nestedScrollEnabled>
+                    {recordTab === 'pending' && (
+                      <>
+                        {friendRequests.filter((r) => r.status === 'pending').length === 0 ? (
+                          <SheetStatus palette={palette} text="暂无申请中的好友记录" icon="account-group-outline" />
+                        ) : (
+                          <View style={styles.sheetSection}>
+                            {friendRequests
+                              .filter((r) => r.status === 'pending')
+                              .map((r) => (
+                                <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+                                  <AvatarWord name={r.friend.display_name} palette={palette} />
+                                  <View style={styles.userText}>
+                                    <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
+                                    <Text style={[styles.userDesc, { color: palette.textMuted }]}>
+                                      {r.direction === 'incoming' ? (r.request_message || '请求添加你为好友') : '已发送好友申请'}
+                                    </Text>
+                                  </View>
+                                  {r.direction === 'incoming' ? (
+                                    <>
+                                      <TouchableOpacity
+                                        onPress={() => handleRespondRequest(r.id, 'reject')}
+                                        style={[styles.requestIconBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                                      >
+                                        <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        onPress={() => handleRespondRequest(r.id, 'accept')}
+                                        style={[styles.requestIconBtn, { backgroundColor: `${palette.success}16` }]}
+                                      >
+                                        <MaterialCommunityIcons name="check" size={18} color={palette.success} />
+                                      </TouchableOpacity>
+                                    </>
+                                  ) : (
+                                    <Text style={[styles.statusLabel, { color: palette.textMuted }]}>等待对方通过</Text>
+                                  )}
+                                </View>
+                              ))}
+                          </View>
+                        )}
+                      </>
+                    )}
+                    {recordTab === 'accepted' && (
+                      <>
+                        {friends.length === 0 ? (
+                          <SheetStatus palette={palette} text="暂无已通过好友" icon="account-group-outline" />
+                        ) : (
+                          <View style={styles.sheetSection}>
+                            {friends.map((f) => (
+                              <SwipeableRow key={f.id} onDelete={() => handleDeleteFriend(f)}>
+                                <UserPickRow
+                                  id={f.friend.id}
+                                  name={f.friend.display_name}
+                                  desc={f.friend.email || undefined}
+                                  selected={selectedUserId === f.friend.id}
+                                  palette={palette}
+                                  onPress={() => setSelectedUserId(f.friend.id)}
+                                  pinned={Boolean(f.pinned)}
+                                  trailing={
+                                    <TouchableOpacity
+                                      style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
+                                      onPress={() => handleTogglePin(f)}
+                                      activeOpacity={0.78}
+                                    >
+                                      <MaterialCommunityIcons
+                                        name={f.pinned ? 'star' : 'star-outline'}
+                                        size={20}
+                                        color={f.pinned ? palette.warning : palette.textMuted}
+                                      />
+                                    </TouchableOpacity>
+                                  }
+                                />
+                              </SwipeableRow>
+                            ))}
+                          </View>
+                        )}
+                      </>
+                    )}
+                    {recordTab === 'rejected' && (
+                      <>
+                        {friendRequests.filter((r) => r.status === 'rejected').length === 0 ? (
+                          <SheetStatus palette={palette} text="暂无已拒绝记录" icon="account-off-outline" />
+                        ) : (
+                          <View style={styles.sheetSection}>
+                            {friendRequests
+                              .filter((r) => r.status === 'rejected')
+                              .map((r) => (
+                                <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
+                                  <AvatarWord name={r.friend.display_name} palette={palette} />
+                                  <View style={styles.userText}>
+                                    <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
+                                    <Text style={[styles.userDesc, { color: palette.textMuted }]}>
+                                      {r.direction === 'incoming' ? '已拒绝对方申请' : '对方已拒绝你的申请'}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ))}
+                          </View>
+                        )}
+                      </>
+                    )}
+                  </ScrollView>
+                  {recordTab === 'accepted' && selectedUserId && (
+                    <TouchableOpacity
+                      style={[styles.createButton, { backgroundColor: palette.orange }]}
+                      onPress={handleCreateChat}
+                      disabled={creating}
+                      activeOpacity={0.84}
+                    >
+                      {creating ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.createText}>发起对话</Text>}
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              {newChatMode === 'search' && selectedUserId && (
+                <TouchableOpacity
+                  style={[styles.createButton, { backgroundColor: palette.orange }]}
+                  onPress={handleSendFriendRequest}
+                  disabled={creating}
+                  activeOpacity={0.84}
+                  testID="messages-send-request"
+                  accessibilityLabel="发送好友申请"
+                  accessibilityRole="button"
+                >
+                  {creating ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.createText}>发送申请</Text>}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {searchVisible && (
+          <View style={styles.overlay}>
+            <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSearch} />
+            <View style={[styles.searchSheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: palette.text }]}>搜索</Text>
+                <TouchableOpacity style={styles.closeButton} onPress={closeSearch}>
+                  <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.inputBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="magnify" size={20} color={palette.textMuted} />
+                <TextInput
+                  style={[styles.input, { color: palette.text }]}
+                  value={messageSearchQuery}
+                  onChangeText={setMessageSearchQuery}
+                  placeholder="搜索好友、邮箱或聊天记录"
+                  placeholderTextColor={palette.textMuted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoFocus
+                />
+                {messageSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setMessageSearchQuery('')}>
+                    <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {messageSearching ? (
+                <SheetStatus palette={palette} text="搜索中..." />
+              ) : messageSearchQuery.trim() &&
+                messageSearchResults.friends.length === 0 &&
+                messageSearchResults.messages.length === 0 ? (
+                <SheetStatus palette={palette} text="未找到相关结果" icon="magnify-close" />
               ) : (
                 <ScrollView style={styles.resultList} nestedScrollEnabled>
-                  {incomingRequests.length > 0 && (
+                  {messageSearchResults.friends.length > 0 && (
                     <View style={styles.sheetSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <Text style={[styles.sectionTitle, { color: palette.text }]}>待处理申请</Text>
-                        <View style={[styles.sectionBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                          <Text style={[styles.sectionBadgeText, { color: palette.orange }]}>{incomingRequests.length}</Text>
-                        </View>
-                      </View>
-                      {incomingRequests.map((r) => (
-                        <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                          <AvatarWord name={r.friend.display_name} palette={palette} />
-                          <View style={styles.userText}>
-                            <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
-                            <Text style={[styles.userDesc, { color: palette.textMuted }]}>{r.request_message || '请求添加你为好友'}</Text>
+                      <Text style={[styles.sectionTitle, { color: palette.text, marginBottom: spacing.sm }]}>联系人</Text>
+                      {messageSearchResults.friends.map((f) => {
+                        const conv = conversations.find((c) => c.other_user?.user_id === f.friend.id);
+                        return (
+                          <TouchableOpacity
+                            key={f.friend.id}
+                            style={[styles.userRow, { borderColor: palette.border }]}
+                            onPress={() => {
+                              closeSearch();
+                              if (conv) {
+                                router.push(`/message/${conv.id}` as never);
+                              } else if (user) {
+                                api.messages.createManualConversation({ participant_ids: [user.id, f.friend.id] }).then((res) => {
+                                  if (res.data?.conversation) {
+                                    router.push(`/message/${res.data.conversation.id}` as never);
+                                  }
+                                });
+                              }
+                            }}
+                            activeOpacity={0.82}
+                          >
+                            <AvatarWord name={f.friend.display_name} palette={palette} />
+                            <View style={styles.userText}>
+                              <Text style={[styles.userName, { color: palette.text }]}>{f.friend.display_name}</Text>
+                              {f.friend.email && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{f.friend.email}</Text>}
+                            </View>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                  {messageSearchResults.messages.length > 0 && (
+                    <View style={styles.sheetSection}>
+                      <Text style={[styles.sectionTitle, { color: palette.text, marginBottom: spacing.sm }]}>聊天记录</Text>
+                      {messageSearchResults.messages.map((msg) => (
+                        <TouchableOpacity
+                          key={msg.id}
+                          style={[styles.userRow, { borderColor: palette.border }]}
+                          onPress={() => {
+                            closeSearch();
+                            router.push(`/message/${msg.conversation_id}` as never);
+                          }}
+                          activeOpacity={0.82}
+                        >
+                          <View style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                            <MaterialCommunityIcons name="message-text-outline" size={18} color={palette.orange} />
                           </View>
-                          <TouchableOpacity
-                            onPress={() => handleRespondRequest(r.id, 'reject')}
-                            style={[styles.requestIconBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                          >
-                            <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleRespondRequest(r.id, 'accept')}
-                            style={[styles.requestIconBtn, { backgroundColor: `${palette.success}16` }]}
-                          >
-                            <MaterialCommunityIcons name="check" size={18} color={palette.success} />
-                          </TouchableOpacity>
-                        </View>
+                          <View style={styles.userText}>
+                            <Text style={[styles.userName, { color: palette.text }]}>{msg.other_user_name || '聊天'}</Text>
+                            <Text style={[styles.userDesc, { color: palette.textMuted }]} numberOfLines={1}>
+                              {msg.sender_name}: {msg.content || ''}
+                            </Text>
+                          </View>
+                          <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatTime(msg.created_at)}</Text>
+                        </TouchableOpacity>
                       ))}
                     </View>
                   )}
-                  {friends.length > 0 && (
-                    <View style={styles.sheetSection}>
-                      <View style={styles.sectionHeaderRow}>
-                        <Text style={[styles.sectionTitle, { color: palette.text }]}>可发起对话的好友</Text>
-                      </View>
-                    </View>
-                  )}
-                  {friends.map((f) => (
-                    <SwipeableRow key={f.id} onDelete={() => handleDeleteFriend(f)}>
-                      <UserPickRow
-                        id={f.friend.id}
-                        name={f.friend.display_name}
-                        desc={f.friend.email || undefined}
-                        selected={selectedUserId === f.friend.id}
-                        palette={palette}
-                        onPress={() => setSelectedUserId(f.friend.id)}
-                        pinned={Boolean(f.pinned)}
-                        trailing={
-                          <TouchableOpacity
-                            style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-                            onPress={() => handleTogglePin(f)}
-                            activeOpacity={0.78}
-                          >
-                            <MaterialCommunityIcons
-                              name={f.pinned ? 'star' : 'star-outline'}
-                              size={20}
-                              color={f.pinned ? palette.warning : palette.textMuted}
-                            />
-                          </TouchableOpacity>
-                        }
-                      />
-                    </SwipeableRow>
-                  ))}
                 </ScrollView>
               )}
-
-              <TouchableOpacity
-                style={[styles.createButton, { backgroundColor: selectedUserId ? palette.orange : palette.surfaceHover }]}
-                onPress={newChatMode === 'search' ? handleSendFriendRequest : handleCreateChat}
-                disabled={!selectedUserId || creating}
-                activeOpacity={0.84}
-                testID={newChatMode === 'search' ? 'messages-send-request' : 'messages-start-chat'}
-                accessibilityLabel={newChatMode === 'search' ? '发送好友申请' : '发起好友对话'}
-                accessibilityRole="button"
-              >
-                {creating ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={[styles.createText, !selectedUserId && { color: palette.textMuted }]}>
-                    {newChatMode === 'search' ? '发送申请' : '发起对话'}
-                  </Text>
-                )}
-              </TouchableOpacity>
             </View>
           </View>
         )}
       </View>
-      <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
     </SafeScreen>
   );
 }
@@ -734,6 +987,7 @@ const styles = StyleSheet.create({
   stickyHeader: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
     zIndex: 10,
   },
   content: {
@@ -745,44 +999,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  storyPanel: {
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  storyPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  storyPanelTitle: {
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
+  },
   storyRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    paddingLeft: spacing.lg,
+    paddingBottom: 12,
   },
   storyListContent: {
     paddingRight: spacing.md,
   },
   storyItem: {
-    width: 76,
+    width: 68,
     alignItems: 'center',
     marginRight: spacing.xs,
   },
   storyAvatarWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginBottom: 6,
-  },
-  storyAvatarRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 4,
   },
   storyAddDot: {
     position: 'absolute',
-    right: -4,
-    bottom: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    right: -3,
+    bottom: -1,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -790,22 +1055,50 @@ const styles = StyleSheet.create({
   },
   storyLabel: {
     fontSize: fontSize.xs,
-    lineHeight: 16,
+    lineHeight: 14,
     fontWeight: fontWeight.medium,
     textAlign: 'center',
   },
   list: {
-    gap: spacing.xs,
+    gap: spacing.sm,
+  },
+  conversationPanel: {
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+  },
+  conversationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  conversationHeaderTitle: {
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.semiBold,
+  },
+  conversationHeaderBadge: {
+    minWidth: 22,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  conversationHeaderBadgeText: {
+    fontSize: fontSize.xs,
+    lineHeight: 14,
+    fontWeight: fontWeight.semiBold,
   },
   featuredRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 56,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    minHeight: 52,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: 10,
-    marginBottom: spacing.sm,
   },
   featuredIcon: {
     width: 36,
@@ -836,24 +1129,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   row: {
-    minHeight: 78,
-    paddingVertical: 12,
+    minHeight: 68,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderBottomWidth: 1,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: fontSize['2xl'],
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 20,
     fontWeight: fontWeight.bold,
   },
   rowContent: {
@@ -864,47 +1156,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
+    marginBottom: 3,
   },
   rowTitle: {
     flex: 1,
-    fontSize: fontSize.lg,
-    lineHeight: 22,
+    fontSize: fontSize.base,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   timeText: {
     fontSize: fontSize.xs,
     lineHeight: 16,
   },
-  previewLine: {
-    marginTop: 3,
-  },
   previewText: {
-    flex: 1,
     fontSize: fontSize.sm,
     lineHeight: 18,
   },
   unreadBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
   unreadText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 9,
+    lineHeight: 12,
     fontWeight: fontWeight.bold,
   },
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   emptyPanel: {
     borderRadius: borderRadius.xl,
-    borderWidth: 1,
     padding: spacing.xl,
     alignItems: 'center',
   },
@@ -1012,7 +1300,23 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   resultList: {
-    maxHeight: 280,
+    maxHeight: 320,
+  },
+  searchSheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: '80%',
+    borderTopLeftRadius: borderRadius['2xl'],
+    borderTopRightRadius: borderRadius['2xl'],
+    borderWidth: 1,
+    padding: spacing.xl,
+    paddingBottom: 40,
+  },
+  statusLabel: {
+    fontSize: fontSize.sm,
+    lineHeight: 18,
   },
   sheetSection: {
     marginBottom: spacing.md,

@@ -8,19 +8,11 @@ import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, Chip, PageLoadable, CachedImage, EmptyState } from '../../components/ui';
+import { FAB, PageLoadable, CachedImage, EmptyState, Select } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-}
+import { useDebounce } from '../../lib/hooks';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
@@ -30,6 +22,127 @@ const getDayDiff = (dateValue?: string) => {
   if (Number.isNaN(date.getTime())) return null;
   return Math.floor((startOfDay(date) - startOfDay(new Date())) / DAY_MS);
 };
+
+interface ItemListHeaderProps {
+  palette: any;
+  countLabel: string;
+  batchMode: boolean;
+  searchActive: boolean;
+  searchQuery: string;
+  isSearchFocused: boolean;
+  categoryFilters: { value: string; label: string }[];
+  selectedCategory: string;
+  locationFilters: { value: string; label: string }[];
+  selectedLocation: string;
+  statusFilters: { value: string; label: string }[];
+  selectedStatus: string;
+  activeFilterCount: number;
+  allCategory: string;
+  onToggleBatch: () => void;
+  onToggleSearch: () => void;
+  onSearchQueryChange: (text: string) => void;
+  onCategoryChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+  onClearFilters: () => void;
+  onSortOpen: () => void;
+  onFocusChange: (focused: boolean) => void;
+  onSearchClear: () => void;
+}
+
+const ItemListHeader = React.forwardRef<TextInput, ItemListHeaderProps>(function ItemListHeader({
+  palette, countLabel, batchMode, searchActive, searchQuery, isSearchFocused,
+  categoryFilters, selectedCategory, locationFilters, selectedLocation,
+  statusFilters, selectedStatus, activeFilterCount, allCategory,
+  onToggleBatch, onToggleSearch, onSearchQueryChange,
+  onCategoryChange, onLocationChange, onStatusChange,
+  onClearFilters, onSortOpen, onFocusChange, onSearchClear,
+}, ref) {
+  return (
+    <View style={{ backgroundColor: palette.bg }}>
+      <View style={styles.toolbar}>
+        <View style={styles.toolbarActions}>
+          <Text style={[styles.toolbarCount, { color: palette.textMuted }]}>{countLabel}</Text>
+          <TouchableOpacity
+            style={[styles.iconBtn, batchMode && { backgroundColor: `${palette.orange}14` }]}
+            onPress={onToggleBatch}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={20} color={batchMode ? palette.orange : palette.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.iconBtn, searchActive && { backgroundColor: `${palette.orange}14` }]}
+            onPress={onToggleSearch}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name={searchActive ? 'close' : 'magnify'} size={20} color={searchActive ? palette.orange : palette.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={onSortOpen} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="sort-variant" size={20} color={palette.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {searchActive && (
+        <View style={[styles.searchBox, { backgroundColor: palette.surface, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
+          <MaterialCommunityIcons name="magnify" size={18} color={isSearchFocused ? palette.orange : palette.textMuted} />
+          <TextInput
+            ref={ref}
+            style={[styles.searchInput, { color: palette.text }]}
+            value={searchQuery}
+            onChangeText={onSearchQueryChange}
+            placeholder="搜索物品..."
+            placeholderTextColor={palette.textMuted}
+            onFocus={() => onFocusChange(true)}
+            onBlur={() => onFocusChange(false)}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={onSearchClear}>
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      <View style={styles.filterBar}>
+        <Select
+          label="分类"
+          value={selectedCategory}
+          options={categoryFilters}
+          defaultValue={allCategory}
+          onChange={onCategoryChange}
+          style={styles.filterSelect}
+        />
+        <Select
+          label="位置"
+          value={selectedLocation}
+          options={locationFilters}
+          defaultValue="ALL"
+          onChange={onLocationChange}
+          style={styles.filterSelect}
+        />
+        <Select
+          label="状态"
+          value={selectedStatus}
+          options={statusFilters}
+          defaultValue="all"
+          onChange={(v) => onStatusChange(v)}
+          style={styles.filterSelect}
+        />
+      </View>
+      {activeFilterCount > 0 && (
+        <View style={styles.filterSummary}>
+          <Text style={[styles.filterSummaryText, { color: palette.textMuted }]}>已启用 {activeFilterCount} 个筛选</Text>
+          <TouchableOpacity onPress={onClearFilters} activeOpacity={0.75}>
+            <Text style={[styles.clearFilterText, { color: palette.orange }]}>清除</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
 
 export default function ItemListScreen() {
   const router = useRouter();
@@ -58,19 +171,19 @@ export default function ItemListScreen() {
 
   const itemCategories = customCategories.filter((c) => c.type === 'item');
   const categoryFilters = [
-    { id: ALL_CATEGORY, label: t('common.all') },
-    ...itemCategories.map((category) => ({ id: category.id, label: category.name })),
+    { value: ALL_CATEGORY, label: '全部' },
+    ...itemCategories.map((category) => ({ value: category.id, label: category.name })),
   ];
   const locationFilters = [
-    { id: 'ALL', label: '全部位置' },
-    ...customLocations.map((location) => ({ id: location.id, label: location.name })),
+    { value: 'ALL', label: '全部' },
+    ...customLocations.map((location) => ({ value: location.id, label: location.name })),
   ];
-  const statusFilters: { id: typeof selectedStatus; label: string }[] = [
-    { id: 'all', label: '全部状态' },
-    { id: 'expired', label: '已过期' },
-    { id: 'expiring', label: '7天内到期' },
-    { id: 'valued', label: '有价值' },
-    { id: 'noValue', label: '未估值' },
+  const statusFilters: { value: typeof selectedStatus; label: string }[] = [
+    { value: 'all', label: '全部' },
+    { value: 'expired', label: '已过期' },
+    { value: 'expiring', label: '7天内到期' },
+    { value: 'valued', label: '有价值' },
+    { value: 'noValue', label: '未估值' },
   ];
 
   const allCategoriesForIcon = itemCategories.map((c) => ({
@@ -98,7 +211,28 @@ export default function ItemListScreen() {
   const getCategoryIcon = (categoryId?: string): string => {
     if (!categoryId) return 'package-variant';
     const cat = allCategoriesForIcon.find((c) => c.id === categoryId);
-    return cat?.icon || 'package-variant';
+    const icon = cat?.icon || 'package-variant';
+    // Avoid meaningless icons that render as "?" visually
+    const badIcons = new Set([
+      'help-circle', 'help-circle-outline', 'help', 'help-box',
+      'question', 'question-mark', 'question-mark-circle',
+      'comment-question', 'comment-question-outline',
+      'alert', 'alert-circle', 'alert-circle-outline',
+      'alert-decagram', 'alert-octagon', 'alert-rhombus',
+      'frequently-asked-questions', 'progress-question',
+      '', '?', '？', 'unknown', 'none', 'null', 'undefined',
+    ]);
+    if (badIcons.has(icon.trim().toLowerCase())) return 'package-variant';
+    // Also guard against icon names that are not valid MaterialCommunityIcons names
+    // by testing the first character is a letter
+    if (!/^[a-z]/.test(icon.trim().toLowerCase())) return 'package-variant';
+    return icon;
+  };
+
+  const getCategoryColor = (categoryId?: string): string => {
+    if (!categoryId) return palette.orange;
+    const cat = itemCategories.find((c) => c.id === categoryId);
+    return cat?.color || palette.orange;
   };
 
   const getCategoryName = (categoryId?: string): string => {
@@ -187,190 +321,89 @@ export default function ItemListScreen() {
 
   const renderItem = useCallback(({ item }: { item: LifeItem }) => {
     const icon = getCategoryIcon(item.category_id);
+    const categoryColor = getCategoryColor(item.category_id);
     const isSelected = selectedIds.has(item.id);
-    const createdDate = new Date(item.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
     const expiryDiff = getDayDiff(item.expiry_date);
+    const hasValue = typeof item.current_value === 'number';
+    const valueText = hasValue
+      ? ((item.currency || 'CNY') === 'CNY' ? `¥${item.current_value}` : `${item.current_value} ${item.currency}`)
+      : '';
     return (
       <SwipeableRow onDelete={() => handleDeleteItem(item)}>
         <TouchableOpacity
           style={[
             styles.itemCard,
-            { backgroundColor: palette.surface, borderColor: palette.border },
+            { backgroundColor: palette.surface },
             batchMode && isSelected && { borderColor: palette.orange, borderWidth: 2 },
           ]}
           onPress={() => (batchMode ? toggleSelectItem(item.id) : router.push(`/item/${item.id}`))}
-          activeOpacity={0.98}
+          activeOpacity={0.95}
         >
-          {batchMode && (
-            <View style={[styles.checkbox, { borderColor: palette.borderStrong }, isSelected && { backgroundColor: palette.orange, borderColor: palette.orange }]}>
-              {isSelected && <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />}
-            </View>
-          )}
-          {item.images && item.images.length > 0 ? (
-            <CachedImage uri={item.images[0]} size={52} borderRadius={14} />
-          ) : (
-            <View style={[styles.itemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <MaterialCommunityIcons name={icon as any} size={24} color={palette.orange} />
-            </View>
-          )}
+          <View style={styles.iconContainer}>
+            {item.images && item.images.length > 0 ? (
+              <CachedImage uri={item.images[0]} size={44} borderRadius={22} />
+            ) : (
+              <View style={[styles.itemIcon, { backgroundColor: `${categoryColor}16` }]}>
+                <MaterialCommunityIcons name={icon as any} size={22} color={categoryColor} />
+              </View>
+            )}
+          </View>
           <View style={styles.itemDetails}>
             <View style={styles.itemHead}>
               <Text style={[styles.itemName, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
-              <Text style={[styles.itemDate, { color: palette.textMuted }]}>{createdDate}</Text>
+              {hasValue && (
+                <Text style={[styles.valueBadge, { color: palette.success }]} numberOfLines={1}>
+                  {valueText}
+                </Text>
+              )}
             </View>
             {item.description && (
-              <Text style={[styles.itemDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
+              <Text style={[styles.itemDesc, { color: palette.textMuted }]} numberOfLines={1}>{item.description}</Text>
             )}
-            <View style={styles.itemTags}>
+            <View style={styles.itemMetaRow}>
+              <Text
+                style={[styles.tag, { color: categoryColor }]}
+                numberOfLines={1}
+              >
+                {getCategoryName(item.category_id)}
+              </Text>
               {item.location_id && (
-                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                  <MaterialCommunityIcons name="map-marker-outline" size={12} color={palette.orange} />
-                  <Text style={[styles.tagText, { color: palette.orange }]}>{getLocationName(item.location_id)}</Text>
-                </View>
-              )}
-              {item.category_id && (
-                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                  <MaterialCommunityIcons name="tag-outline" size={12} color={palette.violet} />
-                  <Text style={[styles.tagText, { color: palette.violet }]}>{getCategoryName(item.category_id)}</Text>
-                </View>
-              )}
-              {typeof item.current_value === 'number' && (
-                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                  <MaterialCommunityIcons name="cash-multiple" size={12} color={palette.success} />
-                  <Text style={[styles.tagText, { color: palette.success }]}>
-                    {(item.currency || 'CNY') === 'CNY' ? `¥${item.current_value}` : `${item.current_value} ${item.currency}`}
+                <View style={styles.metaChip}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={11} color={palette.textMuted} />
+                  <Text style={[styles.metaChipText, { color: palette.textMuted }]} numberOfLines={1}>
+                    {getLocationName(item.location_id)}
                   </Text>
                 </View>
               )}
               {expiryDiff !== null && (
-                <View style={[styles.tag, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                  <MaterialCommunityIcons name="calendar-alert" size={12} color={expiryDiff < 0 ? palette.danger : palette.warning} />
-                  <Text style={[styles.tagText, { color: expiryDiff < 0 ? palette.danger : palette.warning }]}>
+                <View style={styles.metaChip}>
+                  <MaterialCommunityIcons
+                    name={expiryDiff < 0 ? 'alert-circle-outline' : expiryDiff <= 7 ? 'clock-alert-outline' : 'calendar-outline'}
+                    size={11}
+                    color={expiryDiff < 0 ? palette.danger : expiryDiff <= 7 ? palette.warning : palette.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.metaChipText,
+                      { color: expiryDiff < 0 ? palette.danger : expiryDiff <= 7 ? palette.warning : palette.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {expiryDiff < 0 ? `过期 ${Math.abs(expiryDiff)} 天` : expiryDiff === 0 ? '今天到期' : `${expiryDiff} 天后到期`}
                   </Text>
                 </View>
               )}
             </View>
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} style={{ marginTop: 4 }} />
+          {batchMode && (
+            <View style={[styles.checkIndicator, { borderColor: isSelected ? palette.orange : palette.borderStrong }, isSelected && { backgroundColor: palette.orange }]}>
+              {isSelected && <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />}
+            </View>
+          )}
         </TouchableOpacity>
       </SwipeableRow>
     );
   }, [batchMode, selectedIds, palette, customCategories, customLocations, router]);
-
-  const renderHeader = () => (
-    <View>
-      <View style={[styles.header, { backgroundColor: palette.bg }]}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerActions}>
-            <Text style={[styles.count, { color: palette.textMuted }]}>{countLabel}</Text>
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }} activeOpacity={0.7}>
-              <MaterialCommunityIcons name={batchMode ? 'close' : 'checkbox-marked-outline'} size={18} color={palette.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, searchActive && { borderColor: palette.orange }]}
-              onPress={() => {
-                setSearchActive((active) => {
-                  const next = !active;
-                  if (!next) setSearchQuery('');
-                  setTimeout(() => {
-                    if (next) searchInputRef.current?.focus();
-                  }, 0);
-                  return next;
-                });
-              }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="搜索物品"
-            >
-              <MaterialCommunityIcons name={searchActive ? 'close' : 'magnify'} size={18} color={searchActive ? palette.orange : palette.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]} onPress={() => setShowSortModal(true)} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="sort" size={18} color={palette.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        {searchActive && (
-          <View style={[styles.searchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, isSearchFocused && { borderColor: palette.orange }]}>
-            <MaterialCommunityIcons name="magnify" size={20} color={isSearchFocused ? palette.orange : palette.textMuted} />
-            <TextInput
-              ref={searchInputRef}
-              style={[styles.searchInput, { color: palette.text }]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="搜索名称、描述、分类、位置或条码..."
-              placeholderTextColor={palette.textMuted}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              returnKeyType="search"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}>
-                <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsContent}
-        style={styles.chipsScroll}
-      >
-        {categoryFilters.map((cat) => (
-          <Chip
-            key={cat.id}
-            label={cat.label}
-            selected={selectedCategory === cat.id}
-            onPress={() => setSelectedCategory(cat.id)}
-            style={styles.categoryChip}
-          />
-        ))}
-      </ScrollView>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsContent}
-        style={styles.chipsScroll}
-      >
-        {locationFilters.map((loc) => (
-          <Chip
-            key={loc.id}
-            label={loc.label}
-            selected={selectedLocation === loc.id}
-            onPress={() => setSelectedLocation(loc.id)}
-            style={styles.categoryChip}
-          />
-        ))}
-      </ScrollView>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsContent}
-        style={styles.chipsScroll}
-      >
-        {statusFilters.map((status) => (
-          <Chip
-            key={status.id}
-            label={status.label}
-            selected={selectedStatus === status.id}
-            onPress={() => setSelectedStatus(status.id)}
-            style={styles.categoryChip}
-          />
-        ))}
-      </ScrollView>
-      {activeFilterCount > 0 && (
-        <View style={styles.filterSummary}>
-          <Text style={[styles.filterSummaryText, { color: palette.textMuted }]}>已启用 {activeFilterCount} 个筛选</Text>
-          <TouchableOpacity onPress={clearFilters} activeOpacity={0.75}>
-            <Text style={[styles.clearFilterText, { color: palette.orange }]}>清除</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
 
   const renderEmpty = () => (
     <EmptyState
@@ -386,31 +419,65 @@ export default function ItemListScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.bg }]}>
       <View style={[styles.container, { backgroundColor: palette.bg }]}>
-        <PageLoadable
-          loading={loading}
-          error={itemsError}
-          emptyIcon="package-variant"
-          emptyTitle="暂无物品"
-          emptyMessage="点击下方按钮添加第一个物品"
-          onEmptyAction={() => router.push('/item/create')}
-          emptyActionLabel="添加物品"
-          onRetry={fetchItems}
-  
-        >
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            ListHeaderComponent={renderHeader}
-            ListEmptyComponent={renderEmpty}
-            contentContainerStyle={styles.list}
-            removeClippedSubviews
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={5}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
-          />
-        </PageLoadable>
+        <ItemListHeader
+          ref={searchInputRef}
+          palette={palette}
+          countLabel={countLabel}
+          batchMode={batchMode}
+          searchActive={searchActive}
+          searchQuery={searchQuery}
+          isSearchFocused={isSearchFocused}
+          categoryFilters={categoryFilters}
+          selectedCategory={selectedCategory}
+          locationFilters={locationFilters}
+          selectedLocation={selectedLocation}
+          statusFilters={statusFilters}
+          selectedStatus={selectedStatus}
+          activeFilterCount={activeFilterCount}
+          allCategory={ALL_CATEGORY}
+          onToggleBatch={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
+          onToggleSearch={() => {
+            setSearchActive((active) => {
+              const next = !active;
+              if (!next) setSearchQuery('');
+              setTimeout(() => { if (next) searchInputRef.current?.focus(); }, 0);
+              return next;
+            });
+          }}
+          onSearchQueryChange={setSearchQuery}
+          onCategoryChange={setSelectedCategory}
+          onLocationChange={setSelectedLocation}
+          onStatusChange={(v) => setSelectedStatus(v as typeof selectedStatus)}
+          onClearFilters={clearFilters}
+          onSortOpen={() => setShowSortModal(true)}
+          onFocusChange={(focused) => setIsSearchFocused(focused)}
+          onSearchClear={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+        />
+        <View style={styles.listWrapper}>
+          <PageLoadable
+            loading={loading}
+            error={itemsError}
+            emptyIcon="package-variant"
+            emptyTitle="暂无物品"
+            emptyMessage="点击下方按钮添加第一个物品"
+            onEmptyAction={() => router.push('/item/create')}
+            emptyActionLabel="添加物品"
+            onRetry={fetchItems}
+          >
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              ListEmptyComponent={renderEmpty}
+              contentContainerStyle={styles.list}
+              removeClippedSubviews
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={5}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
+            />
+          </PageLoadable>
+        </View>
         {batchMode && (
           <View style={[styles.batchBar, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <TouchableOpacity onPress={() => {
@@ -466,44 +533,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  listWrapper: {
+    flex: 1,
+  },
   header: {
     padding: spacing.lg,
     paddingBottom: 0,
+    zIndex: 10,
   },
-  headerTop: {
+  toolbar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  toolbarCount: {
+    fontSize: fontSize.sm,
+    marginRight: spacing.sm,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   count: {
     fontSize: fontSize.base,
   },
   searchBox: {
-    height: 44,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
     gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: fontSize.lg,
+    fontSize: fontSize.base,
     padding: 0,
   },
-  chipsScroll: {
-    flexGrow: 0,
-  },
-  chipsContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+  filterBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  categoryChip: {
-    flexShrink: 0,
+  filterSelect: {
+    flex: 1,
   },
   filterSummary: {
     flexDirection: 'row',
@@ -523,7 +612,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   list: {
-    paddingBottom: 120,
+    paddingBottom: 160,
   },
   inlineEmpty: {
     minHeight: 420,
@@ -531,85 +620,87 @@ const styles = StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    minHeight: 84,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+    position: 'relative',
     ...shadows.sm,
   },
   itemIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   itemDetails: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: spacing.sm,
+    justifyContent: 'center',
+    gap: 1,
   },
   itemHead: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
-    marginBottom: 4,
   },
   itemName: {
     flex: 1,
-    fontSize: fontSize.xl,
+    fontSize: fontSize['2xl'],
     fontWeight: fontWeight.semiBold,
+    lineHeight: 22,
   },
-  itemDate: {
-    fontSize: fontSize.sm,
+  valueBadge: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.semiBold,
     lineHeight: 18,
   },
-  itemDesc: {
-    fontSize: fontSize.base,
-    marginBottom: spacing.sm,
-  },
-  itemTags: {
+  itemMetaRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'center',
     flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: 1,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  metaChipText: {
+    fontSize: fontSize.xs,
+    lineHeight: 14,
+    fontWeight: fontWeight.regular,
+    maxWidth: 90,
+  },
+  itemDesc: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
   },
   tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-  },
-  tagText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
+    lineHeight: 14,
+    maxWidth: 100,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkbox: {
+  checkIndicator: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 11,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
     marginRight: spacing.sm,
+    marginTop: 2,
   },
   batchBar: {
     flexDirection: 'row',

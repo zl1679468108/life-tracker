@@ -97,6 +97,14 @@ export class MessagesController {
     return this.messagesService.markAsRead(conversationId, user.id);
   }
 
+  @Get('search')
+  async searchMessages(
+    @CurrentUser() user: SupabaseUser,
+    @Query('q') q: string,
+  ) {
+    return this.messagesService.searchMessages(user.id, q);
+  }
+
   /**
    * 搜索用户（通过邮箱前缀或用户名）
    */

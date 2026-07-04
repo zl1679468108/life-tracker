@@ -32,7 +32,7 @@ export function AppHeader({ title, actions = [], backAction, align = 'left', lef
         style={[
           styles.iconButton,
           isBack && styles.backButton,
-          { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+          { backgroundColor: palette.surfaceSoft },
         ]}
         onPress={action.onPress}
         activeOpacity={0.78}
@@ -66,14 +66,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
   },
   headerCenter: {
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 22,
-    lineHeight: 30,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: fontWeight.bold,
   },
   titleLeft: {
@@ -90,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sideBalanced: {
-    minWidth: 44,
+    minWidth: 40,
   },
   sideLeft: {
     marginRight: spacing.sm,
@@ -100,14 +99,13 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
   sideRight: {
-    minWidth: 44,
+    minWidth: 40,
     justifyContent: 'flex-end',
   },
   iconButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -117,11 +115,11 @@ const styles = StyleSheet.create({
   },
   unreadDot: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
   },
 });

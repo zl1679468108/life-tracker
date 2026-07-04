@@ -12,15 +12,7 @@ import { FAB, EmptyState, Chip, PageLoadable, CachedImage } from '../ui';
 import { SwipeableRow } from '../SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-  return debouncedValue;
-}
+import { useDebounce } from '../../lib/hooks';
 
 export function WorkbenchItemsView() {
   const router = useRouter();

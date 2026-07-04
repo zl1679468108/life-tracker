@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { GlobalSearch } from '../../components/GlobalSearch';
 import { AppHeader, WorkbenchBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
@@ -11,9 +10,11 @@ import { useColors } from '../../stores/themeStore';
 
 type Entry = {
   title: string;
+  subtitle?: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   route: string;
   color: string;
+  bg: string;
 };
 
 type Group = {
@@ -21,41 +22,49 @@ type Group = {
   entries: Entry[];
 };
 
+// 每个功能入口的背景透色（浅色）
+const alphaBg = (hex: string, alpha = 0.12): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
 export default function WorkbenchScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const [searchVisible, setSearchVisible] = useState(false);
+  const dark = colors.gray[50] === appDesign.dark.bg;
+  const palette = dark ? appDesign.dark : appDesign.light;
 
   const core: Entry[] = [
-    { title: '物品', icon: 'package-variant', route: '/item/list', color: palette.orange },
-    { title: '待办', icon: 'check-circle-outline', route: '/todo/list', color: palette.violet },
+    { title: '物品管理', subtitle: '追踪你的所有物品', icon: 'package-variant', route: '/item/list', color: palette.orange, bg: alphaBg('#F36F3C', dark ? 0.18 : 0.12) },
+    { title: '待办管理', subtitle: '完成每日任务', icon: 'check-circle-outline', route: '/todo/list', color: palette.violet, bg: alphaBg('#7C5CFC', dark ? 0.18 : 0.12) },
   ];
 
   const groups: Group[] = [
     {
       title: '管理工具',
       entries: [
-        { title: '分类', icon: 'tag-multiple-outline', route: '/settings/category-manage', color: palette.orange },
-        { title: '位置', icon: 'map-marker-outline', route: '/settings/location-manage', color: palette.violet },
-        { title: '模板', icon: 'file-document-outline', route: '/settings/templates', color: palette.warning },
+        { title: '分类', subtitle: '归类整理', icon: 'tag-multiple-outline', route: '/settings/category-manage', color: '#E84A5F', bg: alphaBg('#E84A5F', dark ? 0.18 : 0.12) },
+        { title: '位置', subtitle: '存放地点', icon: 'map-marker-outline', route: '/settings/location-manage', color: '#D89400', bg: alphaBg('#D89400', dark ? 0.18 : 0.12) },
+        { title: '模板', subtitle: '快速创建', icon: 'file-document-outline', route: '/settings/templates', color: '#8E24AA', bg: alphaBg('#8E24AA', dark ? 0.18 : 0.12) },
       ],
     },
     {
       title: '生活记录',
       entries: [
-        { title: '借用', icon: 'account-arrow-right-outline', route: '/settings/borrowings', color: palette.success },
-        { title: '日历', icon: 'calendar-month-outline', route: '/settings/calendar', color: palette.violet },
+        { title: '借用', subtitle: '借出与归还', icon: 'account-arrow-right-outline', route: '/settings/borrowings', color: '#1E88E5', bg: alphaBg('#1E88E5', dark ? 0.18 : 0.12) },
+        { title: '日历', subtitle: '日程概览', icon: 'calendar-month-outline', route: '/settings/calendar', color: '#43A047', bg: alphaBg('#43A047', dark ? 0.18 : 0.12) },
       ],
     },
     {
       title: '数据与提醒',
       entries: [
-        { title: '统计', icon: 'chart-bar', route: '/settings/stats', color: palette.orange },
-        { title: '通知', icon: 'bell-outline', route: '/settings/notifications', color: palette.warning },
-        { title: '数据', icon: 'database-outline', route: '/settings/data', color: palette.violet },
-        { title: '资产', icon: 'wallet-outline', route: '/settings/assets', color: palette.success },
-        { title: '快捷', icon: 'cellphone-link', route: '/settings/widgets', color: palette.danger },
+        { title: '统计', subtitle: '完成率', icon: 'chart-bar', route: '/settings/stats', color: palette.orange, bg: alphaBg('#F36F3C', dark ? 0.18 : 0.12) },
+        { title: '通知', subtitle: '提醒中心', icon: 'bell-outline', route: '/settings/notifications', color: palette.warning, bg: alphaBg('#D89400', dark ? 0.18 : 0.12) },
+        { title: '数据', subtitle: '导入导出', icon: 'database-outline', route: '/settings/data', color: palette.violet, bg: alphaBg('#7C5CFC', dark ? 0.18 : 0.12) },
+        { title: '资产', subtitle: '价值总览', icon: 'wallet-outline', route: '/settings/assets', color: '#10A66E', bg: alphaBg('#10A66E', dark ? 0.18 : 0.12) },
+        { title: '快捷', subtitle: '桌面组件', icon: 'cellphone-link', route: '/settings/widgets', color: '#E84A5F', bg: alphaBg('#E84A5F', dark ? 0.18 : 0.12) },
       ],
     },
   ];
@@ -65,10 +74,10 @@ export default function WorkbenchScreen() {
   return (
     <SafeScreen backgroundColor={palette.bg}>
       <View style={styles.pageWrap}>
-        {/* 氛围背景层 */}
+        {/* atmosphere */}
         <View style={styles.atmosphereArea} pointerEvents="none">
           <LinearGradient
-            colors={palette.bg === appDesign.dark.bg
+            colors={dark
               ? ['rgba(124,92,252,0.08)', 'rgba(243,111,60,0.03)', palette.bg]
               : ['#F0EDFF', '#FFF6F0', palette.bg]
             }
@@ -79,28 +88,60 @@ export default function WorkbenchScreen() {
         </View>
 
         <View style={[styles.stickyHeader, { backgroundColor: 'transparent' }]}>
-          <AppHeader title="工作台" actions={[{ icon: 'magnify', label: '搜索', onPress: () => setSearchVisible(true) }]} />
+          <AppHeader title="功能入口" />
         </View>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
-          <View style={styles.coreGrid}>
-            {core.map((entry) => (
-              <TouchableOpacity
-                key={entry.title}
-                style={[styles.coreCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                onPress={() => go(entry.route)}
-                activeOpacity={0.82}
-              >
-                <View style={[styles.coreIcon, { backgroundColor: `${entry.color}16`, borderColor: `${entry.color}2E` }]}>
-                  <MaterialCommunityIcons name={entry.icon} size={22} color={entry.color} />
-                </View>
-                <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
-              </TouchableOpacity>
-            ))}
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {/* 核心功能 — 统一主卡片 */}
+          <View
+            style={[
+              styles.groupCard,
+              {
+                backgroundColor: palette.surface,
+              },
+              !dark && shadows.sm,
+            ]}
+          >
+            <View style={styles.groupHeader}>
+              <Text style={[styles.groupTitle, { color: palette.text }]}>核心功能</Text>
+            </View>
+            <View style={styles.coreDual}>
+              {core.map((entry, index) => (
+                <React.Fragment key={entry.title}>
+                  {index > 0 && <View style={[styles.coreDivider, { backgroundColor: palette.border }]} />}
+                  <TouchableOpacity
+                    style={[
+                      styles.coreHalf,
+                      {
+                        backgroundColor: entry.bg,
+                      },
+                    ]}
+                    onPress={() => go(entry.route)}
+                    activeOpacity={0.82}
+                  >
+                    <View style={[styles.coreIconWrap, { backgroundColor: entry.color, shadowColor: entry.color }]}>
+                      <MaterialCommunityIcons name={entry.icon} size={26} color="#FFFFFF" />
+                    </View>
+                    <Text style={[styles.coreTitle, { color: palette.text }]}>{entry.title}</Text>
+                    <Text style={[styles.coreSubtitle, { color: palette.textMuted }]}>{entry.subtitle}</Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
           </View>
 
+          {/* group cards */}
           {groups.map((group) => (
-            <View key={group.title} style={[styles.groupCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <View
+              key={group.title}
+              style={[
+                styles.groupCard,
+                {
+                  backgroundColor: palette.surface,
+                },
+                !dark && shadows.sm,
+              ]}
+            >
               <View style={styles.groupHeader}>
                 <Text style={[styles.groupTitle, { color: palette.text }]}>{group.title}</Text>
                 <View style={[styles.groupBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -113,18 +154,24 @@ export default function WorkbenchScreen() {
                     key={entry.title}
                     style={styles.gridItem}
                     onPress={() => go(entry.route)}
-                    activeOpacity={0.78}
+                    activeOpacity={0.7}
                   >
-                    <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
-                      <MaterialCommunityIcons name={entry.icon} size={20} color={entry.color} />
+                    <View style={[styles.gridIconWrap, { backgroundColor: entry.bg }]}>
+                      <MaterialCommunityIcons name={entry.icon} size={22} color={entry.color} />
                     </View>
-                    <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>{entry.title}</Text>
+                    <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>
+                      {entry.title}
+                    </Text>
+                    {entry.subtitle && (
+                      <Text style={[styles.gridSubLabel, { color: palette.textMuted }]} numberOfLines={1}>
+                        {entry.subtitle}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
           ))}
-          <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
         </ScrollView>
       </View>
     </SafeScreen>
@@ -132,9 +179,7 @@ export default function WorkbenchScreen() {
 }
 
 const styles = StyleSheet.create({
-  pageWrap: {
-    flex: 1,
-  },
+  pageWrap: { flex: 1 },
   atmosphereArea: {
     position: 'absolute',
     top: 0,
@@ -145,46 +190,54 @@ const styles = StyleSheet.create({
   stickyHeader: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
     zIndex: 10,
   },
   content: {
     paddingHorizontal: spacing.lg,
     paddingBottom: 112,
   },
-  coreGrid: {
+  coreDual: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
   },
-  coreCard: {
+  coreDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+  },
+  coreHalf: {
     flex: 1,
-    minHeight: 88,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
-  coreIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+  coreIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   coreTitle: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.lg,
     lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
+  coreSubtitle: {
+    fontSize: fontSize.xs,
+    lineHeight: 14,
+    fontWeight: fontWeight.regular,
+  },
   groupCard: {
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   groupHeader: {
     flexDirection: 'row',
@@ -198,13 +251,12 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semiBold,
   },
   groupBadge: {
-    minWidth: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1,
+    minWidth: 24,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
   },
   groupBadgeText: {
     fontSize: fontSize.sm,
@@ -216,15 +268,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   gridItem: {
-    width: '25%',
+    width: '20%',
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 8,
-    minHeight: 72,
+    minHeight: 88,
   },
   gridIconWrap: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -235,5 +287,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: fontWeight.medium,
     textAlign: 'center',
+  },
+  gridSubLabel: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: fontWeight.regular,
+    textAlign: 'center',
+    marginTop: 1,
   },
 });
