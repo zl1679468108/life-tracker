@@ -6,7 +6,10 @@ interface ShareState {
   outgoingShares: LifeShare[];
   incomingShares: LifeShare[];
   resourceShares: LifeShare[];
-  loading: boolean;
+  // 列表查询的 loading，仅用于 fetch 类操作
+  listLoading: boolean;
+  // 增删改操作的 loading，仅用于 mutation 类操作
+  mutationLoading: boolean;
   error: string | null;
   fetchOutgoingShares: () => Promise<void>;
   fetchIncomingShares: () => Promise<void>;
@@ -21,73 +24,76 @@ export const useShareStore = create<ShareState>((set) => ({
   outgoingShares: [],
   incomingShares: [],
   resourceShares: [],
-  loading: false,
+  listLoading: false,
+  mutationLoading: false,
   error: null,
 
   fetchOutgoingShares: async () => {
-    set({ loading: true, error: null });
+    set({ listLoading: true, error: null });
     try {
       const res = await api.shares.outgoing();
       if (res.data) {
-        set({ outgoingShares: res.data, loading: false });
+        set({ outgoingShares: res.data, listLoading: false });
       } else {
-        set({ error: res.message || '获取共享列表失败', loading: false });
+        set({ error: res.message || '获取共享列表失败', listLoading: false });
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, listLoading: false });
     }
   },
 
   fetchIncomingShares: async () => {
-    set({ loading: true, error: null });
+    set({ listLoading: true, error: null });
     try {
       const res = await api.shares.incoming();
       if (res.data) {
-        set({ incomingShares: res.data, loading: false });
+        set({ incomingShares: res.data, listLoading: false });
       } else {
-        set({ error: res.message || '获取共享列表失败', loading: false });
+        set({ error: res.message || '获取共享列表失败', listLoading: false });
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, listLoading: false });
     }
   },
 
   fetchResourceShares: async (type: 'item' | 'todo', id: string) => {
-    set({ loading: true, error: null });
+    set({ listLoading: true, error: null });
     try {
       const res = await api.shares.byResource(type, id);
       if (res.data) {
-        set({ resourceShares: res.data, loading: false });
+        set({ resourceShares: res.data, listLoading: false });
       } else {
-        set({ error: res.message || '获取共享列表失败', loading: false });
+        set({ error: res.message || '获取共享列表失败', listLoading: false });
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, listLoading: false });
     }
   },
 
   createShare: async (data: CreateShareRequest) => {
-    set({ loading: true, error: null });
+    set({ mutationLoading: true, error: null });
     try {
       const res = await api.shares.create(data);
       if (res.data) {
         set((state) => ({
           outgoingShares: [res.data!, ...state.outgoingShares],
           resourceShares: [res.data!, ...state.resourceShares],
-          loading: false,
+          mutationLoading: false,
         }));
         return res.data;
       } else {
-        set({ error: res.message || '创建共享失败', loading: false });
+        const message = res.message || '创建共享失败';
+        set({ error: message, mutationLoading: false });
+        throw new Error(message);
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, mutationLoading: false });
       throw error;
     }
   },
 
   updateShare: async (id: string, data: UpdateShareRequest) => {
-    set({ loading: true, error: null });
+    set({ mutationLoading: true, error: null });
     try {
       const res = await api.shares.update(id, data);
       if (res.data) {
@@ -95,19 +101,21 @@ export const useShareStore = create<ShareState>((set) => ({
           outgoingShares: state.outgoingShares.map((s) => (s.id === id ? res.data! : s)),
           incomingShares: state.incomingShares.map((s) => (s.id === id ? res.data! : s)),
           resourceShares: state.resourceShares.map((s) => (s.id === id ? res.data! : s)),
-          loading: false,
+          mutationLoading: false,
         }));
       } else {
-        set({ error: res.message || '更新失败', loading: false });
+        const message = res.message || '更新失败';
+        set({ error: message, mutationLoading: false });
+        throw new Error(message);
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, mutationLoading: false });
       throw error;
     }
   },
 
   deleteShare: async (id: string) => {
-    set({ loading: true, error: null });
+    set({ mutationLoading: true, error: null });
     try {
       const res = await api.shares.delete(id);
       if (res.code === 200 || res.code === '200') {
@@ -115,13 +123,15 @@ export const useShareStore = create<ShareState>((set) => ({
           outgoingShares: state.outgoingShares.filter((s) => s.id !== id),
           incomingShares: state.incomingShares.filter((s) => s.id !== id),
           resourceShares: state.resourceShares.filter((s) => s.id !== id),
-          loading: false,
+          mutationLoading: false,
         }));
       } else {
-        set({ error: res.message || '删除失败', loading: false });
+        const message = res.message || '删除失败';
+        set({ error: message, mutationLoading: false });
+        throw new Error(message);
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, mutationLoading: false });
       throw error;
     }
   },

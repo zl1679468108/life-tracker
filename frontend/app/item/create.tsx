@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform, Keyboard, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
@@ -10,7 +10,7 @@ import { useTemplateStore } from '../../stores/templateStore';
 import { useShareStore } from '../../stores/shareStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle, ShareDialog } from '../../components/ui';
+import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle, ShareDialog, BottomSheet, FormCard } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { api } from '../../lib/api';
@@ -26,7 +26,7 @@ export default function CreateItemScreen() {
   const { templates: itemTemplates, fetchTemplates: fetchItemTemplates, createTemplate } = useTemplateStore();
   const {
     resourceShares,
-    loading: sharesLoading,
+    mutationLoading: sharesLoading,
     fetchResourceShares,
     createShare,
     updateShare,
@@ -56,7 +56,7 @@ export default function CreateItemScreen() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [resourceOwnerId, setResourceOwnerId] = useState<string | null>(null);
   const [sharePermission, setSharePermission] = useState<'owner' | 'view' | 'edit' | null>(null);
-  const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string; purchasePrice?: string; currentValue?: string; depreciationRate?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; category?: string; location?: string; purchasePrice?: string; currentValue?: string; depreciationRate?: string; purchaseDate?: string }>({});
   const [toastVisible, setToastVisible] = useState(false);
   const [submitSucceeded, setSubmitSucceeded] = useState(false);
   const [prefillAttempted, setPrefillAttempted] = useState(false);
@@ -143,17 +143,25 @@ export default function CreateItemScreen() {
   const filteredCategories = allCategories.filter((item) => item.name.toLowerCase().includes(categoryQuery.trim().toLowerCase()));
   const filteredLocations = allLocations.filter((item) => item.name.toLowerCase().includes(locationQuery.trim().toLowerCase()));
 
-  const validate = (): boolean => {
+  const validate = useCallback((): boolean => {
     const newErrors: typeof errors = {};
     if (!name.trim()) newErrors.name = '请输入物品名称';
     if (!category) newErrors.category = '请选择分类';
     if (!location) newErrors.location = '请选择存放位置';
-    if (purchasePrice.trim() && Number.isNaN(Number(purchasePrice))) newErrors.purchasePrice = '请输入有效购买价格';
-    if (currentValue.trim() && Number.isNaN(Number(currentValue))) newErrors.currentValue = '请输入有效当前估值';
-    if (depreciationRate.trim() && Number.isNaN(Number(depreciationRate))) newErrors.depreciationRate = '请输入有效折旧率';
+    // 数值非负校验
+    if (purchasePrice.trim() && (Number.isNaN(Number(purchasePrice)) || Number(purchasePrice) < 0)) newErrors.purchasePrice = '请输入有效购买价格';
+    if (currentValue.trim() && (Number.isNaN(Number(currentValue)) || Number(currentValue) < 0)) newErrors.currentValue = '请输入有效当前估值';
+    if (depreciationRate.trim() && (Number.isNaN(Number(depreciationRate)) || Number(depreciationRate) < 0)) newErrors.depreciationRate = '请输入有效折旧率';
+    // 购买日期不能晚于今天
+    if (purchaseDate) {
+      const purDate = new Date(purchaseDate);
+      if (!Number.isNaN(purDate.getTime()) && purDate.getTime() > Date.now() + 60 * 1000) {
+        newErrors.purchaseDate = '购买日期不能晚于今天';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [name, category, location, purchasePrice, currentValue, depreciationRate, purchaseDate]);
 
   const handleSubmit = useCallback(async () => {
     Keyboard.dismiss();
@@ -286,8 +294,7 @@ export default function CreateItemScreen() {
           style={{ backgroundColor: palette.bg }}
           contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
         >
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>共享物品</Text>
+          <FormCard title="共享物品">
             <Text style={[styles.readOnlyTitle, { color: palette.text }]}>{name || '未命名物品'}</Text>
             {description ? <Text style={[styles.readOnlyDesc, { color: palette.textMuted }]}>{description}</Text> : null}
             <View style={styles.readOnlyRows}>
@@ -296,7 +303,7 @@ export default function CreateItemScreen() {
               <ReadOnlyRow icon="calendar-clock" label="有效期" value={expiryDate || '未设置'} palette={palette} />
               <ReadOnlyRow icon="image-outline" label="图片" value={images.length > 0 ? `${images.length} 张` : '无'} palette={palette} />
             </View>
-          </View>
+          </FormCard>
           <View style={[styles.readOnlyNotice, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <MaterialCommunityIcons name="eye-outline" size={18} color={palette.textMuted} />
             <Text style={[styles.readOnlyNoticeText, { color: palette.textMuted }]}>你拥有查看权限，不能编辑、删除或继续共享该物品。</Text>
@@ -367,8 +374,7 @@ export default function CreateItemScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
+          <FormCard title="基础信息">
             <Input
               label="物品名称"
               value={name}
@@ -432,10 +438,9 @@ export default function CreateItemScreen() {
               numberOfLines={3}
               style={styles.compactInput}
             />
-          </View>
+          </FormCard>
 
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>附加信息</Text>
+          <FormCard title="附加信息">
             <FormSection label="图片" density="compact">
               <ImagePicker
                 images={images}
@@ -480,7 +485,7 @@ export default function CreateItemScreen() {
                 onDaysChange={setReminderDaysBefore}
               />
             ) : null}
-          </View>
+          </FormCard>
 
           <TouchableOpacity
             style={[styles.valueToggle, { backgroundColor: palette.surface, borderColor: palette.border }]}
@@ -492,8 +497,7 @@ export default function CreateItemScreen() {
           </TouchableOpacity>
 
           {showValueSection && (
-            <View style={[styles.valueSection, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>价值追踪</Text>
+            <FormCard title="价值追踪" style={styles.valueSection}>
               <Input
                 label="购买价格"
                 value={purchasePrice}
@@ -507,9 +511,11 @@ export default function CreateItemScreen() {
               <DatePicker
                 label="购买日期"
                 value={purchaseDate}
-                onChange={setPurchaseDate}
+                onChange={(value) => { setPurchaseDate(value); if (errors.purchaseDate) setErrors((e) => ({ ...e, purchaseDate: undefined })); }}
                 icon="calendar"
                 placeholder="选择购买日期"
+                maxDate={new Date()}
+                error={errors.purchaseDate}
               />
               <Input
                 label="当前估值"
@@ -531,7 +537,7 @@ export default function CreateItemScreen() {
                 error={errors.depreciationRate}
                 style={styles.compactInput}
               />
-            </View>
+            </FormCard>
           )}
 
           {canManageResource && (
@@ -581,14 +587,7 @@ export default function CreateItemScreen() {
         </ScrollView>
         <View style={[styles.stickyActionsShell, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
           <FormActions
-            onCancel={() => {
-              if (submitSucceeded) return;
-              if (isEdit) {
-                router.back();
-              } else {
-                router.replace('/item/list');
-              }
-            }}
+            hideCancel
             onSubmit={handleSubmit}
             submitLabel={isEdit ? '保存修改' : '保存'}
             loading={loading}
@@ -618,164 +617,152 @@ export default function CreateItemScreen() {
           }}
         />
       )}
-      <Modal visible={showSaveTemplateModal} transparent animationType="fade" onRequestClose={() => setShowSaveTemplateModal(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSaveTemplateModal(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>保存为模板</Text>
-            <Input
-              label="模板名称"
-              value={templateName}
-              onChangeText={setTemplateName}
-              placeholder="例如：露营装备模板"
-              leftIcon="file-document-outline"
-            />
-            <FormActions
-              onCancel={() => setShowSaveTemplateModal(false)}
-              onSubmit={handleSaveTemplate}
-              submitLabel="保存模板"
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowCategoryPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择分类</Text>
-            <View style={[styles.pickerSearchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <MaterialCommunityIcons name="magnify" size={18} color={palette.textMuted} />
-              <TextInput
-                style={[styles.pickerSearchInput, { color: palette.text }]}
-                value={categoryQuery}
-                onChangeText={setCategoryQuery}
-                placeholder="搜索分类"
-                placeholderTextColor={palette.textMuted}
-                autoCorrect={false}
-              />
-              {categoryQuery ? (
-                <TouchableOpacity onPress={() => setCategoryQuery('')} hitSlop={8}>
-                  <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            <ScrollView style={styles.pickerList}>
-              {!categoryQuery.trim() && recentCategories.length > 0 && (
-                <View style={styles.recentBlock}>
-                  <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>最近使用</Text>
-                  {recentCategories.map((cat) => (
-                    <PickerItem
-                      key={`recent-${cat.id}`}
-                      item={cat}
-                      selected={category === cat.id}
-                      palette={palette}
-                      onPress={() => {
-                        setCategory(cat.id);
-                        if (errors.category) setErrors((e) => ({ ...e, category: undefined }));
-                        setCategoryQuery('');
-                        setShowCategoryPicker(false);
-                      }}
-                    />
-                  ))}
-                </View>
-              )}
-              <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>{categoryQuery.trim() ? '搜索结果' : '全部分类'}</Text>
-              {filteredCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.pickerItem, category === cat.id && { backgroundColor: palette.surfaceSoft }]}
+      <BottomSheet visible={showSaveTemplateModal} onClose={() => setShowSaveTemplateModal(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>保存为模板</Text>
+        <Input
+          label="模板名称"
+          value={templateName}
+          onChangeText={setTemplateName}
+          placeholder="例如：露营装备模板"
+          leftIcon="file-document-outline"
+        />
+        <FormActions
+          onCancel={() => setShowSaveTemplateModal(false)}
+          onSubmit={handleSaveTemplate}
+          submitLabel="保存模板"
+        />
+      </BottomSheet>
+      <BottomSheet visible={showCategoryPicker} onClose={() => setShowCategoryPicker(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>选择分类</Text>
+        <View style={[styles.pickerSearchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="magnify" size={18} color={palette.textMuted} />
+          <TextInput
+            style={[styles.pickerSearchInput, { color: palette.text }]}
+            value={categoryQuery}
+            onChangeText={setCategoryQuery}
+            placeholder="搜索分类"
+            placeholderTextColor={palette.textMuted}
+            autoCorrect={false}
+          />
+          {categoryQuery ? (
+            <TouchableOpacity onPress={() => setCategoryQuery('')} hitSlop={8}>
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <ScrollView style={styles.pickerList}>
+          {!categoryQuery.trim() && recentCategories.length > 0 && (
+            <View style={styles.recentBlock}>
+              <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>最近使用</Text>
+              {recentCategories.map((cat) => (
+                <PickerItem
+                  key={`recent-${cat.id}`}
+                  item={cat}
+                  selected={category === cat.id}
+                  palette={palette}
                   onPress={() => {
                     setCategory(cat.id);
                     if (errors.category) setErrors((e) => ({ ...e, category: undefined }));
                     setCategoryQuery('');
                     setShowCategoryPicker(false);
                   }}
-                >
-                  <View style={styles.pickerItemLeft}>
-                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                      <MaterialCommunityIcons name={cat.icon as any} size={18} color={palette.orange} />
-                    </View>
-                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{cat.name}</Text>
-                  </View>
-                  {category === cat.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
-                </TouchableOpacity>
+                />
               ))}
-              {filteredCategories.length === 0 && (
-                <Text style={[styles.pickerEmpty, { color: palette.textMuted }]}>没有匹配的分类</Text>
-              )}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-      <Modal visible={showLocationPicker} transparent animationType="fade" onRequestClose={() => setShowLocationPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowLocationPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择位置</Text>
-            <View style={[styles.pickerSearchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              <MaterialCommunityIcons name="magnify" size={18} color={palette.textMuted} />
-              <TextInput
-                style={[styles.pickerSearchInput, { color: palette.text }]}
-                value={locationQuery}
-                onChangeText={setLocationQuery}
-                placeholder="搜索位置"
-                placeholderTextColor={palette.textMuted}
-                autoCorrect={false}
-              />
-              {locationQuery ? (
-                <TouchableOpacity onPress={() => setLocationQuery('')} hitSlop={8}>
-                  <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
-                </TouchableOpacity>
-              ) : null}
             </View>
-            <ScrollView style={styles.pickerList}>
-              {!locationQuery.trim() && recentLocations.length > 0 && (
-                <View style={styles.recentBlock}>
-                  <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>最近使用</Text>
-                  {recentLocations.map((loc) => (
-                    <PickerItem
-                      key={`recent-${loc.id}`}
-                      item={loc}
-                      selected={location === loc.id}
-                      palette={palette}
-                      onPress={() => {
-                        setLocation(loc.id);
-                        if (errors.location) setErrors((e) => ({ ...e, location: undefined }));
-                        setLocationQuery('');
-                        setShowLocationPicker(false);
-                      }}
-                    />
-                  ))}
+          )}
+          <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>{categoryQuery.trim() ? '搜索结果' : '全部分类'}</Text>
+          {filteredCategories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[styles.pickerItem, category === cat.id && { backgroundColor: palette.surfaceSoft }]}
+              onPress={() => {
+                setCategory(cat.id);
+                if (errors.category) setErrors((e) => ({ ...e, category: undefined }));
+                setCategoryQuery('');
+                setShowCategoryPicker(false);
+              }}
+            >
+              <View style={styles.pickerItemLeft}>
+                <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name={cat.icon as any} size={18} color={palette.orange} />
                 </View>
-              )}
-              <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>{locationQuery.trim() ? '搜索结果' : '全部位置'}</Text>
-              {filteredLocations.map((loc) => (
-                <TouchableOpacity
-                  key={loc.id}
-                  style={[styles.pickerItem, location === loc.id && { backgroundColor: palette.surfaceSoft }]}
+                <Text style={[styles.pickerItemName, { color: palette.text }]}>{cat.name}</Text>
+              </View>
+              {category === cat.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
+            </TouchableOpacity>
+          ))}
+          {filteredCategories.length === 0 && (
+            <Text style={[styles.pickerEmpty, { color: palette.textMuted }]}>没有匹配的分类</Text>
+          )}
+        </ScrollView>
+      </BottomSheet>
+      <BottomSheet visible={showLocationPicker} onClose={() => setShowLocationPicker(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>选择位置</Text>
+        <View style={[styles.pickerSearchBox, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="magnify" size={18} color={palette.textMuted} />
+          <TextInput
+            style={[styles.pickerSearchInput, { color: palette.text }]}
+            value={locationQuery}
+            onChangeText={setLocationQuery}
+            placeholder="搜索位置"
+            placeholderTextColor={palette.textMuted}
+            autoCorrect={false}
+          />
+          {locationQuery ? (
+            <TouchableOpacity onPress={() => setLocationQuery('')} hitSlop={8}>
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color={palette.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <ScrollView style={styles.pickerList}>
+          {!locationQuery.trim() && recentLocations.length > 0 && (
+            <View style={styles.recentBlock}>
+              <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>最近使用</Text>
+              {recentLocations.map((loc) => (
+                <PickerItem
+                  key={`recent-${loc.id}`}
+                  item={loc}
+                  selected={location === loc.id}
+                  palette={palette}
                   onPress={() => {
                     setLocation(loc.id);
                     if (errors.location) setErrors((e) => ({ ...e, location: undefined }));
                     setLocationQuery('');
                     setShowLocationPicker(false);
                   }}
-                >
-                  <View style={styles.pickerItemLeft}>
-                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                      <MaterialCommunityIcons name={loc.icon as any} size={18} color={palette.orange} />
-                    </View>
-                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{loc.name}</Text>
-                  </View>
-                  {location === loc.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
-                </TouchableOpacity>
+                />
               ))}
-              {filteredLocations.length === 0 && (
-                <Text style={[styles.pickerEmpty, { color: palette.textMuted }]}>没有匹配的位置</Text>
-              )}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+            </View>
+          )}
+          <Text style={[styles.pickerSectionTitle, { color: palette.textMuted }]}>{locationQuery.trim() ? '搜索结果' : '全部位置'}</Text>
+          {filteredLocations.map((loc) => (
+            <TouchableOpacity
+              key={loc.id}
+              style={[styles.pickerItem, location === loc.id && { backgroundColor: palette.surfaceSoft }]}
+              onPress={() => {
+                setLocation(loc.id);
+                if (errors.location) setErrors((e) => ({ ...e, location: undefined }));
+                setLocationQuery('');
+                setShowLocationPicker(false);
+              }}
+            >
+              <View style={styles.pickerItemLeft}>
+                <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name={loc.icon as any} size={18} color={palette.orange} />
+                </View>
+                <Text style={[styles.pickerItemName, { color: palette.text }]}>{loc.name}</Text>
+              </View>
+              {location === loc.id && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
+            </TouchableOpacity>
+          ))}
+          {filteredLocations.length === 0 && (
+            <Text style={[styles.pickerEmpty, { color: palette.textMuted }]}>没有匹配的位置</Text>
+          )}
+        </ScrollView>
+      </BottomSheet>
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />
     </View>
   );
@@ -842,17 +829,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: 144,
-  },
-  formCard: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  cardEyebrow: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
   },
   readOnlyTitle: {
     fontSize: fontSize['3xl'],
@@ -1019,18 +995,6 @@ const styles = StyleSheet.create({
   },
   stickyActions: {
     marginTop: 0,
-  },
-  pickerOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: spacing.xl,
-    paddingBottom: 40,
-    maxHeight: '70%',
-    borderWidth: 1,
   },
   pickerHandle: {
     width: 36,

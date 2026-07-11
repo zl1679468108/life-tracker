@@ -4,6 +4,16 @@ import { showAlert } from './alert';
 // Web 端定时提醒的 Map（用于取消）
 const webTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+// Web 端持久化提醒的 localStorage key
+const WEB_REMINDERS_KEY = 'lifetracker.web_reminders';
+
+interface WebReminderRecord {
+  id: string;
+  todoId: string;
+  title: string;
+  fireAt: number; // 毫秒时间戳
+}
+
 // 仅在原生平台加载 expo-notifications（Web 端不支持）
 let Notifications: any = null;
 let Device: any = null;
@@ -22,6 +32,66 @@ if (Platform.OS !== 'web') {
       shouldShowList: true,
     }),
   });
+}
+
+// ===== Web 端 localStorage 持久化辅助 =====
+
+function readWebReminders(): WebReminderRecord[] {
+  if (Platform.OS !== 'web') return [];
+  try {
+    const raw = localStorage.getItem(WEB_REMINDERS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeWebReminders(list: WebReminderRecord[]): void {
+  if (Platform.OS !== 'web') return;
+  try {
+    localStorage.setItem(WEB_REMINDERS_KEY, JSON.stringify(list));
+  } catch {
+    // 忽略写入失败（如隐私模式）
+  }
+}
+
+function removeWebReminder(id: string): void {
+  const list = readWebReminders().filter((r) => r.id !== id);
+  writeWebReminders(list);
+}
+
+/**
+ * Web 端：页面加载/恢复时重新调度所有未触发的提醒。
+ * 应在应用启动时调用一次。
+ */
+export function rescheduleWebReminders(): void {
+  if (Platform.OS !== 'web') return;
+  const now = Date.now();
+  const list = readWebReminders();
+  const stillPending: WebReminderRecord[] = [];
+  for (const r of list) {
+    const delay = r.fireAt - now;
+    if (delay <= 0) {
+      // 已过期：直接跳过（不补发，避免刷新后集中轰炸）
+      continue;
+    }
+    // 重新设置定时器
+    const timer = setTimeout(() => {
+      if (Notification.permission === 'granted') {
+        new Notification('待办提醒', { body: r.title });
+      }
+      webTimers.delete(r.id);
+      removeWebReminder(r.id);
+    }, delay);
+    webTimers.set(r.id, timer);
+    stillPending.push(r);
+  }
+  // 清理已过期的记录
+  if (stillPending.length !== list.length) {
+    writeWebReminders(stillPending);
+  }
 }
 
 /**
@@ -87,19 +157,25 @@ export async function scheduleTodoReminder(
     const hasPermission = await registerForPushNotifications();
     if (!hasPermission) return null;
 
-    // Web 端：使用 setTimeout 调度 + Web Notification API 显示
+    // Web 端：使用 setTimeout 调度 + Web Notification API 显示，并持久化到 localStorage
     if (Platform.OS === 'web') {
       const delay = reminderDate.getTime() - Date.now();
       if (delay <= 0) return null;
 
       const id = `web-${todoId}-${Date.now()}`;
+      const fireAt = reminderDate.getTime();
       const timer = setTimeout(() => {
         if (Notification.permission === 'granted') {
           new Notification('待办提醒', { body: title });
         }
         webTimers.delete(id);
+        removeWebReminder(id);
       }, delay);
       webTimers.set(id, timer);
+      // 持久化，以便页面刷新后重新调度
+      const list = readWebReminders();
+      list.push({ id, todoId, title, fireAt });
+      writeWebReminders(list);
       return id;
     }
 
@@ -130,13 +206,14 @@ export async function scheduleTodoReminder(
  */
 export async function cancelReminder(notificationId: string): Promise<void> {
   try {
-    // Web 端：清除 setTimeout 定时器
+    // Web 端：清除 setTimeout 定时器 + 移除持久化记录
     if (Platform.OS === 'web') {
       const timer = webTimers.get(notificationId);
       if (timer) {
         clearTimeout(timer);
         webTimers.delete(notificationId);
       }
+      removeWebReminder(notificationId);
       return;
     }
 
@@ -152,10 +229,11 @@ export async function cancelReminder(notificationId: string): Promise<void> {
  */
 export async function cancelAllReminders(): Promise<void> {
   try {
-    // Web 端：清除所有定时器
+    // Web 端：清除所有定时器 + 清空持久化记录
     if (Platform.OS === 'web') {
       webTimers.forEach((timer) => clearTimeout(timer));
       webTimers.clear();
+      writeWebReminders([]);
       return;
     }
 

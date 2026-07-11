@@ -18,7 +18,7 @@ import { i18n } from '../lib/i18n';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthExpiredHandler } from '../components/AuthExpiredHandler';
 import { AppAlertHost } from '../components/AppAlertHost';
-import { addNotificationListeners } from '../lib/notifications';
+import { addNotificationListeners, rescheduleWebReminders } from '../lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,6 +44,8 @@ export default function RootLayout() {
     i18n.init();
     // 尽早加载缓存的头像 Base64
     useProfileStore.getState().initCachedAvatar();
+    // Web 端：从 localStorage 恢复未触发的提醒定时器
+    rescheduleWebReminders();
 
     // Web 平台注册 Service Worker 开启深度离线 PWA 缓存
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {

@@ -25,6 +25,56 @@ export class SharesService {
   }
 
   /**
+   * 批量获取用户资料名称，返回 user_id -> full_name 的映射
+   */
+  private async getProfileNameMap(userIds: string[]): Promise<Map<string, string>> {
+    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+    const map = new Map<string, string>();
+    if (uniqueIds.length === 0) return map;
+
+    const { data: profiles } = await this.supabase
+      .from('life_profiles')
+      .select('user_id, full_name')
+      .in('user_id', uniqueIds);
+
+    for (const profile of profiles || []) {
+      map.set(profile.user_id, profile.full_name || '未知用户');
+    }
+    return map;
+  }
+
+  /**
+   * 批量获取资源名称，返回 resource_id -> name 的映射
+   */
+  private async getResourceNameMap(
+    resourceIds: string[],
+    resourceType: 'item' | 'todo',
+  ): Promise<Map<string, string>> {
+    const uniqueIds = [...new Set(resourceIds.filter(Boolean))];
+    const map = new Map<string, string>();
+    if (uniqueIds.length === 0) return map;
+
+    if (resourceType === 'item') {
+      const { data: items } = await this.supabase
+        .from('life_items')
+        .select('id, name')
+        .in('id', uniqueIds);
+      for (const item of items || []) {
+        map.set(item.id, item.name || '未知物品');
+      }
+    } else {
+      const { data: todos } = await this.supabase
+        .from('life_todos')
+        .select('id, title')
+        .in('id', uniqueIds);
+      for (const todo of todos || []) {
+        map.set(todo.id, todo.title || '未知待办');
+      }
+    }
+    return map;
+  }
+
+  /**
    * 查询我共享出去的资源
    */
   async findOutgoing(userId: string) {
@@ -34,43 +84,32 @@ export class SharesService {
       .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('共享操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
+    if (!data || data.length === 0) return [];
 
-    // 获取被共享者名称和资源名称
-    const enriched = await Promise.all(
-      (data || []).map(async (share) => {
-        const profile = await this.supabase
-          .from('life_profiles')
-          .select('full_name')
-          .eq('user_id', share.shared_with_id)
-          .single();
+    // 批量获取被共享者资料
+    const profileMap = await this.getProfileNameMap(data.map((s) => s.shared_with_id));
 
-        let resourceName = '未知资源';
-        if (share.resource_type === 'item') {
-          const { data: item } = await this.supabase
-            .from('life_items')
-            .select('name')
-            .eq('id', share.resource_id)
-            .single();
-          resourceName = item?.name || '未知物品';
-        } else {
-          const { data: todo } = await this.supabase
-            .from('life_todos')
-            .select('title')
-            .eq('id', share.resource_id)
-            .single();
-          resourceName = todo?.title || '未知待办';
-        }
+    // 批量获取资源名称（按类型分组查询）
+    const itemIds = data.filter((s) => s.resource_type === 'item').map((s) => s.resource_id);
+    const todoIds = data.filter((s) => s.resource_type === 'todo').map((s) => s.resource_id);
+    const itemNameMap = await this.getResourceNameMap(itemIds, 'item');
+    const todoNameMap = await this.getResourceNameMap(todoIds, 'todo');
 
-        return {
-          ...convertTimesToBeijing(share),
-          shared_with_name: profile.data?.full_name || '未知用户',
-          resource_name: resourceName,
-        };
-      })
-    );
-
-    return enriched;
+    // 在内存中 join 组装结果
+    return data.map((share) => {
+      const resourceName = share.resource_type === 'item'
+        ? itemNameMap.get(share.resource_id) || '未知物品'
+        : todoNameMap.get(share.resource_id) || '未知待办';
+      return {
+        ...convertTimesToBeijing(share),
+        shared_with_name: profileMap.get(share.shared_with_id) || '未知用户',
+        resource_name: resourceName,
+      };
+    });
   }
 
   /**
@@ -83,43 +122,32 @@ export class SharesService {
       .eq('shared_with_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('共享操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
+    if (!data || data.length === 0) return [];
 
-    // 获取所有者名称和资源名称
-    const enriched = await Promise.all(
-      (data || []).map(async (share) => {
-        const profile = await this.supabase
-          .from('life_profiles')
-          .select('full_name')
-          .eq('user_id', share.owner_id)
-          .single();
+    // 批量获取所有者资料
+    const profileMap = await this.getProfileNameMap(data.map((s) => s.owner_id));
 
-        let resourceName = '未知资源';
-        if (share.resource_type === 'item') {
-          const { data: item } = await this.supabase
-            .from('life_items')
-            .select('name')
-            .eq('id', share.resource_id)
-            .single();
-          resourceName = item?.name || '未知物品';
-        } else {
-          const { data: todo } = await this.supabase
-            .from('life_todos')
-            .select('title')
-            .eq('id', share.resource_id)
-            .single();
-          resourceName = todo?.title || '未知待办';
-        }
+    // 批量获取资源名称（按类型分组查询）
+    const itemIds = data.filter((s) => s.resource_type === 'item').map((s) => s.resource_id);
+    const todoIds = data.filter((s) => s.resource_type === 'todo').map((s) => s.resource_id);
+    const itemNameMap = await this.getResourceNameMap(itemIds, 'item');
+    const todoNameMap = await this.getResourceNameMap(todoIds, 'todo');
 
-        return {
-          ...convertTimesToBeijing(share),
-          owner_name: profile.data?.full_name || '未知用户',
-          resource_name: resourceName,
-        };
-      })
-    );
-
-    return enriched;
+    // 在内存中 join 组装结果
+    return data.map((share) => {
+      const resourceName = share.resource_type === 'item'
+        ? itemNameMap.get(share.resource_id) || '未知物品'
+        : todoNameMap.get(share.resource_id) || '未知待办';
+      return {
+        ...convertTimesToBeijing(share),
+        owner_name: profileMap.get(share.owner_id) || '未知用户',
+        resource_name: resourceName,
+      };
+    });
   }
 
   /**
@@ -134,24 +162,20 @@ export class SharesService {
       .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('共享操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
+    if (!data || data.length === 0) return [];
 
-    const enriched = await Promise.all(
-      (data || []).map(async (share) => {
-        const profile = await this.supabase
-          .from('life_profiles')
-          .select('full_name')
-          .eq('user_id', share.shared_with_id)
-          .single();
+    // 批量获取被共享者资料
+    const profileMap = await this.getProfileNameMap(data.map((s) => s.shared_with_id));
 
-        return {
-          ...convertTimesToBeijing(share),
-          shared_with_name: profile.data?.full_name || '未知用户',
-        };
-      })
-    );
-
-    return enriched;
+    // 在内存中 join 组装结果
+    return data.map((share) => ({
+      ...convertTimesToBeijing(share),
+      shared_with_name: profileMap.get(share.shared_with_id) || '未知用户',
+    }));
   }
 
   /**
@@ -183,7 +207,7 @@ export class SharesService {
       if (resourceError.code === 'PGRST116') {
         throw new NotFoundException('资源不存在');
       }
-      throw new InternalServerErrorException(resourceError.message);
+      console.error('查询资源失败:', resourceError); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
 
     if (!resource || resource.user_id !== data.owner_id) {
@@ -202,7 +226,7 @@ export class SharesService {
       .eq('status', 'accepted')
       .maybeSingle();
 
-    if (friendshipError) throw new InternalServerErrorException(friendshipError.message);
+    if (friendshipError) { console.error('查询好友关系失败:', friendshipError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
     if (!friendship) {
       throw new BadRequestException('只能共享给已通过好友');
     }
@@ -229,10 +253,10 @@ export class SharesService {
       if (error.code === '23505') {
         throw new BadRequestException('该共享关系已存在');
       }
-      throw new InternalServerErrorException(error.message);
+      console.error('共享操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
 
-    // 2. 自动创建对话 + 卡片消息
+    // 2. 自动创建对话 + 卡片消息（与 share 插入构成逻辑事务：失败则回滚 share）
     let conversation = null;
     try {
       const result = await this.messagesService.createFromShare(
@@ -245,13 +269,28 @@ export class SharesService {
       conversation = result.conversation;
 
       // 3. 将 conversation_id 写入 share 记录
-      await this.supabase
+      const { error: linkError } = await this.supabase
         .from('life_shares')
         .update({ conversation_id: conversation.id })
         .eq('id', share.id);
+
+      if (linkError) {
+        // conversation_id 回填失败：补偿回滚 share，避免 share 留空 conversation_id
+        await this.supabase
+          .from('life_shares')
+          .delete()
+          .eq('id', share.id);
+        throw new InternalServerErrorException('关联对话失败，共享记录已回滚');
+      }
     } catch (err) {
-      // 对话创建失败不影响 share 创建，记录日志即可
-      console.error('Failed to create conversation for share:', err);
+      // createFromShare 失败或回填失败：若 share 仍存在则回滚，避免遗留空 conversation_id
+      if (err instanceof InternalServerErrorException) throw err;
+      console.error('Failed to create conversation for share, rolling back share:', err);
+      await this.supabase
+        .from('life_shares')
+        .delete()
+        .eq('id', share.id);
+      throw new InternalServerErrorException('创建对话失败，共享记录已回滚');
     }
 
     const enrichedShare = convertTimesToBeijing(share);
@@ -275,7 +314,7 @@ export class SharesService {
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('共享关系不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('共享操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
 
     return convertTimesToBeijing(data);
@@ -291,9 +330,12 @@ export class SharesService {
       .eq('id', id)
       .eq('owner_id', userId);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('共享操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
-    return { success: true };
+    return { code: 200, data: null, message: '删除成功' };
   }
 
   /**
@@ -320,7 +362,7 @@ export class SharesService {
         .eq('status', 'accepted')
         .maybeSingle();
 
-      if (friendshipError) throw new InternalServerErrorException(friendshipError.message);
+      if (friendshipError) { console.error('查询好友关系失败:', friendshipError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
       if (!friendship) return { hasAccess: false };
 
       return { hasAccess: true, permission: share.permission };

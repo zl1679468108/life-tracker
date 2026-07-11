@@ -35,7 +35,15 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     try {
       const res = await api.messages.getMessages(conversationId, limit, before);
       if (res.data) {
-        set({ messages: res.data, loading: false, error: null });
+        set((state) => ({
+          // before 游标分页：拉取的是更早的历史消息，需要前置拼接；
+          // 首次加载（无 before）或切换会话时直接覆盖。
+          messages: before && state.currentConversationId === conversationId
+            ? [...res.data, ...state.messages]
+            : res.data,
+          loading: false,
+          error: null,
+        }));
       } else {
         set({ error: res.message || '获取消息失败', loading: false });
       }

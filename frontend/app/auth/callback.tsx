@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
@@ -13,14 +13,19 @@ export default function AuthCallbackScreen() {
   useEffect(() => {
     const handleCallback = async () => {
       const { access_token, refresh_token, error } = params;
-      
+
+      // Web 端：清理 URL 中的 token 参数，避免泄露到历史记录或地址栏
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
       // 检查是否有错误
       if (error) {
         console.error('OAuth error:', error);
         router.replace('/auth/login');
         return;
       }
-      
+
       if (access_token && refresh_token) {
         try {
           // 使用 token 设置 Supabase session

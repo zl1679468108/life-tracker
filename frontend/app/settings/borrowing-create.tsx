@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, TouchableOpacity, Text, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, TouchableOpacity, Text } from 'react-native';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input, FormSection, DatePicker, FormActions } from '../../components/ui';
+import { Input, FormSection, DatePicker, FormActions, BottomSheet, FormCard } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -90,8 +90,7 @@ export default function CreateBorrowingScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
+          <FormCard title="基础信息">
             <FormSection label="借出物品" required>
               <TouchableOpacity
                 style={[styles.selectorRow, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
@@ -142,10 +141,9 @@ export default function CreateBorrowingScreen() {
               placeholder="选择日期"
               minDate={new Date()}
             />
-          </View>
+          </FormCard>
 
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>补充说明</Text>
+          <FormCard title="补充说明">
             <Input
               label="备注"
               value={notes}
@@ -154,19 +152,17 @@ export default function CreateBorrowingScreen() {
               multiline
               numberOfLines={3}
             />
-          </View>
+          </FormCard>
 
           <FormActions
-            onCancel={() => router.back()}
+            hideCancel
             onSubmit={handleSubmit}
             submitLabel="保存"
             loading={loading}
           />
         </ScrollView>
       </KeyboardAvoidingView>
-      <Modal visible={showItemPicker} transparent animationType="fade" onRequestClose={() => setShowItemPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowItemPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+      <BottomSheet visible={showItemPicker} onClose={() => setShowItemPicker(false)}>
             <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
             <Text style={[styles.pickerTitle, { color: palette.text }]}>选择物品</Text>
             <ScrollView style={styles.pickerList}>
@@ -208,9 +204,7 @@ export default function CreateBorrowingScreen() {
                 );
               })}
             </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      </BottomSheet>
       <Toast visible={toastVisible} message="借用记录已创建" type="success" />
     </View>
   );
@@ -223,17 +217,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: 100,
-  },
-  formCard: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  cardEyebrow: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.md,
   },
   selectorRow: {
     flexDirection: 'row',
@@ -270,18 +253,6 @@ const styles = StyleSheet.create({
   selectorHint: {
     fontSize: fontSize.sm,
     marginTop: 2,
-  },
-  pickerOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: spacing.xl,
-    paddingBottom: 40,
-    maxHeight: '70%',
-    borderWidth: 1,
   },
   pickerHandle: {
     width: 36,

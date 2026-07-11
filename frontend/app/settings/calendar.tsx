@@ -112,14 +112,6 @@ export default function CalendarScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: palette.text }]}>日历视图</Text>
-          </View>
-        </View>
-      </View>
-
       <View style={[styles.toolbarCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <TouchableOpacity
           style={[styles.monthNavBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
@@ -276,10 +268,6 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  header: { marginBottom: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   toolbarCard: {
     flexDirection: 'row',
     alignItems: 'center',

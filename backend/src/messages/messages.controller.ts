@@ -2,6 +2,14 @@ import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@ne
 import { MessagesService } from './messages.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
+import {
+  CreateConversationDto,
+  CreateMessageDto,
+  CreateManualConversationDto,
+  SendFriendRequestDto,
+  RespondFriendRequestDto,
+  SetFriendPinnedDto,
+} from './dto/messages.dto';
 
 @Controller('api/messages')
 @UseGuards(SupabaseAuthGuard)
@@ -26,7 +34,7 @@ export class MessagesController {
   @Post('friends/requests')
   async sendFriendRequest(
     @CurrentUser() user: SupabaseUser,
-    @Body() body: { target_user_id: string; message?: string },
+    @Body() body: SendFriendRequestDto,
   ) {
     return this.messagesService.sendFriendRequest(user.id, body.target_user_id, body.message);
   }
@@ -35,18 +43,18 @@ export class MessagesController {
   async respondFriendRequest(
     @CurrentUser() user: SupabaseUser,
     @Param('id') id: string,
-    @Body() body: { action: 'accept' | 'reject' },
+    @Body() body: RespondFriendRequestDto,
   ) {
-    return this.messagesService.respondFriendRequest(user.id, id, body.action);
+    return this.messagesService.respondFriendRequest(user.id, id, body.action as 'accept' | 'reject');
   }
 
   @Patch('friends/:id/pin')
   async setFriendPinned(
     @CurrentUser() user: SupabaseUser,
     @Param('id') id: string,
-    @Body() body: { pinned: boolean },
+    @Body() body: SetFriendPinnedDto,
   ) {
-    return this.messagesService.setFriendPinned(user.id, id, body.pinned);
+    return this.messagesService.setFriendPinned(user.id, id, body.isPinned);
   }
 
   @Patch('friends/:id/delete')
@@ -74,7 +82,7 @@ export class MessagesController {
 
   @Post('conversations')
   async createConversation(
-    @Body() body: { participant_ids: string[]; last_message_type?: string; last_message_content?: string; last_message_at?: string },
+    @Body() body: CreateConversationDto,
     @CurrentUser() user: SupabaseUser,
   ) {
     return this.messagesService.createConversation(user.id, body);
@@ -83,7 +91,7 @@ export class MessagesController {
   @Post('conversations/:id/messages')
   async createMessage(
     @Param('id') conversationId: string,
-    @Body() body: { type: string; resource_type?: string; resource_id?: string; content?: string; card_data?: any },
+    @Body() body: CreateMessageDto,
     @CurrentUser() user: SupabaseUser,
   ) {
     return this.messagesService.createMessage(conversationId, user.id, body);
@@ -122,7 +130,7 @@ export class MessagesController {
   @Post('conversations/manual')
   async createManualConversation(
     @CurrentUser() user: SupabaseUser,
-    @Body() body: { participant_ids: string[]; initial_message?: { type: string; content?: string; card_data?: any } },
+    @Body() body: CreateManualConversationDto,
   ) {
     return this.messagesService.createManualConversation(user.id, body);
   }

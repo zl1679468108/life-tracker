@@ -66,10 +66,19 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         throw new Error(response?.message || '创建位置失败');
       }
       const data = response.data;
-      const listResponse = await api.locations.list();
-      const locations = Array.isArray(listResponse?.data) ? listResponse.data : [...get().locations, data];
-      await cache.set(LOCATIONS_CACHE_KEY, locations);
-      set({ locations, loading: false });
+      // 用响应数据直接更新本地 state，避免二次全量拉取
+      set((state) => ({
+        locations: state.locations.find((existing) => existing.id === data.id)
+          ? state.locations.map((existing) => (existing.id === data.id ? data : existing))
+          : [...state.locations, data],
+        loading: false,
+      }));
+      // 同步更新缓存
+      const cached = await cache.get<LifeLocation[]>(LOCATIONS_CACHE_KEY);
+      const allCached = Array.isArray(cached) ? cached : [];
+      await cache.set(LOCATIONS_CACHE_KEY, allCached.find((l) => l.id === data.id)
+        ? allCached.map((l) => (l.id === data.id ? data : l))
+        : [...allCached, data]);
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -83,10 +92,15 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         throw new Error(response?.message || '更新位置失败');
       }
       const data = response.data;
-      const listResponse = await api.locations.list();
-      const locations = Array.isArray(listResponse?.data) ? listResponse.data : get().locations.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l));
-      await cache.set(LOCATIONS_CACHE_KEY, locations);
-      set({ locations, loading: false });
+      // 用响应数据直接更新本地 state，避免二次全量拉取
+      set((state) => ({
+        locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l)),
+        loading: false,
+      }));
+      // 同步更新缓存
+      const cached = await cache.get<LifeLocation[]>(LOCATIONS_CACHE_KEY);
+      const allCached = Array.isArray(cached) ? cached : [];
+      await cache.set(LOCATIONS_CACHE_KEY, allCached.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l)));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -99,10 +113,15 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
         throw new Error(response?.message || '删除位置失败');
       }
-      const listResponse = await api.locations.list();
-      const locations = Array.isArray(listResponse?.data) ? listResponse.data : get().locations.filter((l) => l.id !== id);
-      await cache.set(LOCATIONS_CACHE_KEY, locations);
-      set({ locations, loading: false });
+      // 用响应数据直接更新本地 state，避免二次全量拉取
+      set((state) => ({
+        locations: state.locations.filter((l) => l.id !== id),
+        loading: false,
+      }));
+      // 同步更新缓存
+      const cached = await cache.get<LifeLocation[]>(LOCATIONS_CACHE_KEY);
+      const allCached = Array.isArray(cached) ? cached : [];
+      await cache.set(LOCATIONS_CACHE_KEY, allCached.filter((l) => l.id !== id));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;

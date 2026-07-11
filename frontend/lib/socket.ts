@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { getAuthToken } from './token';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3020';
 
@@ -8,7 +9,7 @@ class SocketService {
   // 延迟注册的回调，socket 连接后自动绑定
   private pendingCallbacks: Array<{ event: string; callback: (...args: any[]) => void }> = [];
 
-  connect(userId: string) {
+  async connect(userId: string) {
     if (this.socket?.connected) {
       console.log('Socket already connected');
       return;
@@ -16,14 +17,19 @@ class SocketService {
 
     this.userId = userId;
     const socketUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3020';
+    // 读取 token 用于后端鉴权（连接时校验，校验失败会被服务端断开）
+    const token = await getAuthToken();
     this.socket = io(socketUrl, {
-      transports: ['websocket'],
+      // 允许 polling 回退，受限网络环境（如代理/防火墙拦截 ws）下可降级到轮询
+      transports: ['polling', 'websocket'],
       autoConnect: true,
+      auth: { token },
     });
 
     this.socket.on('connect', () => {
       console.log('Socket connected');
-      // 加入用户房间
+      // 后端已在 handleConnection 中根据 token 自动 join 房间；
+      // 这里保留显式 join 以兼容旧逻辑，但服务端会校验身份一致性。
       this.socket?.emit('join', userId);
       // 绑定之前注册的延迟回调
       for (const { event, callback } of this.pendingCallbacks) {

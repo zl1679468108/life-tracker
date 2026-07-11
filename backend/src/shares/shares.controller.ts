@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } fro
 import { SharesService } from './shares.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
+import { CreateShareDto, UpdateShareDto } from './dto/shares.dto';
 
 @Controller('api/shares')
 @UseGuards(SupabaseAuthGuard)
@@ -28,7 +29,7 @@ export class SharesController {
   }
 
   @Post()
-  async create(@Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async create(@Body() body: CreateShareDto, @CurrentUser() user: SupabaseUser) {
     const sharedWithId = body.shared_with_id || await this.sharesService.findUserByEmail(body.shared_with_email);
     if (!sharedWithId) {
       return { code: 400, message: '找不到该邮箱对应的用户' };
@@ -37,19 +38,19 @@ export class SharesController {
     return this.sharesService.create({
       owner_id: user.id,
       shared_with_id: sharedWithId,
-      resource_type: body.resource_type,
+      resource_type: body.resource_type as 'item' | 'todo',
       resource_id: body.resource_id,
-      permission: body.permission || 'view',
+      permission: (body.permission as 'view' | 'edit') || 'view',
     });
   }
 
   @Put(':id')
   async update(
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: UpdateShareDto,
     @CurrentUser() user: SupabaseUser,
   ) {
-    return this.sharesService.update(id, user.id, body.permission);
+    return this.sharesService.update(id, user.id, body.permission as 'view' | 'edit');
   }
 
   @Delete(':id')

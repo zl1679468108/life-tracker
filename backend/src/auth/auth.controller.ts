@@ -3,6 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
+import {
+  SignInDto,
+  SignUpDto,
+  VerifyEmailDto,
+  ResetPasswordDto,
+  UpdatePasswordDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+  OAuthDto,
+} from './dto/auth.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -12,29 +22,29 @@ export class AuthController {
   ) {}
 
   @Post('signin')
-  async signIn(@Body() body: { email: string; password: string }) {
+  async signIn(@Body() body: SignInDto) {
     const data = await this.authService.signIn(body.email, body.password);
     return { code: 200, data, message: '登录成功' };
   }
 
   @Post('signup')
-  async signUp(@Body() body: { email: string; password: string }) {
+  async signUp(@Body() body: SignUpDto) {
     const data = await this.authService.signUp(body.email, body.password);
     return { code: 200, data, message: '注册成功' };
   }
 
   @Post('verify-email')
-  async verifyEmail(@Body() body: { token: string }) {
+  async verifyEmail(@Body() body: VerifyEmailDto) {
     return this.authService.verifyEmail(body.token);
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() body: { email: string }) {
+  async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.email);
   }
 
   @Post('update-password')
-  async updatePassword(@Body() body: { password: string; token?: string }) {
+  async updatePassword(@Body() body: UpdatePasswordDto) {
     return this.authService.updatePassword(body.password, body.token);
   }
 
@@ -47,13 +57,13 @@ export class AuthController {
 
   @Put('profile')
   @UseGuards(SupabaseAuthGuard)
-  async updateProfile(@CurrentUser() user: SupabaseUser, @Body() body: any, @Headers('authorization') authHeader: string) {
+  async updateProfile(@CurrentUser() user: SupabaseUser, @Body() body: UpdateProfileDto, @Headers('authorization') authHeader: string) {
     const token = authHeader?.replace('Bearer ', '');
     return this.authService.updateProfile(user.id, body, token);
   }
 
   @Post('oauth')
-  async signInWithOAuth(@Body() body: { provider: string; redirectTo: string }) {
+  async signInWithOAuth(@Body() body: OAuthDto) {
     return this.authService.signInWithOAuth(
       body.provider as any,
       body.redirectTo,
@@ -81,7 +91,7 @@ export class AuthController {
   @UseGuards(SupabaseAuthGuard)
   async changePassword(
     @CurrentUser() user: SupabaseUser,
-    @Body() body: { currentPassword: string; newPassword: string }
+    @Body() body: ChangePasswordDto,
   ) {
     return this.authService.changePassword(user.id, body.currentPassword, body.newPassword);
   }

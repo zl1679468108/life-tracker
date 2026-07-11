@@ -8,6 +8,8 @@ import { networkMonitor } from '../lib/network';
 import { socketService } from '../lib/socket';
 
 const TODOS_CACHE_KEY = 'todos';
+// 请求竞态守卫：仅接受最后一次 fetch 的结果
+let fetchTodosRequestId = 0;
 
 interface TodoState {
   todos: LifeTodo[];
@@ -28,37 +30,45 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   error: null,
   clearError: () => set({ error: null }),
   fetchTodos: async () => {
+    const requestId = ++fetchTodosRequestId;
     const currentTodos = useTodoStore.getState().todos;
     set({ loading: currentTodos.length === 0, error: null });
-    
+
     // 离线模式：优先从缓存加载
     if (!networkMonitor.isOnline()) {
       const cached = await cache.get<LifeTodo[]>(TODOS_CACHE_KEY);
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchTodosRequestId) return;
       if (cached) {
         set({ todos: cached, loading: false });
         return;
       }
     }
-    
+
     try {
       const response = await api.todos.list();
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchTodosRequestId) return;
       const todos = Array.isArray(response?.data) ? response.data : [];
       set({ todos, loading: false });
-      
+
       // 缓存数据
       await cache.set(TODOS_CACHE_KEY, todos);
     } catch (error) {
       console.error('fetchTodos error:', error);
-      
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchTodosRequestId) return;
+
       // 网络错误时尝试从缓存加载
       if (!networkMonitor.isOnline()) {
         const cached = await cache.get<LifeTodo[]>(TODOS_CACHE_KEY);
+        if (requestId !== fetchTodosRequestId) return;
         if (cached) {
           set({ todos: cached, loading: false });
           return;
         }
       }
-      
+
       set({ error: (error as Error).message, loading: false });
     }
   },
@@ -147,6 +157,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       set((state) => ({ todos: state.todos.filter((t) => t.id !== id), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   toggleComplete: async (id) => {

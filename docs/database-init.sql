@@ -137,6 +137,8 @@ CREATE INDEX IF NOT EXISTS idx_items_user_id ON life_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_items_category_id ON life_items(category_id);
 CREATE INDEX IF NOT EXISTS idx_items_location_id ON life_items(location_id);
 CREATE INDEX IF NOT EXISTS idx_items_expiry_date ON life_items(expiry_date) WHERE expiry_date IS NOT NULL;
+-- 提醒调度器专用条件索引：加速过期提醒的物品范围查询
+CREATE INDEX IF NOT EXISTS idx_items_reminder_expiry ON life_items(expiry_date) WHERE reminder_enabled = true AND expiry_date IS NOT NULL;
 
 -- ============================================================
 -- 5. 待办表 (life_todos)
@@ -162,6 +164,8 @@ CREATE TABLE IF NOT EXISTS life_todos (
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON life_todos(user_id);
 CREATE INDEX IF NOT EXISTS idx_todos_category_id ON life_todos(category_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON life_todos(completed);
+-- 提醒调度器专用条件索引：加速 reminder_date 到期且未完成的待办查询
+CREATE INDEX IF NOT EXISTS idx_todos_reminder_date ON life_todos(reminder_date) WHERE reminder_date IS NOT NULL AND completed = false;
 
 -- ============================================================
 -- 6. 提醒日志表 (life_reminder_logs)
@@ -221,7 +225,9 @@ CREATE TABLE IF NOT EXISTS life_shares (
   resource_type TEXT NOT NULL CHECK (resource_type IN ('item', 'todo')),
   resource_id UUID NOT NULL,
   permission TEXT NOT NULL CHECK (permission IN ('view', 'edit')) DEFAULT 'view',
-  conversation_id UUID REFERENCES life_conversations(id),
+  -- conversation_id 的外键约束在 life_conversations 建表后通过 ALTER TABLE 补充，
+  -- 避免本表（先建）前向引用尚未创建的 life_conversations 表导致全新部署失败。
+  conversation_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(owner_id, shared_with_id, resource_type, resource_id)
 );
@@ -296,7 +302,23 @@ CREATE TABLE IF NOT EXISTS life_conversations (
   CHECK (array_length(participant_ids, 1) = 2)
 );
 
-CREATE INDEX IF NOT EXISTS idx_conversations_participant ON life_conversations(participant_ids);
+-- participant_ids 使用数组包含查询（@>），需使用 GIN 索引而非 B-tree
+-- 幂等：先删除可能存在的旧 B-tree 索引（同名），再创建 GIN 索引
+DROP INDEX IF EXISTS idx_conversations_participant;
+CREATE INDEX IF NOT EXISTS idx_conversations_participant ON life_conversations USING GIN (participant_ids);
+
+-- 补充 life_shares.conversation_id 外键（life_conversations 此时已建表）
+-- 幂等：仅在约束不存在时添加。
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'life_shares_conversation_id_fkey'
+  ) THEN
+    ALTER TABLE life_shares
+      ADD CONSTRAINT life_shares_conversation_id_fkey
+      FOREIGN KEY (conversation_id) REFERENCES life_conversations(id);
+  END IF;
+END $$;
 
 -- ============================================================
 -- 13. 消息表 (life_messages)
@@ -432,3 +454,82 @@ DROP TRIGGER IF EXISTS update_friendships_updated_at ON life_friendships;
 CREATE TRIGGER update_friendships_updated_at
   BEFORE UPDATE ON life_friendships
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- T91.1 补充其余含 updated_at 列的表的触发器
+-- life_profiles
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON life_profiles;
+CREATE TRIGGER update_profiles_updated_at
+  BEFORE UPDATE ON life_profiles
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- life_items
+DROP TRIGGER IF EXISTS update_items_updated_at ON life_items;
+CREATE TRIGGER update_items_updated_at
+  BEFORE UPDATE ON life_items
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- life_todos
+DROP TRIGGER IF EXISTS update_todos_updated_at ON life_todos;
+CREATE TRIGGER update_todos_updated_at
+  BEFORE UPDATE ON life_todos
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- life_borrowings
+DROP TRIGGER IF EXISTS update_borrowings_updated_at ON life_borrowings;
+CREATE TRIGGER update_borrowings_updated_at
+  BEFORE UPDATE ON life_borrowings
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- life_templates
+DROP TRIGGER IF EXISTS update_templates_updated_at ON life_templates;
+CREATE TRIGGER update_templates_updated_at
+  BEFORE UPDATE ON life_templates
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- ============================================================
+-- 19. T91.2 friendships 双向查重优化索引
+-- 用于优化 OR+AND 组合查询，覆盖 (requester_id, addressee_id) 和反向查询
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_friendships_requester_addressee ON life_friendships(requester_id, addressee_id, status);
+CREATE INDEX IF NOT EXISTS idx_friendships_addressee_requester ON life_friendships(addressee_id, requester_id, status);
+
+-- ============================================================
+-- 20. T91.3 conversations CHECK 约束补全（防止自对话）
+-- 幂等：仅在约束不存在时添加
+-- ============================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'life_conversations_no_self_chat'
+  ) THEN
+    ALTER TABLE life_conversations
+      ADD CONSTRAINT life_conversations_no_self_chat
+      CHECK (participant_ids[1] <> participant_ids[2]);
+  END IF;
+END $$;
+
+-- ============================================================
+-- 21. T91.5 items/todos created_at 排序索引
+-- 高频 order by created_at desc 查询优化
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_items_user_created ON life_items(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_todos_user_created ON life_todos(user_id, created_at DESC);
+
+-- ============================================================
+-- 22. T91.6 messages sender_id FK ON DELETE 一致
+-- 补充 ON DELETE 行为，与 friendships 的 CASCADE 一致
+-- 幂等：先 DROP 旧约束再 ADD 新约束
+-- ============================================================
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'life_messages_sender_id_fkey'
+      AND table_name = 'life_messages'
+  ) THEN
+    ALTER TABLE life_messages DROP CONSTRAINT life_messages_sender_id_fkey;
+  END IF;
+  ALTER TABLE life_messages
+    ADD CONSTRAINT life_messages_sender_id_fkey
+    FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+END $$;

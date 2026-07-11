@@ -8,7 +8,9 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject } from '@nestjs/common';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_ADMIN_CLIENT } from '../supabase/supabase.module';
 
 @WebSocketGateway({
   cors: {
@@ -16,6 +18,9 @@ import { Logger } from '@nestjs/common';
     credentials: true,
   },
   namespace: '/',
+  // 心跳检测：服务端每 10s 发送 ping，客户端 5s 内未回复 pong 则判定为死连接并清理
+  pingInterval: 10000,
+  pingTimeout: 5000,
 })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -23,40 +28,66 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger = new Logger('EventsGateway');
 
-  // userId -> socketId 映射，方便后续扩展
-  private userSocketMap = new Map<string, string>();
+  constructor(@Inject(SUPABASE_ADMIN_CLIENT) private adminClient: SupabaseClient) {}
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  /**
+   * 连接时校验 JWT，校验通过后自动加入用户房间。
+   * token 来源优先级：handshake.auth.token > Authorization header。
+   * 校验失败直接断开连接，防止未授权客户端监听事件。
+   */
+  async handleConnection(client: Socket) {
+    const token =
+      (client.handshake.auth?.token as string) ||
+      (typeof client.handshake.headers.authorization === 'string'
+        ? client.handshake.headers.authorization.replace(/^Bearer\s+/i, '')
+        : undefined);
+
+    if (!token) {
+      this.logger.warn(`Connection rejected (no token): ${client.id}`);
+      client.disconnect(true);
+      return;
+    }
+
+    try {
+      const { data, error } = await this.adminClient.auth.getUser(token);
+      if (error || !data.user) {
+        this.logger.warn(`Connection rejected (invalid token): ${client.id}`);
+        client.disconnect(true);
+        return;
+      }
+      const userId = data.user.id;
+      client.data.userId = userId;
+      client.join(`user:${userId}`);
+      this.logger.log(`Client ${client.id} connected and joined user:${userId}`);
+    } catch (err) {
+      this.logger.warn(`Connection rejected (verify error): ${client.id}`);
+      client.disconnect(true);
+    }
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    // 清理映射
-    for (const [userId, socketId] of this.userSocketMap.entries()) {
-      if (socketId === client.id) {
-        this.userSocketMap.delete(userId);
-        break;
-      }
-    }
   }
 
-  // 客户端连接后加入用户房间
+  // 客户端可显式加入用户房间（需与已验证身份一致）
   @SubscribeMessage('join')
   handleJoin(@ConnectedSocket() client: Socket, @MessageBody() userId: string) {
-    if (userId) {
-      client.join(`user:${userId}`);
-      this.userSocketMap.set(userId, client.id);
-      this.logger.log(`Client ${client.id} joined room user:${userId}`);
+    const verifiedUserId = client.data.userId as string | undefined;
+    if (!userId || !verifiedUserId || userId !== verifiedUserId) {
+      // 拒绝加入非自身房间，防止窃听他人事件
+      this.logger.warn(`Join rejected: client ${client.id} tried to join user:${userId}`);
+      return;
     }
+    client.join(`user:${userId}`);
+    this.logger.log(`Client ${client.id} joined room user:${userId}`);
   }
 
   // 客户端离开用户房间
   @SubscribeMessage('leave')
   handleLeave(@ConnectedSocket() client: Socket, @MessageBody() userId: string) {
-    if (userId) {
+    const verifiedUserId = client.data.userId as string | undefined;
+    if (userId && verifiedUserId && userId === verifiedUserId) {
       client.leave(`user:${userId}`);
-      this.userSocketMap.delete(userId);
     }
   }
 

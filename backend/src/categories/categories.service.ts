@@ -19,7 +19,10 @@ export class CategoriesService {
       .or(`user_id.is.null,user_id.eq.${userId}`)
       .order('name');
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('分类操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -30,13 +33,16 @@ export class CategoriesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('分类操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     this.eventsGateway.emitCategoryCreated(userId, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
 
-  async update(id: string, updates: any) {
-    // 不能更新系统预设（user_id 为 NULL）
+  async update(id: string, updates: any, userId: string) {
+    // 不能更新系统预设（user_id 为 NULL），且只能更新自己的分类
     const { data: existing, error: findError } = await this.supabase
       .from('life_categories')
       .select('user_id')
@@ -45,28 +51,32 @@ export class CategoriesService {
 
     if (findError) {
       if (findError.code === 'PGRST116') throw new BadRequestException('分类不存在');
-      throw new InternalServerErrorException(findError.message);
+      console.error('查询分类失败:', findError); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
     if (!existing.user_id) {
       throw new BadRequestException('不能修改系统预设分类');
+    }
+    if (existing.user_id !== userId) {
+      throw new BadRequestException('无权修改该分类');
     }
 
     const { data, error } = await this.supabase
       .from('life_categories')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') throw new BadRequestException('分类不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('分类操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
     return convertTimesToBeijing(data);
   }
 
-  async remove(id: string) {
-    // 不能删除系统预设（user_id 为 NULL）
+  async remove(id: string, userId: string) {
+    // 不能删除系统预设（user_id 为 NULL），且只能删除自己的分类
     // 先查出 user_id 用于广播
     const { data: existing } = await this.supabase
       .from('life_categories')
@@ -74,14 +84,24 @@ export class CategoriesService {
       .eq('id', id)
       .single();
 
+    if (existing && !existing.user_id) {
+      throw new BadRequestException('不能删除系统预设分类');
+    }
+    if (existing && existing.user_id !== userId) {
+      throw new BadRequestException('无权删除该分类');
+    }
+
     const { error } = await this.supabase
       .from('life_categories')
       .delete()
       .eq('id', id)
-      .not('user_id', 'is', null);
+      .eq('user_id', userId);
 
-    if (error) throw new InternalServerErrorException(error.message);
-    if (existing && existing.user_id) this.eventsGateway.emitCategoryDeleted(existing.user_id, id);
-    return { success: true };
+    if (error) {
+      console.error('分类操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
+    this.eventsGateway.emitCategoryDeleted(userId, id);
+    return { code: 200, data: null, message: '删除成功' };
   }
 }

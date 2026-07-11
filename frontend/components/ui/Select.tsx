@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
+import { BottomSheet } from './BottomSheet';
 
 export interface SelectOption {
   value: string;
@@ -80,67 +81,50 @@ export function Select({
         />
       </TouchableOpacity>
 
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVisible(false)}
-      >
-        <TouchableOpacity
-          style={[styles.overlay, { backgroundColor: palette.scrim }]}
-          activeOpacity={1}
-          onPress={() => setVisible(false)}
+      <BottomSheet visible={visible} onClose={() => setVisible(false)}>
+        <View style={[styles.handle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.title, { color: palette.text }]}>{label}</Text>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.optionsContent}
+          showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={[styles.handle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.title, { color: palette.text }]}>{label}</Text>
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.optionsContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {options.map((option) => {
-                const selected = value === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.option,
-                      selected && { backgroundColor: palette.surfaceSoft },
-                    ]}
-                    onPress={() => handleSelect(option.value)}
-                    activeOpacity={0.7}
-                  >
-                    {option.icon && (
-                      <MaterialCommunityIcons
-                        name={option.icon as any}
-                        size={20}
-                        color={selected ? palette.orange : palette.textMuted}
-                      />
-                    )}
-                    <Text
-                      style={[
-                        styles.optionText,
-                        { color: selected ? palette.orange : palette.text },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {option.label}
-                    </Text>
-                    {selected && (
-                      <MaterialCommunityIcons name="check" size={20} color={palette.orange} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+          {options.map((option) => {
+            const selected = value === option.value;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.option,
+                  selected && { backgroundColor: palette.surfaceSoft },
+                ]}
+                onPress={() => handleSelect(option.value)}
+                activeOpacity={0.7}
+              >
+                {option.icon && (
+                  <MaterialCommunityIcons
+                    name={option.icon as any}
+                    size={20}
+                    color={selected ? palette.orange : palette.textMuted}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.optionText,
+                    { color: selected ? palette.orange : palette.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {option.label}
+                </Text>
+                {selected && (
+                  <MaterialCommunityIcons name="check" size={20} color={palette.orange} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
     </>
   );
 }
@@ -163,18 +147,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: fontWeight.medium,
     lineHeight: 18,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    borderWidth: 1,
-    padding: spacing.xl,
-    paddingBottom: 40,
-    maxHeight: '70%',
   },
   handle: {
     width: 36,

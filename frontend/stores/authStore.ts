@@ -120,12 +120,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ user: { id: profile.data.id, email: profile.data.email || undefined }, loading: false });
           socketService.connect(profile.data.id);
         } else {
-          set({ loading: false });
+          // 区分 token 失效与网络错误：
+          // - 401/403：token 已失效，清除并登出
+          // - NETWORK_ERROR / 5xx：网络抖动或服务不可用，保留 token 以便下次重试
+          const code = profile?.code;
+          if (code === 401 || code === 403) {
+            await setAuthToken(null);
+            set({ user: null, loading: false });
+          } else {
+            // 网络错误或服务器错误，保留 token，仅标记加载完成
+            set({ loading: false });
+          }
         }
       } catch {
-        // token 无效，清除
-        await setAuthToken(null);
-        set({ user: null, loading: false });
+        // request 内部已捕获异常，此处兜底：保留 token 避免误登出
+        set({ loading: false });
       }
     } else {
       set({ loading: false });

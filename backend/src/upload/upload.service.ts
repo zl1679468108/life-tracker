@@ -33,7 +33,7 @@ export class UploadService {
         });
       
       if (error) {
-        throw new BadRequestException(`Upload failed: ${error.message}`);
+        console.error('文件上传失败:', error); throw new BadRequestException('上传失败，请稍后重试');
       }
       
       // 获取公开 URL
@@ -46,7 +46,7 @@ export class UploadService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Upload failed: ${error.message}`);
+      console.error('文件上传失败:', error); throw new BadRequestException('上传失败，请稍后重试');
     }
   }
 
@@ -74,7 +74,7 @@ export class UploadService {
       .remove([filePath]);
     
     if (error) {
-      throw new BadRequestException(`Delete failed: ${error.message}`);
+      console.error('文件删除失败:', error); throw new BadRequestException('删除失败，请稍后重试');
     }
   }
 

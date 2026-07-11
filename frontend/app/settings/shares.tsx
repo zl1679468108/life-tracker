@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useShareStore } from '../../stores/shareStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../hooks/useThemeColors';
-import { EmptyState, ShareDialog } from '../../components/ui';
+import { useColors } from '../../stores/themeStore';
+import { EmptyState, ShareDialog, Skeleton } from '../../components/ui';
 import { showAlert } from '../../lib/alert';
 import type { LifeShare } from '../../types';
 
@@ -17,11 +17,11 @@ export default function SharesScreen() {
   const {
     outgoingShares,
     incomingShares,
+    listLoading,
     fetchOutgoingShares,
     fetchIncomingShares,
     deleteShare,
     updateShare,
-    loading,
   } = useShareStore();
   const [activeTab, setActiveTab] = useState<TabType>('outgoing');
   const [refreshing, setRefreshing] = useState(false);
@@ -138,7 +138,25 @@ export default function SharesScreen() {
         contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {currentList.length === 0 ? (
+        {/* 首次加载时显示骨架屏，避免白屏 */}
+        {listLoading && currentList.length === 0 ? (
+          [1, 2, 3].map((i) => (
+            <View key={i} style={[styles.card, { backgroundColor: colors.white }]}>
+              <View style={styles.cardHeader}>
+                <Skeleton width={40} height={40} borderRadius={20} />
+                <View style={{ flex: 1, gap: spacing.xs }}>
+                  <Skeleton width="50%" height={14} />
+                  <Skeleton width="35%" height={11} />
+                </View>
+                <Skeleton width={44} height={20} borderRadius={borderRadius.sm} />
+              </View>
+              <View style={[styles.cardFooter, { borderTopColor: colors.gray[100] }]}>
+                <Skeleton width="20%" height={10} />
+                <Skeleton width="30%" height={10} />
+              </View>
+            </View>
+          ))
+        ) : currentList.length === 0 ? (
           <EmptyState
             icon="share-variant"
             title={activeTab === 'outgoing' ? '暂无共享' : '暂无共享给我'}

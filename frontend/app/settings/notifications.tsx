@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Notification, useNotificationStore } from '../../stores/notificationStore';
-import { EmptyState } from '../../components/ui';
+import { EmptyState, Skeleton } from '../../components/ui';
 
 type FilterTab = 'all' | 'unread' | 'read';
 const MARK_UNREAD_WIDTH = 80;
@@ -41,7 +41,7 @@ function SwipeableNotifItem({
         const nextValue = lastOffset.current + g.dx;
         const shouldOpen = g.vx < -0.5 || nextValue < -MARK_UNREAD_WIDTH / 2;
         const toValue = shouldOpen ? -MARK_UNREAD_WIDTH : 0;
-        if (!isOpen.current && shouldOpen) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (!isOpen.current && shouldOpen && Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         isOpen.current = shouldOpen;
         lastOffset.current = toValue;
         Animated.spring(translateX, { toValue, useNativeDriver: true, damping: 22, stiffness: 260 }).start();
@@ -54,7 +54,8 @@ function SwipeableNotifItem({
   ).current;
 
   const handleMarkUnread = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Web 端不支持 expo-haptics，仅原生触发触感反馈
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     isOpen.current = false;
     lastOffset.current = 0;
     Animated.spring(translateX, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 260 }).start();
@@ -180,14 +181,6 @@ export default function NotificationsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-      {/* header */}
-      <View style={styles.header}>
-        <Text style={[styles.pageTitle, { color: palette.text }]}>通知中心</Text>
-        <Text style={[styles.pageSubtitle, { color: palette.textMuted }]}>
-          {unreadCount > 0 ? `你有 ${unreadCount} 条未读通知` : '全部已读'}
-        </Text>
-      </View>
-
       {/* filter tabs */}
       <View style={[styles.segmentWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
         {tabs.map((tab) => (
@@ -237,7 +230,34 @@ export default function NotificationsScreen() {
       )}
 
       {/* content */}
-      {notifications.length === 0 ? (
+      {/* 首次加载时显示骨架屏，避免提前显示空状态 */}
+      {!loaded ? (
+        <View style={styles.list}>
+          {[1, 2, 3].map((i) => (
+            <View
+              key={i}
+              style={[
+                cardSwipe.card,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+              ]}
+            >
+              <View style={cardSwipe.body}>
+                <Skeleton width={44} height={44} borderRadius={borderRadius.md} />
+                <View style={cardSwipe.copy}>
+                  <Skeleton width="60%" height={14} />
+                  <View style={{ height: spacing.xs }} />
+                  <Skeleton width="85%" height={11} />
+                  <View style={{ height: 4 }} />
+                  <Skeleton width="25%" height={10} />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : notifications.length === 0 ? (
         <EmptyState
           variant="notifications"
           title="暂无通知"
@@ -275,10 +295,7 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingTop: spacing.xl, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  header: { marginBottom: spacing.lg },
-  pageTitle: { fontSize: fontSize['6xl'], fontWeight: fontWeight.bold, marginBottom: spacing.xs },
-  pageSubtitle: { fontSize: fontSize.base, lineHeight: 20 },
+  content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   segmentWrap: {
     flexDirection: 'row',
     padding: 4,

@@ -86,6 +86,39 @@ export class StatsController {
 
     const priorityLabels: Record<number, string> = { 1: '低', 2: '中', 3: '高' };
 
+    // 计算真实平均完成时间（小时）：已完成待办的 updated_at - created_at
+    const completedTodos = allTodos.filter(t => t.completed);
+    let avgCompletionTimeHours = 0;
+    if (completedTodos.length > 0) {
+      const totalMs = completedTodos.reduce((sum, t) => {
+        const diff = new Date(t.updated_at).getTime() - new Date(t.created_at).getTime();
+        return sum + (diff > 0 ? diff : 0);
+      }, 0);
+      avgCompletionTimeHours = Math.round((totalMs / completedTodos.length / (60 * 60 * 1000)) * 10) / 10;
+    }
+
+    // 计算最活跃的星期和小时：基于当前周期内物品和待办的创建活动
+    const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const dayCount = [0, 0, 0, 0, 0, 0, 0];
+    const hourCount = new Array(24).fill(0);
+    const activityRecords = [...(items || []), ...(todos || [])];
+    activityRecords.forEach(r => {
+      const d = new Date(r.created_at);
+      const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      dayCount[dayIdx]++;
+      hourCount[d.getHours()]++;
+    });
+    let mostActiveDay: string | null = null;
+    let maxDay = 0;
+    dayCount.forEach((c, i) => {
+      if (c > maxDay) { maxDay = c; mostActiveDay = dayLabels[i]; }
+    });
+    let mostActiveHour: number | null = null;
+    let maxHour = 0;
+    hourCount.forEach((c, i) => {
+      if (c > maxHour) { maxHour = c; mostActiveHour = i; }
+    });
+
     return {
       items: {
         added: (items || []).length,
@@ -109,11 +142,11 @@ export class StatsController {
           label: priorityLabels[Number(p)] || '未知',
           count,
         })),
-        avg_completion_time_hours: 24, // 简化计算
+        avg_completion_time_hours: avgCompletionTimeHours,
       },
       activity: {
-        most_active_day: '周一',
-        most_active_hour: new Date().getHours(),
+        most_active_day: mostActiveDay,
+        most_active_hour: mostActiveHour,
       },
     };
   }

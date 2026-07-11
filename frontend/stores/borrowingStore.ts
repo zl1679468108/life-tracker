@@ -102,7 +102,9 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
           loading: false,
         }));
       } else {
-        set({ error: res.message || '更新借用记录失败', loading: false });
+        const message = res.message || '更新借用记录失败';
+        set({ error: message, loading: false });
+        throw new Error(message);
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
@@ -121,7 +123,9 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
           loading: false,
         }));
       } else {
-        set({ error: res.message || '删除失败', loading: false });
+        const message = res.message || '删除失败';
+        set({ error: message, loading: false });
+        throw new Error(message);
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

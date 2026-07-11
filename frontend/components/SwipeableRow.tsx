@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Animated, PanResponder, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, Platform, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
@@ -10,9 +10,10 @@ const DELETE_WIDTH = 80;
 interface SwipeableRowProps {
   children: React.ReactNode;
   onDelete: () => void;
+  containerStyle?: ViewStyle;
 }
 
-export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
+export function SwipeableRow({ children, onDelete, containerStyle }: SwipeableRowProps) {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -53,7 +54,8 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
         } else {
           if (velocity < -0.5 || newValue < -DELETE_WIDTH / 2) {
             toValue = -DELETE_WIDTH;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            // Web 端不支持 expo-haptics，仅原生触发触感反馈
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           } else {
             toValue = 0;
           }
@@ -74,7 +76,8 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   ).current;
 
   const handleDelete = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Web 端不支持 expo-haptics，仅原生触发触感反馈
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     isOpen.current = false;
     lastOffset.current = 0;
     animateTo(0, 30, 8).start();
@@ -82,7 +85,7 @@ export function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <View style={[styles.deleteBackground, { backgroundColor: colors.danger }]}>
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
           <MaterialCommunityIcons name="delete-outline" size={20} color="#FFFFFF" />

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../hooks/useThemeColors';
+import { useColors } from '../../stores/themeStore';
 import { useItemStore } from '../../stores/itemStore';
 import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';

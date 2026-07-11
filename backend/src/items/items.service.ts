@@ -2,7 +2,7 @@ import { Injectable, Inject, InternalServerErrorException, NotFoundException, Ba
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
-import { convertTimesToBeijing } from '../common/utils/time';
+import { convertTimesToBeijing, toUtcIso } from '../common/utils/time';
 import { SharesService } from '../shares/shares.service';
 
 const OPTIONAL_ITEM_COLUMNS = new Set([
@@ -47,7 +47,7 @@ export class ItemsService {
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('物品操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
 
     if (data.user_id === userId) {
@@ -77,24 +77,23 @@ export class ItemsService {
         reason,
       });
 
-    if (error) throw new InternalServerErrorException(error.message);
-  }
-
-  private getMissingColumn(error: { message?: string } | null | undefined, table: string) {
-    const message = error?.message || '';
-    const match = message.match(new RegExp(`Could not find the '([^']+)' column of '${table}' in the schema cache`));
-    return match?.[1] || null;
-  }
-
-  private stripUnsupportedOptionalColumn(payload: Record<string, any>, error: { message?: string } | null | undefined, table: string) {
-    const missingColumn = this.getMissingColumn(error, table);
-    if (!missingColumn || !OPTIONAL_ITEM_COLUMNS.has(missingColumn) || !(missingColumn in payload)) {
-      return null;
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
     }
+  }
 
-    const nextPayload = { ...payload };
-    delete nextPayload[missingColumn];
-    return nextPayload;
+  // 注意：OPTIONAL_ITEM_COLUMNS 中的字段需与 database-init.sql 中 life_items 表结构保持一致。
+  // 如需新增可选字段，请同步更新数据库 schema 和此列表，避免运行时列缺失错误。
+
+  /**
+   * 将前端传入的北京时间字段转为 UTC ISO 后入库
+   */
+  private normalizeTimeFields(payload: Record<string, any>): Record<string, any> {
+    const result = { ...payload };
+    if (result.expiry_date) result.expiry_date = toUtcIso(result.expiry_date);
+    if (result.purchase_date) result.purchase_date = toUtcIso(result.purchase_date);
+    return result;
   }
 
   async findAll(userId: string) {
@@ -104,7 +103,10 @@ export class ItemsService {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     const ownItems = (data || []).map((item) => this.withAccessMeta(item, userId, 'owner'));
 
     const { data: shares, error: sharesError } = await this.supabase
@@ -113,7 +115,7 @@ export class ItemsService {
       .eq('shared_with_id', userId)
       .eq('resource_type', 'item');
 
-    if (sharesError) throw new InternalServerErrorException(sharesError.message);
+    if (sharesError) { console.error('查询共享物品失败:', sharesError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
 
     const resourceIds = Array.from(new Set((shares || []).map((share) => share.resource_id)));
     if (resourceIds.length === 0) return ownItems;
@@ -123,7 +125,7 @@ export class ItemsService {
       .select('*')
       .in('id', resourceIds);
 
-    if (sharedError) throw new InternalServerErrorException(sharedError.message);
+    if (sharedError) { console.error('查询共享物品列表失败:', sharedError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
 
     const permissionById = new Map((shares || []).map((share) => [share.resource_id, share.permission as 'view' | 'edit']));
     const visibleSharedItems = (sharedItems || []).map((item) => this.withAccessMeta(item, userId, permissionById.get(item.id) || 'view'));
@@ -136,24 +138,17 @@ export class ItemsService {
   }
 
   async create(item: any) {
-    let { data, error } = await this.supabase
+    const normalizedItem = this.normalizeTimeFields(item);
+    const { data, error } = await this.supabase
       .from('life_items')
-      .insert(item)
+      .insert(normalizedItem)
       .select()
       .single();
 
     if (error) {
-      const fallbackItem = this.stripUnsupportedOptionalColumn(item, error, 'life_items');
-      if (fallbackItem) {
-        ({ data, error } = await this.supabase
-          .from('life_items')
-          .insert(fallbackItem)
-          .select()
-          .single());
-      }
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
     }
-
-    if (error) throw new InternalServerErrorException(error.message);
     this.eventsGateway.emitItemCreated(item.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -164,30 +159,19 @@ export class ItemsService {
       throw new ForbiddenException('只有查看权限，不能编辑该物品');
     }
 
-    await this.recordValueChangeIfNeeded(id, item, updates, '物品表单更新估值');
+    const normalizedUpdates = this.normalizeTimeFields(updates);
+    await this.recordValueChangeIfNeeded(id, item, normalizedUpdates, '物品表单更新估值');
 
-    let { data, error } = await this.supabase
+    const { data, error } = await this.supabase
       .from('life_items')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...normalizedUpdates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      const fallbackUpdates = this.stripUnsupportedOptionalColumn(updates, error, 'life_items');
-      if (fallbackUpdates) {
-        ({ data, error } = await this.supabase
-          .from('life_items')
-          .update({ ...fallbackUpdates, updated_at: new Date().toISOString() })
-          .eq('id', id)
-          .select()
-          .single());
-      }
-    }
-
-    if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('物品操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
     if (data) this.eventsGateway.emitItemUpdated(data.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
@@ -224,14 +208,27 @@ export class ItemsService {
       }
     }
 
+    // 清理该物品的共享记录（life_shares 对 resource_id 是多态引用，无 FK 级联）
+    const { error: sharesCleanupError } = await this.supabase
+      .from('life_shares')
+      .delete()
+      .eq('resource_type', 'item')
+      .eq('resource_id', id);
+    if (sharesCleanupError) {
+      console.error('清理物品共享记录失败:', sharesCleanupError.message);
+    }
+
     const { error } = await this.supabase
       .from('life_items')
       .delete()
       .eq('id', id);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     if (existing) this.eventsGateway.emitItemDeleted(existing.user_id, id);
-    return { success: true };
+    return { code: 200, data: null, message: '删除成功' };
   }
 
   /**
@@ -252,7 +249,10 @@ export class ItemsService {
       .lte('expiry_date', futureDate.toISOString())
       .order('expiry_date', { ascending: true });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -266,7 +266,7 @@ export class ItemsService {
     const updates: any = { updated_at: new Date().toISOString() };
     if (valueData.current_value !== undefined) updates.current_value = valueData.current_value;
     if (valueData.purchase_price !== undefined) updates.purchase_price = valueData.purchase_price;
-    if (valueData.purchase_date !== undefined) updates.purchase_date = new Date(valueData.purchase_date).toISOString();
+    if (valueData.purchase_date !== undefined) updates.purchase_date = toUtcIso(valueData.purchase_date);
     if (valueData.currency !== undefined) updates.currency = valueData.currency || 'CNY';
     if (valueData.depreciation_rate !== undefined) updates.depreciation_rate = valueData.depreciation_rate;
 
@@ -280,7 +280,10 @@ export class ItemsService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return convertTimesToBeijing(data);
   }
 
@@ -292,7 +295,10 @@ export class ItemsService {
       .eq('user_id', userId)
       .order('recorded_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -303,7 +309,10 @@ export class ItemsService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return convertTimesToBeijing(data);
   }
 
@@ -313,7 +322,10 @@ export class ItemsService {
       .select('id, name, purchase_price, current_value, currency, category_id')
       .eq('user_id', userId);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('物品操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     let totalPurchase = 0;
     let totalCurrent = 0;
@@ -348,7 +360,7 @@ export class ItemsService {
       .order('recorded_at', { ascending: false })
       .limit(5);
 
-    if (historyError) throw new InternalServerErrorException(historyError.message);
+    if (historyError) { console.error('查询价值历史失败:', historyError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
 
     const itemNameById = new Map((items || []).map((item) => [item.id, item.name || '未命名物品']));
     const recentChanges = await Promise.all((history || []).map(async (record) => {

@@ -8,6 +8,7 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
   private logger = new Logger('ReminderScheduler');
   private intervalId: NodeJS.Timeout | null = null;
   // 记录已发送的提醒，避免重复发送
+  // 多实例部署时，内存 Set 仅做本地缓存，最终防重复依赖 life_reminder_logs.reminder_key 唯一约束（idx_reminder_logs_key）
   private sentReminders = new Set<string>();
 
   constructor(
@@ -69,11 +70,17 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
     }
 
     // 2. 检查物品过期提醒
+    // 加日期过滤避免全表扫描：只查尚未过期且在未来窗口内的物品
+    // 窗口取 365 天以覆盖所有合理的 reminder_days_before 值
+    const futureWindowMs = 365 * 24 * 60 * 60 * 1000;
+    const futureDateISO = new Date(now.getTime() + futureWindowMs).toISOString();
     const { data: expiringItems, error: itemError } = await this.supabase
       .from('life_items')
       .select('*')
       .eq('reminder_enabled', true)
-      .not('expiry_date', 'is', null);
+      .not('expiry_date', 'is', null)
+      .gt('expiry_date', nowISO)            // 尚未过期
+      .lte('expiry_date', futureDateISO);   // 在提醒窗口内
 
     if (itemError) {
       this.logger.error('Failed to fetch expiry reminders:', itemError);
@@ -117,6 +124,8 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // 多实例部署时，内存 Set 仅做本地缓存，最终防重复依赖 life_reminder_logs.reminder_key 唯一约束
+  // 此方法先查询 DB 是否已存在记录，再尝试 insert；并发场景下唯一约束（idx_reminder_logs_key）会抛 23505 错误，作为兜底防重复
   private async recordReminder({
     reminderKey,
     resourceType,

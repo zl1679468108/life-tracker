@@ -59,8 +59,9 @@ export default function HomeScreen() {
     triggerCelebration(todo.id);
   }, [toggleComplete, triggerCelebration]);
 
-  const pendingTodos = todos.filter((todo) => !todo.completed).length;
-  const completedTodos = todos.filter((todo) => todo.completed).length;
+  // 统计值 memo 化，避免每次渲染都重新计算
+  const pendingTodos = useMemo(() => todos.filter((todo) => !todo.completed).length, [todos]);
+  const completedTodos = useMemo(() => todos.filter((todo) => todo.completed).length, [todos]);
   const unreadCount = loaded ? getUnreadCount() : 0;
 
   const greeting = useMemo(() => {
@@ -454,7 +455,7 @@ function Stat({
         <Text style={[styles.statValue, { color: iconColor }]}>{value}</Text>
       </View>
       <View style={styles.statTextBlock}>
-        <Text style={[styles.statLabel, { color: palette.textMuted }]}>{label}</Text>
+        <Text style={[styles.statLabel, { color: palette.text }]}>{label}</Text>
         <Text style={[styles.statMeta, { color: palette.textMuted }]}>{meta}</Text>
       </View>
     </Wrapper>
@@ -678,8 +679,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   statLabel: {
-    fontSize: fontSize.sm,
-    lineHeight: 16,
+    fontSize: fontSize.base,
+    lineHeight: 20,
+    fontWeight: fontWeight.bold,
   },
   statValue: {
     fontSize: 24,

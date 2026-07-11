@@ -116,10 +116,6 @@ export default function StatsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: palette.text }]}>数据统计</Text>
-      </View>
-
       <View style={[styles.heroCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.heroTop}>
           <View style={styles.heroCopy}>
@@ -286,8 +282,6 @@ const metricWidth = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2;
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingTop: spacing.lg, paddingBottom: spacing.xl },
-  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
   heroCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,

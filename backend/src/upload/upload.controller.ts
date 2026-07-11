@@ -1,8 +1,11 @@
-import { Controller, Post, UploadedFiles, UseInterceptors, BadRequestException, Body } from '@nestjs/common';
+import { Controller, Post, UploadedFiles, UseInterceptors, BadRequestException, UseGuards } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
+import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
+import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
 
 @Controller('api/upload')
+@UseGuards(SupabaseAuthGuard)
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
@@ -13,25 +16,22 @@ export class UploadController {
   @UseInterceptors(FilesInterceptor('files', 1))
   async uploadSingle(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body('user_id') userId: string
+    @CurrentUser() user: SupabaseUser,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No file uploaded');
     }
-    
-    if (!userId) {
-      throw new BadRequestException('user_id is required');
-    }
-    
+
     const file = files[0];
-    const url = await this.uploadService.uploadFile(file.buffer, file.originalname, userId);
-    
+    const url = await this.uploadService.uploadFile(file.buffer, file.originalname, user.id);
+
     return {
-      success: true,
+      code: 200,
       data: {
         url,
         fileName: file.originalname,
       },
+      message: '上传成功',
     };
   }
 
@@ -42,23 +42,19 @@ export class UploadController {
   @UseInterceptors(FilesInterceptor('files', 10))
   async uploadBatch(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body('user_id') userId: string
+    @CurrentUser() user: SupabaseUser,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');
     }
-    
-    if (!userId) {
-      throw new BadRequestException('user_id is required');
-    }
-    
+
     const fileNames = files.map(f => f.originalname);
     const buffers = files.map(f => f.buffer);
-    
-    const urls = await this.uploadService.uploadFiles(buffers, fileNames, userId);
-    
+
+    const urls = await this.uploadService.uploadFiles(buffers, fileNames, user.id);
+
     return {
-      success: true,
+      code: 200,
       data: {
         urls,
         files: files.map((f, i) => ({
@@ -66,6 +62,7 @@ export class UploadController {
           url: urls[i],
         })),
       },
+      message: '批量上传成功',
     };
   }
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, TextInput, Modal, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, TextInput, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
+import { BottomSheet } from './BottomSheet';
 
 // 预设颜色列表
 const presetColors = [
@@ -51,74 +52,63 @@ export function ColorPicker({ visible, onClose, onSelect, currentColor }: ColorP
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={[styles.modal, { backgroundColor: colors.white }]} onPress={(e) => e.stopPropagation()}>
-          <View style={[styles.handle, { backgroundColor: colors.gray[200] }]} />
-          <Text style={[styles.title, { color: colors.gray[900] }]}>选择颜色</Text>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      sheetStyle={{ backgroundColor: colors.white, borderWidth: 0 }}
+    >
+      <View style={[styles.handle, { backgroundColor: colors.gray[200] }]} />
+      <Text style={[styles.title, { color: colors.gray[900] }]}>选择颜色</Text>
 
-          {/* 预设颜色 */}
-          <View style={styles.presetGrid}>
-            {presetColors.map((color) => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorItem,
-                  { backgroundColor: color },
-                  selectedColor === color && [styles.colorItemSelected, { borderColor: colors.gray[900] }],
-                ]}
-                onPress={() => handleSelectPreset(color)}
-              >
-                {selectedColor === color && (
-                  <MaterialCommunityIcons name="check" size={20} color={colors.white} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
+      {/* 预设颜色 */}
+      <View style={styles.presetGrid}>
+        {presetColors.map((color) => (
+          <TouchableOpacity
+            key={color}
+            style={[
+              styles.colorItem,
+              { backgroundColor: color },
+              selectedColor === color && [styles.colorItemSelected, { borderColor: colors.gray[900] }],
+            ]}
+            onPress={() => handleSelectPreset(color)}
+          >
+            {selectedColor === color && (
+              <MaterialCommunityIcons name="check" size={20} color={colors.white} />
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
 
-          {/* 自定义颜色输入 */}
-          <View style={styles.customSection}>
-            <Text style={[styles.customLabel, { color: colors.gray[700] }]}>自定义颜色</Text>
-            <View style={styles.customInputRow}>
-              <View style={[styles.colorPreview, { backgroundColor: selectedColor, borderColor: colors.gray[200] }]} />
-              <TextInput
-                style={[styles.customInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
-                value={customColor}
-                onChangeText={handleCustomColorChange}
-                placeholder="#FF6B35"
-                placeholderTextColor={colors.gray[400]}
-                maxLength={7}
-              />
-            </View>
-          </View>
+      {/* 自定义颜色输入 */}
+      <View style={styles.customSection}>
+        <Text style={[styles.customLabel, { color: colors.gray[700] }]}>自定义颜色</Text>
+        <View style={styles.customInputRow}>
+          <View style={[styles.colorPreview, { backgroundColor: selectedColor, borderColor: colors.gray[200] }]} />
+          <TextInput
+            style={[styles.customInput, { borderColor: colors.gray[200], color: colors.gray[800] }]}
+            value={customColor}
+            onChangeText={handleCustomColorChange}
+            placeholder="#FF6B35"
+            placeholderTextColor={colors.gray[400]}
+            maxLength={7}
+          />
+        </View>
+      </View>
 
-          {/* 操作按钮 */}
-          <View style={styles.actions}>
-            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.gray[100] }]} onPress={onClose}>
-              <Text style={[styles.cancelBtnText, { color: colors.gray[600] }]}>取消</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: colors.primary }]} onPress={handleConfirm}>
-              <Text style={styles.confirmBtnText}>确认</Text>
-            </TouchableOpacity>
-          </View>
+      {/* 操作按钮 */}
+      <View style={styles.actions}>
+        <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.gray[100] }]} onPress={onClose}>
+          <Text style={[styles.cancelBtnText, { color: colors.gray[600] }]}>取消</Text>
         </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+        <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: colors.primary }]} onPress={handleConfirm}>
+          <Text style={styles.confirmBtnText}>确认</Text>
+        </TouchableOpacity>
+      </View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'flex-end',
-  },
-  modal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: spacing.xl,
-    paddingBottom: 40,
-  },
   handle: {
     width: 36,
     height: 4,

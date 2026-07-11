@@ -120,10 +120,6 @@ export default function ChangePasswordScreen() {
   return (
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
       <AppScreen contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: palette.text }]}>修改密码</Text>
-        </View>
-
         <View style={styles.section}>
           <PasswordField
             label="当前密码"
@@ -157,10 +153,9 @@ export default function ChangePasswordScreen() {
 
       <View style={[styles.bottomBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
         <FormActions
-          onCancel={() => router.back()}
+          hideCancel
           onSubmit={handleSave}
           submitLabel={saving ? '保存中...' : '保存'}
-          cancelLabel="取消"
           loading={false}
           disabled={saving}
           style={styles.formActions}
@@ -178,14 +173,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 132,
-  },
-  header: {
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: fontWeight.bold,
   },
   section: {
     marginBottom: spacing.lg,

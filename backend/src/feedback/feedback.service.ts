@@ -14,7 +14,7 @@ export class FeedbackService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) { console.error('创建反馈失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试'); }
     return convertTimesToBeijing(data);
   }
 }

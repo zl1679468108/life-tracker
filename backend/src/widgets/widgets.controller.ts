@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Inject } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Inject, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
@@ -24,7 +24,7 @@ export class WidgetsController {
       .order('due_date', { ascending: true })
       .limit(lim);
 
-    if (error) throw new Error(error.message);
+    if (error) { console.error('查询小组件待办失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试'); }
     return { todos: data || [] };
   }
 

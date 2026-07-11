@@ -21,7 +21,10 @@ export class TemplatesService {
     }
 
     const { data, error } = await query;
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('模板操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -35,7 +38,7 @@ export class TemplatesService {
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('模板不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('模板操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
     return convertTimesToBeijing(data);
   }
@@ -54,7 +57,10 @@ export class TemplatesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('模板操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return convertTimesToBeijing(data);
   }
 
@@ -75,7 +81,7 @@ export class TemplatesService {
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('模板不存在');
-      throw new InternalServerErrorException(error.message);
+      console.error('模板操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
     }
     return convertTimesToBeijing(data);
   }
@@ -87,8 +93,11 @@ export class TemplatesService {
       .eq('id', id)
       .eq('user_id', userId);
 
-    if (error) throw new InternalServerErrorException(error.message);
-    return { success: true };
+    if (error) {
+      console.error('模板操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
+    return { code: 200, data: null, message: '删除成功' };
   }
 
   /**
@@ -125,7 +134,10 @@ export class TemplatesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('模板操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     // 更新使用次数
     await this.supabase

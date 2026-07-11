@@ -289,7 +289,8 @@ export default function MessageDetailScreen() {
     } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history.length > 1) {
       window.history.back();
     } else {
-      router.replace('/(tabs)/messages');
+      // 与 _layout.tsx 中 subPageOptions 的 handleBack 逻辑保持一致
+      router.replace('/(tabs)');
     }
   };
 

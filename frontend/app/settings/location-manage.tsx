@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from 
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
-import { FormActions } from '../../components/ui';
+import { FormActions, BottomSheet } from '../../components/ui';
 import { LifeLocation } from '../../types';
 import { useTranslation } from '../../lib/i18n';
 
@@ -236,20 +236,6 @@ export default function LocationManageScreen() {
   return (
     <View style={[styles.lmContainer, { backgroundColor: palette.bg }]}>
       <ScrollView style={[styles.lmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.lmContent}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: palette.text }]}>位置管理</Text>
-            </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
-              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
-                <Text style={styles.summaryValue}>{locations.length}</Text>
-                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个位置</Text>
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* 系统预设 */}
         <View style={styles.lmSection}>
           <Text style={[styles.lmSectionTitle, { color: palette.textSecondary }]}>{t('locations.systemPreset')}</Text>
@@ -273,45 +259,16 @@ export default function LocationManageScreen() {
             <Text style={[styles.lmSectionTitle, { color: palette.textSecondary }]}>{t('locations.custom')}</Text>
             <TouchableOpacity
               style={[styles.lmAddBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-              onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}
+              onPress={() => { setEditingId(null); setNewParentId(undefined); setShowAdd(true); }}
               accessibilityRole="button"
-              accessibilityLabel={showAdd ? '收起新增位置' : '新增位置'}
+              accessibilityLabel="新增位置"
             >
-              <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={18} color={palette.orange} />
-              <Text style={[styles.lmAddBtnText, { color: palette.orange }]}>{showAdd ? '收起' : '新增位置'}</Text>
+              <MaterialCommunityIcons name="plus" size={18} color={palette.orange} />
+              <Text style={[styles.lmAddBtnText, { color: palette.orange }]}>新增位置</Text>
             </TouchableOpacity>
           </View>
 
-          {showAdd && (
-            <View style={[styles.lmAddForm, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.lmFormEyebrow, { color: palette.textSecondary }]}>新增位置</Text>
-              <TextInput
-                style={[styles.lmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder={newParentId ? `${t('locations.name')} (${t('locations.parent')})` : t('locations.name')}
-                placeholderTextColor={palette.textMuted}
-              />
-              <TouchableOpacity style={[styles.lmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
-                <View style={[styles.lmIconPreview, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-                  <MaterialCommunityIcons name={newIcon as any} size={22} color={palette.violet} />
-                </View>
-                <Text style={[styles.lmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
-              </TouchableOpacity>
-              {newParentId && (
-                <View style={[styles.lmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
-                  <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
-                  <Text style={[styles.lmParentInfoText, { color: palette.textSecondary }]}> 
-                    {`${t('locations.parent')}: ${locations.find(l => l.id === newParentId)?.name || ''}`}
-                  </Text>
-                </View>
-              )}
-              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} />
-            </View>
-          )}
-
-          {locationTree.length === 0 && !showAdd ? (
+          {locationTree.length === 0 ? (
             <Text style={[styles.lmEmptyText, { color: palette.textMuted }]}>{t('locations.empty')}</Text>
           ) : (
             locationTree.map((loc) => renderLocationItem(loc as LifeLocation & { children?: LifeLocation[] }))
@@ -319,49 +276,66 @@ export default function LocationManageScreen() {
         </View>
       </ScrollView>
 
-      {/* 图标选择弹窗 */}
-      <Modal visible={showIconPicker} transparent animationType="fade" onRequestClose={() => setShowIconPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择图标</Text>
-            <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
-              {iconOptions.map((icon) => (
-                <TouchableOpacity
-                  key={icon}
-                  style={[
-                    styles.pickerIconItem,
-                    { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
-                    currentIcon === icon && { backgroundColor: palette.surface, borderWidth: 1.5, borderColor: palette.orange },
-                  ]}
-                  onPress={() => selectIcon(icon)}
-                >
-                  <MaterialCommunityIcons
-                    name={icon as any}
-                    size={24}
-                    color={currentIcon === icon ? palette.orange : palette.textSecondary}
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </TouchableOpacity>
+      {/* 新增位置弹窗 */}
+      <BottomSheet visible={showAdd} onClose={() => setShowAdd(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>新增位置</Text>
+        <TextInput
+          style={[styles.lmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
+          value={newName}
+          onChangeText={setNewName}
+          placeholder={newParentId ? `${t('locations.name')} (${t('locations.parent')})` : t('locations.name')}
+          placeholderTextColor={palette.textMuted}
+        />
+        <TouchableOpacity style={[styles.lmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
+          <View style={[styles.lmIconPreview, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <MaterialCommunityIcons name={newIcon as any} size={22} color={palette.violet} />
+          </View>
+          <Text style={[styles.lmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
         </TouchableOpacity>
-      </Modal>
+        {newParentId && (
+          <View style={[styles.lmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
+            <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
+            <Text style={[styles.lmParentInfoText, { color: palette.textSecondary }]}>
+              {`${t('locations.parent')}: ${locations.find(l => l.id === newParentId)?.name || ''}`}
+            </Text>
+          </View>
+        )}
+        <FormActions hideCancel onSubmit={handleAdd} submitLabel={t('common.save')} />
+      </BottomSheet>
+
+      {/* 图标选择弹窗 */}
+      <BottomSheet visible={showIconPicker} onClose={() => setShowIconPicker(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>选择图标</Text>
+        <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
+          {iconOptions.map((icon) => (
+            <TouchableOpacity
+              key={icon}
+              style={[
+                styles.pickerIconItem,
+                { backgroundColor: palette.surfaceSoft, borderColor: palette.border },
+                currentIcon === icon && { backgroundColor: palette.surface, borderWidth: 1.5, borderColor: palette.orange },
+              ]}
+              onPress={() => selectIcon(icon)}
+            >
+              <MaterialCommunityIcons
+                name={icon as any}
+                size={24}
+                color={currentIcon === icon ? palette.orange : palette.textSecondary}
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   lmContainer: { flex: 1 },
-  lmContent: { paddingBottom: 20, paddingTop: spacing.md },
-  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
-  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 92, alignItems: 'center', justifyContent: 'center' },
-  summaryText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.xs },
+  lmContent: { paddingBottom: 20, paddingTop: spacing.lg },
   lmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   lmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   lmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },
@@ -400,8 +374,6 @@ const styles = StyleSheet.create({
   lmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 40, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
   lmSaveBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
   lmEmptyText: { fontSize: fontSize.base, textAlign: 'center', padding: spacing.xl },
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
-  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%', borderWidth: 1 },
   pickerHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg },
   pickerScroll: { maxHeight: 400 },

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeTracker - 离线</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f9fafb;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 400px;
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 0.5rem;
+      color: #F36F3C;
+    }
+    p {
+      font-size: 0.95rem;
+      color: #6b7280;
+      margin: 0.5rem 0;
+    }
+    .retry-btn {
+      margin-top: 1.5rem;
+      padding: 0.6rem 2rem;
+      background: #F36F3C;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .retry-btn:active {
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📋</div>
+    <h1>LifeTracker</h1>
+    <p>当前处于离线状态</p>
+    <p>请检查网络连接后重试</p>
+    <button class="retry-btn" onclick="location.reload()">重新连接</button>
+  </div>
+</body>
+</html>

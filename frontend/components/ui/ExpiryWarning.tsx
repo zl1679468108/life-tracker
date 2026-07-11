@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../hooks/useThemeColors';
+import { useColors } from '../../stores/themeStore';
 import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import type { LifeItem } from '../../types';
 

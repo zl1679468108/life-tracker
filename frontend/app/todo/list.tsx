@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, RefreshControl, SafeAreaView, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useTodoStore } from '../../stores/todoStore';
 import { LifeTodo } from '../../types';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FAB, Checkbox, Badge, PageLoadable, Skeleton } from '../../components/ui';
+import { FAB, Checkbox, Badge, PageLoadable, Skeleton, EmptyState } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -59,7 +59,8 @@ export default function TodoListScreen() {
     setRefreshing(false);
   }, [fetchTodos]);
 
-  const filtered = todos.filter((t) => {
+  // 列表筛选结果 memo 化，避免每次渲染都重新计算
+  const filtered = useMemo(() => todos.filter((t) => {
     if (filter === 'pending') return !t.completed;
     if (filter === 'completed') return t.completed;
     return true;
@@ -79,7 +80,7 @@ export default function TodoListScreen() {
     if (sortBy === 'priority') return b.priority - a.priority;
     if (sortBy === 'title') return a.title.localeCompare(b.title);
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  }), [todos, filter, focusFilter, searchQuery, sortBy]);
 
   const getPriorityLabel = (p: number) => {
     if (p === 3) return '紧急';
@@ -93,12 +94,13 @@ export default function TodoListScreen() {
     return 'low';
   };
 
-  const focusFilters: { key: FocusFilterType; label: string; count: number }[] = [
+  // 焦点筛选计数 memo 化，避免每次渲染都重新计算
+  const focusFilters: { key: FocusFilterType; label: string; count: number }[] = useMemo(() => [
     { key: 'all', label: '全部范围', count: todos.length },
     { key: 'today', label: '今日', count: todos.filter((todo) => getDayDiff(todo.due_date) === 0).length },
     { key: 'overdue', label: '逾期', count: todos.filter((todo) => !todo.completed && (getDayDiff(todo.due_date) ?? 0) < 0 && getDayDiff(todo.due_date) !== null).length },
     { key: 'reminder', label: '有提醒', count: todos.filter((todo) => Boolean(todo.reminder_date)).length },
-  ];
+  ], [todos]);
 
   const activeFilterCount = [
     filter !== 'all',
@@ -119,12 +121,13 @@ export default function TodoListScreen() {
     ]);
   };
 
-  const renderDragItem = ({ item, drag, isActive }: { item: LifeTodo; drag: () => void; isActive: boolean }) => (
+  // 拖拽渲染函数 useCallback 化，避免每次渲染都重新创建
+  const renderDragItem = useCallback(({ item, drag, isActive }: { item: LifeTodo; drag: () => void; isActive: boolean }) => (
     <ScaleDecorator activeScale={1.05}>
       <TouchableOpacity
         style={[
           styles.todoCard,
-          { backgroundColor: palette.surface, borderColor: palette.border },
+          { backgroundColor: palette.surface },
           isActive && { opacity: 0.95, ...shadows.md },
         ]}
         onLongPress={drag}
@@ -140,7 +143,6 @@ export default function TodoListScreen() {
               <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
                 {item.title}
               </Text>
-              {item.completed && <Text style={[styles.todoStatus, { color: palette.success }]}>已完成</Text>}
             </View>
             {item.description && (
               <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
@@ -148,7 +150,7 @@ export default function TodoListScreen() {
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
-        {(item.due_date || item.reminder_date) && (
+        {(item.due_date || item.reminder_date || item.completed) && (
           <View style={styles.todoFooter}>
             {item.due_date && (
               <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -164,16 +166,22 @@ export default function TodoListScreen() {
                 <Text style={[styles.todoDate, { color: palette.warning }]}>有提醒</Text>
               </View>
             )}
+            {item.completed && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="check-circle-outline" size={14} color={palette.success} />
+                <Text style={[styles.todoDate, { color: palette.success }]}>已完成</Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
     </ScaleDecorator>
-  );
+  ), [palette, router, toggleComplete]);
 
   const renderItem = useCallback(({ item }: { item: LifeTodo }) => (
     <SwipeableRow onDelete={() => handleDeleteTodo(item)}>
       <TouchableOpacity
-        style={[styles.todoCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        style={[styles.todoCard, { backgroundColor: palette.surface }]}
         onPress={() => router.push(`/todo/${item.id}`)}
         activeOpacity={0.98}
       >
@@ -184,7 +192,6 @@ export default function TodoListScreen() {
               <Text style={[styles.todoTitle, { color: palette.text }, item.completed && { textDecorationLine: 'line-through', color: palette.textDisabled }]}>
                 {item.title}
               </Text>
-              {item.completed && <Text style={[styles.todoStatus, { color: palette.success }]}>已完成</Text>}
             </View>
             {item.description && (
               <Text style={[styles.todoDesc, { color: palette.textMuted }]} numberOfLines={2}>{item.description}</Text>
@@ -192,7 +199,7 @@ export default function TodoListScreen() {
           </View>
           <Badge label={getPriorityLabel(item.priority)} variant={getPriorityVariant(item.priority)} />
         </View>
-        {(item.due_date || item.reminder_date) && (
+        {(item.due_date || item.reminder_date || item.completed) && (
           <View style={styles.todoFooter}>
             {item.due_date && (
               <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
@@ -208,11 +215,28 @@ export default function TodoListScreen() {
                 <Text style={[styles.todoDate, { color: palette.warning }]}>有提醒</Text>
               </View>
             )}
+            {item.completed && (
+              <View style={[styles.metaPill, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name="check-circle-outline" size={14} color={palette.success} />
+                <Text style={[styles.todoDate, { color: palette.success }]}>已完成</Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
     </SwipeableRow>
   ), [palette, router, toggleComplete]);
+
+  const renderEmpty = () => (
+    <EmptyState
+      icon="check-circle-outline"
+      title={activeFilterCount === 0 ? '暂无待办事项' : '没有匹配的待办'}
+      description={activeFilterCount === 0 ? '点击下方按钮添加第一个待办' : '调整筛选条件或清空搜索后再看看'}
+      actionLabel="添加待办"
+      onAction={() => router.push('/todo/create')}
+      style={styles.inlineEmpty}
+    />
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.bg }]}>
@@ -223,7 +247,7 @@ export default function TodoListScreen() {
               {(['all', 'pending', 'completed'] as FilterType[]).map((f) => (
                 <TouchableOpacity
                   key={f}
-                  style={[styles.filterTab, filter === f && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                  style={[styles.filterTab, filter === f && { backgroundColor: palette.surface }]}
                   onPress={() => setFilter(f)}
                 >
                   <Text style={[styles.filterText, { color: palette.textMuted }, filter === f && { color: palette.text }]}> 
@@ -323,7 +347,7 @@ export default function TodoListScreen() {
         {loading ? (
           <View style={styles.skeletonList}>
             {[1, 2, 3].map((i) => (
-              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface }]}>
                 <Skeleton width={22} height={22} borderRadius={6} />
                 <View style={styles.skeletonContent}>
                   <Skeleton width="70%" height={15} />
@@ -337,14 +361,7 @@ export default function TodoListScreen() {
           <PageLoadable
             loading={false}
             error={todosError}
-            empty={!loading && filtered.length === 0}
-            emptyIcon="check-circle-outline"
-            emptyTitle={activeFilterCount === 0 ? '暂无待办事项' : '没有匹配的待办'}
-            emptyMessage={activeFilterCount === 0 ? '点击下方按钮添加第一个待办' : '调整筛选条件或清空搜索后再看看'}
-            onEmptyAction={() => router.push('/todo/create')}
-            emptyActionLabel="添加待办"
             onRetry={fetchTodos}
-    
           >
             {dragEnabled ? (
               <DraggableFlatList
@@ -353,6 +370,7 @@ export default function TodoListScreen() {
                 renderItem={renderDragItem}
                 onDragEnd={({ data }) => reorderTodos(data)}
                 contentContainerStyle={styles.list}
+                ListEmptyComponent={renderEmpty}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
               />
             ) : (
@@ -361,6 +379,7 @@ export default function TodoListScreen() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 contentContainerStyle={styles.list}
+                ListEmptyComponent={renderEmpty}
                 removeClippedSubviews
                 maxToRenderPerBatch={10}
                 updateCellsBatchingPeriod={50}
@@ -423,7 +442,7 @@ const styles = StyleSheet.create({
   },
   filterTabs: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: 'row',
     borderRadius: borderRadius.md,
     borderWidth: 1,
@@ -451,7 +470,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   focusFilterChip: {
-    minHeight: 34,
+    minHeight: 36,
     borderRadius: borderRadius.full,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
@@ -487,7 +506,7 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     flex: 1,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
@@ -501,13 +520,14 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: 120,
   },
+  inlineEmpty: {
+    minHeight: 420,
+  },
   todoCard: {
     minHeight: 78,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.sm,
   },
   todoHeader: {
     flexDirection: 'row',
@@ -526,11 +546,6 @@ const styles = StyleSheet.create({
   todoTitle: {
     flex: 1,
     fontSize: fontSize.xl,
-    fontWeight: fontWeight.semiBold,
-  },
-  todoStatus: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
     fontWeight: fontWeight.semiBold,
   },
   todoDesc: {
@@ -563,10 +578,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.sm,
   },
   skeletonContent: {
     flex: 1,

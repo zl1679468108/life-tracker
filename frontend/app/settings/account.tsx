@@ -255,10 +255,9 @@ export default function AccountScreen() {
       <View style={[styles.bottomBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
         {editing ? (
           <FormActions
-            onCancel={handleCancelEdit}
+            hideCancel
             onSubmit={handleSave}
             submitLabel={saving ? t('common.loading') : t('common.save')}
-            cancelLabel={t('common.cancel')}
             loading={false}
             disabled={saving}
             style={styles.formActions}

@@ -12,21 +12,29 @@ interface ConversationState {
   updateRemoteConversation: (conversation: Conversation) => void;
 }
 
+// 请求竞态守卫：仅接受最后一次 fetch 的结果
+let fetchConversationsRequestId = 0;
+
 export const useConversationStore = create<ConversationState>((set, get) => ({
   conversations: [],
   loading: false,
   error: null,
 
   fetchConversations: async () => {
+    const requestId = ++fetchConversationsRequestId;
     set({ loading: true, error: null });
     try {
       const res = await api.messages.conversations();
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchConversationsRequestId) return;
       if (res.data) {
         set({ conversations: res.data, loading: false });
       } else {
         set({ error: res.message || '获取对话列表失败', loading: false });
       }
     } catch (error) {
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchConversationsRequestId) return;
       set({ error: (error as Error).message, loading: false });
     }
   },

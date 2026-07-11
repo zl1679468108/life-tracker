@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../hooks/useThemeColors';
-import { TemplateCard, EmptyState } from '../../components/ui';
+import { useColors } from '../../stores/themeStore';
+import { TemplateCard, EmptyState, Skeleton } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -18,14 +18,19 @@ export default function TemplatesScreen() {
   const { templates, fetchTemplates, deleteTemplate } = useTemplateStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTemplates();
+    const load = async () => {
+      await fetchTemplates();
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTemplates();
+    await fetchTemplates(undefined, true);
     setRefreshing(false);
   };
 
@@ -37,7 +42,7 @@ export default function TemplatesScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteTemplate(id);
-          await fetchTemplates();
+          await fetchTemplates(undefined, true);
         },
       },
     ]);
@@ -68,19 +73,7 @@ export default function TemplatesScreen() {
         contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
       >
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: palette.text }]}>模板管理</Text>
-            </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
-              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
-                <Text style={styles.summaryValue}>{templates.length}</Text>
-                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个模板</Text>
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+        <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             {tabs.map((tab) => (
               <TouchableOpacity
                 key={tab.key}
@@ -95,10 +88,21 @@ export default function TemplatesScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
         </View>
 
-        {filteredTemplates.length === 0 ? (
+        {loading ? (
+          <View style={{ gap: spacing.md }}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <Skeleton width={40} height={40} borderRadius={borderRadius.md} />
+                <View style={styles.skeletonContent}>
+                  <Skeleton width="60%" height={16} />
+                  <Skeleton width="40%" height={12} style={{ marginTop: 8 }} />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : filteredTemplates.length === 0 ? (
           <EmptyState
             icon="file-document-outline"
             title="暂无模板"
@@ -130,48 +134,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xl,
   },
-  header: {
-    marginBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSize['4xl'],
-    fontWeight: fontWeight.bold,
-  },
-  summaryBadge: {
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minWidth: 92,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  summaryValue: {
-    fontSize: fontSize['2xl'],
-    fontWeight: fontWeight.bold,
-  },
-  summaryLabel: {
-    fontSize: fontSize.xs,
-  },
   filterTabs: {
     flexDirection: 'row',
     borderRadius: borderRadius.md,
     borderWidth: 1,
     padding: 4,
     gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   filterTab: {
     flex: 1,
@@ -190,5 +159,16 @@ const styles = StyleSheet.create({
   filterCount: {
     fontSize: fontSize.xs,
     marginTop: 1,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  skeletonContent: {
+    flex: 1,
   },
 });

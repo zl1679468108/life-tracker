@@ -3,6 +3,12 @@ import { ItemsService } from './items.service';
 import { BorrowingsService } from '../borrowings/borrowings.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
+import {
+  CreateItemDto,
+  UpdateItemDto,
+  UpdateValueDto,
+  RecordValueHistoryDto,
+} from './dto/items.dto';
 
 @Controller('api/items')
 @UseGuards(SupabaseAuthGuard)
@@ -34,12 +40,12 @@ export class ItemsController {
   }
 
   @Post()
-  async create(@Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async create(@Body() body: CreateItemDto, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.create({ ...body, user_id: user.id });
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async update(@Param('id') id: string, @Body() body: UpdateItemDto, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.update(id, body, user.id);
   }
 
@@ -55,7 +61,7 @@ export class ItemsController {
 
   // T47: 价值追踪端点
   @Put(':id/value')
-  async updateValue(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async updateValue(@Param('id') id: string, @Body() body: UpdateValueDto, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.updateValue(id, user.id, body);
   }
 
@@ -65,7 +71,7 @@ export class ItemsController {
   }
 
   @Post(':id/value-history')
-  async recordValueHistory(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async recordValueHistory(@Param('id') id: string, @Body() body: RecordValueHistoryDto, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.recordValueHistory(id, user.id, body);
   }
 }

@@ -4,12 +4,13 @@ import { spacing } from '../../constants/theme';
 import { Button } from './Button';
 
 interface FormActionsProps {
-  onCancel: () => void;
+  onCancel?: () => void;
   onSubmit: () => void;
   submitLabel?: string;
   cancelLabel?: string;
   loading?: boolean;
   disabled?: boolean;
+  hideCancel?: boolean;
   style?: ViewStyle;
 }
 
@@ -20,11 +21,14 @@ export function FormActions({
   cancelLabel = '取消',
   loading = false,
   disabled = false,
+  hideCancel = false,
   style,
 }: FormActionsProps) {
   return (
     <View style={[styles.actions, style]}>
-      <Button title={cancelLabel} variant="secondary" onPress={onCancel} style={styles.button} disabled={loading} />
+      {!hideCancel && (
+        <Button title={cancelLabel} variant="secondary" onPress={onCancel || (() => {})} style={styles.button} disabled={loading} />
+      )}
       <Button title={submitLabel} variant="primary" onPress={onSubmit} style={styles.button} loading={loading} disabled={disabled} />
     </View>
   );

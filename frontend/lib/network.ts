@@ -58,18 +58,24 @@ class NetworkMonitor {
 
   /**
    * 检查网络状态（原生平台）
+   * 探测自身后端地址而非第三方站点（google.com 在中国大陆不可访问，
+   * 会导致原生端永远判定为 offline，进而触发缓存回退、数据不刷新）。
    */
   private async checkNetworkStatus() {
     try {
-      // 简单的网络检测
-      const response = await fetch('https://www.google.com', {
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3020';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const response = await fetch(baseUrl, {
         method: 'HEAD',
-        mode: 'no-cors',
         cache: 'no-cache',
+        signal: controller.signal,
       });
-      
-      const newStatus = response.type === 'opaque' || response.ok ? 'online' : 'offline';
-      
+      clearTimeout(timeoutId);
+
+      // 只要能拿到响应（不论状态码），说明网络可达后端
+      const newStatus: NetworkStatus = response.ok || response.status < 500 ? 'online' : 'offline';
+
       if (newStatus !== this.currentStatus) {
         this.currentStatus = newStatus;
         this.notifyListeners();

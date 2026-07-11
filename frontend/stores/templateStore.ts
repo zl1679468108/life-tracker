@@ -6,7 +6,9 @@ interface TemplateState {
   templates: LifeTemplate[];
   loading: boolean;
   error: string | null;
-  fetchTemplates: (type?: 'item' | 'todo') => Promise<void>;
+  // 当前已加载的模板类型，防止 item/todo 列表互相覆盖
+  loadedType: 'item' | 'todo' | 'all' | null;
+  fetchTemplates: (type?: 'item' | 'todo', force?: boolean) => Promise<void>;
   createTemplate: (data: CreateTemplateRequest) => Promise<void>;
   useTemplate: (id: string, overrides?: Record<string, any>) => Promise<string>;
   updateTemplate: (id: string, data: UpdateTemplateRequest) => Promise<void>;
@@ -18,18 +20,23 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   templates: [],
   loading: false,
   error: null,
+  loadedType: null,
 
-  fetchTemplates: async (type?: 'item' | 'todo') => {
+  fetchTemplates: async (type?: 'item' | 'todo', force = false) => {
+    const requestedType = type || 'all';
+    // 防止错误复用不同 type 的数据，例如先加载 todo 再进入 item 页面
+    if (!force && get().loadedType === requestedType && get().templates.length > 0 && !get().error) return;
+    if (get().loading) return;
     set({ loading: true, error: null });
     try {
       const res = await api.templates.list(type);
       if (res.data) {
-        set({ templates: res.data, loading: false });
+        set({ templates: res.data, loading: false, loadedType: requestedType });
       } else {
-        set({ error: res.message || '获取模板列表失败', loading: false });
+        set({ error: res.message || '获取模板列表失败', loading: false, loadedType: null });
       }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      set({ error: (error as Error).message, loading: false, loadedType: null });
     }
   },
 
@@ -86,7 +93,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
           loading: false,
         }));
       } else {
-        set({ error: res.message || '更新模板失败', loading: false });
+        const message = res.message || '更新模板失败';
+        set({ error: message, loading: false });
+        throw new Error(message);
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
@@ -104,7 +113,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
           loading: false,
         }));
       } else {
-        set({ error: res.message || '删除模板失败', loading: false });
+        const message = res.message || '删除模板失败';
+        set({ error: message, loading: false });
+        throw new Error(message);
       }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

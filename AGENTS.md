@@ -11,7 +11,7 @@
 | 1 | [docs/PRD.md](./docs/PRD.md) | 产品需求规范：功能定义、模块边界、入口矩阵、交互/视觉规范 |
 | 2 | [docs/PROTOTYPE.md](./docs/PROTOTYPE.md) | 原型方案：页面布局、路由映射、交互流、异常状态 |
 | 3 | [docs/TASKS.md](./docs/TASKS.md) | 当前任务状态：仅包含未完成的待办任务 |
-| 4 | [docs/database-init.sql](./docs/database-init.sql) | 数据库表结构：表名、字段、约束、索引、RLS 策略 |
+| 4 | [docs/database-init.sql](./docs/database-init.sql) | 数据库表结构：表名、字段、约束、索引 |
 | — | [docs/QA_ACCOUNTS.md](./docs/QA_ACCOUNTS.md) | QA 测试账号（供 AI 记忆，新建对话时读取） |
 | 5 | 当前代码 | 实现细节：以实际代码为准，先读代码再修改 |
 
@@ -161,7 +161,7 @@ scripts/
 | PRD.md | 新增/修改功能后 | 同步更新功能详述、入口矩阵、附录 |
 | PROTOTYPE.md | 页面/路由/交互变化后 | 同步更新页面布局、路由映射、交互流 |
 | TASKS.md | 任务开始/完成/阻塞时 | 更新任务状态和验收记录 |
-| database-init.sql | 表结构变化后 | 同步增删改字段、索引、RLS |
+| database-init.sql | 表结构变化后 | 同步增删改字段、索引 |
 | AGENTS.md | 项目规则/结构变化后 | 同步更新目录索引、规范、流程 |
 
 ## 6. 前端规则

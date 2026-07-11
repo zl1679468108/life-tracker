@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { View, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
 import { appDesign, spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { BorrowingCard, Button, EmptyState } from '../../components/ui';
+import { BorrowingCard, Button, EmptyState, Skeleton } from '../../components/ui';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
 
@@ -21,6 +21,7 @@ export default function BorrowingsScreen() {
   const { items, fetchItems } = useItemStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const itemContextId = params.itemId;
   const contextItem = itemContextId ? items.find((item) => item.id === itemContextId) : undefined;
   const goCreateBorrowing = () => {
@@ -31,12 +32,16 @@ export default function BorrowingsScreen() {
   };
 
   useEffect(() => {
-    if (itemContextId) {
-      fetchByItemId(itemContextId);
-    } else {
-      fetchBorrowings();
-    }
-    fetchItems();
+    const load = async () => {
+      if (itemContextId) {
+        await fetchByItemId(itemContextId);
+      } else {
+        await fetchBorrowings();
+      }
+      await fetchItems();
+      setLoading(false);
+    };
+    load();
   }, [itemContextId]);
 
   const onRefresh = async () => {
@@ -56,13 +61,17 @@ export default function BorrowingsScreen() {
       {
         text: '确认归还',
         onPress: async () => {
-          await returnBorrowing(id);
-          if (itemContextId) {
-            await fetchByItemId(itemContextId);
-          } else {
-            await fetchBorrowings();
+          try {
+            await returnBorrowing(id);
+            if (itemContextId) {
+              await fetchByItemId(itemContextId);
+            } else {
+              await fetchBorrowings();
+            }
+            await fetchItems();
+          } catch (error) {
+            showAlert('操作失败', error instanceof Error ? error.message : '归还失败');
           }
-          await fetchItems();
         },
       },
     ]);
@@ -75,13 +84,17 @@ export default function BorrowingsScreen() {
         text: '删除',
         style: 'destructive',
         onPress: async () => {
-          await deleteBorrowing(id);
-          if (itemContextId) {
-            await fetchByItemId(itemContextId);
-          } else {
-            await fetchBorrowings();
+          try {
+            await deleteBorrowing(id);
+            if (itemContextId) {
+              await fetchByItemId(itemContextId);
+            } else {
+              await fetchBorrowings();
+            }
+            await fetchItems();
+          } catch (error) {
+            showAlert('操作失败', error instanceof Error ? error.message : '删除失败');
           }
-          await fetchItems();
         },
       },
     ]);
@@ -101,73 +114,83 @@ export default function BorrowingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: palette.bg }]}>
-      <ScrollView
+      <FlatList
         style={{ backgroundColor: palette.bg }}
         contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
-        >
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: palette.text }]}>借用管理</Text>
-            </View>
+        data={filteredBorrowings}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <SwipeableRow onDelete={() => handleDelete(item.id)}>
+            <BorrowingCard
+              borrowing={item}
+              onPress={() => router.push(`/item/${item.item_id}`)}
+              onReturn={item.status !== 'returned' ? () => handleReturn(item.id) : undefined}
+            />
+          </SwipeableRow>
+        )}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            {itemContextId && (
+              <View style={[styles.contextCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <View style={[styles.contextIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name="package-variant" size={18} color={palette.orange} />
+                </View>
+                <View style={styles.contextCopy}>
+                  <Text style={[styles.contextTitle, { color: palette.text }]} numberOfLines={1}>
+                    {contextItem?.name || '当前物品'}
+                  </Text>
+                  <Text style={[styles.contextMeta, { color: palette.textMuted }]}>
+                    {borrowings.length} 条记录 · {borrowings.some((b) => b.status !== 'returned') ? '借出中' : '当前可借出'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {!itemContextId && (
+              <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                {tabs.map((tab) => (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.filterTab, activeTab === tab.key && { backgroundColor: palette.surface, borderColor: palette.border }]}
+                    onPress={() => setActiveTab(tab.key)}
+                  >
+                    <Text style={[styles.filterText, { color: palette.textMuted }, activeTab === tab.key && { color: palette.text }]}>
+                      {tab.label}
+                    </Text>
+                    <Text style={[styles.filterCount, { color: activeTab === tab.key ? palette.orange : palette.textMuted }]}>
+                      {tab.count}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
-          {itemContextId && (
-            <View style={[styles.contextCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <View style={[styles.contextIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                <MaterialCommunityIcons name="package-variant" size={18} color={palette.orange} />
-              </View>
-              <View style={styles.contextCopy}>
-                <Text style={[styles.contextTitle, { color: palette.text }]} numberOfLines={1}>
-                  {contextItem?.name || '当前物品'}
-                </Text>
-                <Text style={[styles.contextMeta, { color: palette.textMuted }]}>
-                  {borrowings.length} 条记录 · {borrowings.some((b) => b.status !== 'returned') ? '借出中' : '当前可借出'}
-                </Text>
-              </View>
-            </View>
-          )}
-          {!itemContextId && (
-            <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-              {tabs.map((tab) => (
-                <TouchableOpacity
-                  key={tab.key}
-                  style={[styles.filterTab, activeTab === tab.key && { backgroundColor: palette.surface, borderColor: palette.border }]}
-                  onPress={() => setActiveTab(tab.key)}
-                >
-                  <Text style={[styles.filterText, { color: palette.textMuted }, activeTab === tab.key && { color: palette.text }]}>
-                    {tab.label}
-                  </Text>
-                  <Text style={[styles.filterCount, { color: activeTab === tab.key ? palette.orange : palette.textMuted }]}>
-                    {tab.count}
-                  </Text>
-                </TouchableOpacity>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ padding: spacing.lg, gap: spacing.md }}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                  <Skeleton width={44} height={44} borderRadius={22} />
+                  <View style={styles.skeletonContent}>
+                    <Skeleton width="60%" height={16} />
+                    <Skeleton width="40%" height={12} style={{ marginTop: 8 }} />
+                  </View>
+                </View>
               ))}
             </View>
-          )}
-        </View>
-
-        {filteredBorrowings.length === 0 ? (
-          <EmptyState
-            icon="package-variant"
-            title="暂无借用记录"
-            description={itemContextId ? '该物品暂无借用历史，可直接发起借出' : '点击右下角添加借用记录'}
-            actionLabel="新增借用"
-            buttonVariant="secondary"
-            onAction={goCreateBorrowing}
-          />
-        ) : (
-          filteredBorrowings.map((borrowing) => (
-            <SwipeableRow key={borrowing.id} onDelete={() => handleDelete(borrowing.id)}>
-              <BorrowingCard
-                borrowing={borrowing}
-                onPress={() => router.push(`/item/${borrowing.item_id}`)}
-                onReturn={borrowing.status !== 'returned' ? () => handleReturn(borrowing.id) : undefined}
-              />
-            </SwipeableRow>
-          ))
-        )}
-      </ScrollView>
+          ) : (
+            <EmptyState
+              icon="package-variant"
+              title="暂无借用记录"
+              description={itemContextId ? '该物品暂无借用历史，可直接发起借出' : '点击右下角添加借用记录'}
+              actionLabel="新增借用"
+              buttonVariant="secondary"
+              onAction={goCreateBorrowing}
+            />
+          )
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
+      />
 
       <View style={[styles.actionBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
         <Button
@@ -191,19 +214,6 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSize['4xl'],
-    fontWeight: fontWeight.bold,
   },
   contextCard: {
     flexDirection: 'row',
@@ -266,5 +276,16 @@ const styles = StyleSheet.create({
   },
   actionIcon: {
     marginRight: 6,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  skeletonContent: {
+    flex: 1,
   },
 });

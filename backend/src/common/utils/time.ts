@@ -32,7 +32,22 @@ export function toBeijingTime(utcStr: string): string {
  */
 export function convertTimesToBeijing(record: any): any {
   if (!record) return record;
-  const timeFields = ['created_at', 'updated_at', 'due_date', 'reminder_date'];
+  const timeFields = [
+    'created_at',
+    'updated_at',
+    'due_date',
+    'reminder_date',
+    'expiry_date',
+    'purchase_date',
+    'borrow_date',
+    'expected_return_date',
+    'actual_return_date',
+    'sent_at',
+    'recorded_at',
+    'responded_at',
+    'last_read_at',
+    'last_message_at',
+  ];
   const result = { ...record };
   for (const field of timeFields) {
     if (result[field]) {

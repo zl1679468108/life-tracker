@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../hooks/useThemeColors';
+import { useColors } from '../../stores/themeStore';
 import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { Button } from './index';
 import { api } from '../../lib/api';

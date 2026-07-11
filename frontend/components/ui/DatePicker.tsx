@@ -12,6 +12,7 @@ interface DatePickerProps {
   mode?: 'date' | 'datetime';
   placeholder?: string;
   minDate?: Date;
+  maxDate?: Date;
   error?: string;
 }
 
@@ -23,6 +24,7 @@ export function DatePicker({
   mode = 'date',
   placeholder,
   minDate,
+  maxDate,
   error,
 }: DatePickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +112,7 @@ export function DatePicker({
             onInput={handleNativeInput}
             onBlur={handleBlur}
             min={minDate ? minDate.toISOString().slice(0, mode === 'datetime' ? 16 : 10) : undefined}
+            max={maxDate ? maxDate.toISOString().slice(0, mode === 'datetime' ? 16 : 10) : undefined}
             style={{
               position: 'absolute',
               opacity: 0,

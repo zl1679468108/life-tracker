@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useCategoryStore } from '../../stores/categoryStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
-import { ColorPicker, FormActions } from '../../components/ui';
+import { ColorPicker, FormActions, BottomSheet } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeCategory } from '../../types';
 import { useTranslation } from '../../lib/i18n';
@@ -296,20 +296,6 @@ export default function CategoryManageScreen() {
   return (
     <View style={[styles.cmContainer, { backgroundColor: palette.bg }]}>
       <ScrollView style={[styles.cmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.cmContent}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerCopy}>
-              <Text style={[styles.title, { color: palette.text }]}>分类管理</Text>
-            </View>
-            <View style={[styles.summaryBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
-              <Text style={[styles.summaryText, { color: palette.text }]} numberOfLines={1}>
-                <Text style={styles.summaryValue}>{categories.length}</Text>
-                <Text style={[styles.summaryLabel, { color: palette.textMuted }]}> 个分类</Text>
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* 系统预设 */}
         <View style={styles.cmSection}>
           <Text style={[styles.cmSectionTitle, { color: palette.textSecondary }]}>{t('categories.systemPreset')}</Text>
@@ -322,78 +308,16 @@ export default function CategoryManageScreen() {
             <Text style={[styles.cmSectionTitle, { color: palette.textSecondary }]}>{t('categories.custom')}</Text>
             <TouchableOpacity
               style={[styles.cmAddBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-              onPress={() => { setShowAdd(!showAdd); setEditingId(null); setNewParentId(undefined); }}
+              onPress={() => { setEditingId(null); setNewParentId(undefined); setShowAdd(true); }}
               accessibilityRole="button"
-              accessibilityLabel={showAdd ? '收起新增分类' : '新增分类'}
+              accessibilityLabel="新增分类"
             >
-              <MaterialCommunityIcons name={showAdd ? 'close' : 'plus'} size={18} color={palette.orange} />
-              <Text style={[styles.cmAddBtnText, { color: palette.orange }]}>{showAdd ? '收起' : '新增分类'}</Text>
+              <MaterialCommunityIcons name="plus" size={18} color={palette.orange} />
+              <Text style={[styles.cmAddBtnText, { color: palette.orange }]}>新增分类</Text>
             </TouchableOpacity>
           </View>
 
-          {showAdd && (
-            <View style={[styles.cmAddForm, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text style={[styles.cmFormEyebrow, { color: palette.textSecondary }]}>新增分类</Text>
-              <TextInput
-                style={[styles.cmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
-                value={newName}
-                onChangeText={setNewName}
-                placeholder={newParentId ? `${t('categories.name')} (${t('locations.parent')})` : t('categories.name')}
-                placeholderTextColor={palette.textMuted}
-              />
-              <View style={styles.cmTypeRow}>
-                {typeOptions.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[
-                      styles.cmTypeOption,
-                      { borderColor: palette.border, backgroundColor: palette.surfaceSoft },
-                      newType === opt.value && { borderColor: palette.orange, backgroundColor: palette.surface },
-                    ]}
-                    onPress={() => setNewType(opt.value)}
-                  >
-                    <Text style={[
-                      styles.cmTypeOptionText,
-                      { color: palette.textMuted },
-                      newType === opt.value && { color: palette.orange },
-                    ]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.cmIconColorRow}>
-                <TouchableOpacity style={[styles.cmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
-                  <LinearGradient
-                    colors={[newColor, newColor + '80']}
-                    style={styles.cmIconPreview}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
-                  </LinearGradient>
-                  <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
-                  <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cmColorSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openColorPicker('add')}>
-                  <View style={[styles.cmColorPreview, { backgroundColor: newColor, borderColor: palette.border }]} />
-                  <Text style={[styles.cmColorSelectText, { color: palette.textMuted }]}>{t('categories.color')}</Text>
-                  <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
-                </TouchableOpacity>
-              </View>
-              {newParentId && (
-                <View style={[styles.cmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
-                  <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
-                  <Text style={[styles.cmParentInfoText, { color: palette.textSecondary }]}>
-                    {`${t('locations.parent')}: ${categories.find(c => c.id === newParentId)?.name || ''}`}
-                  </Text>
-                </View>
-              )}
-              <FormActions onCancel={() => setShowAdd(false)} onSubmit={handleAdd} submitLabel={t('common.save')} loading={loading} />
-            </View>
-          )}
-
-        {(itemCategoryTree.length === 0 && todoCategoryTree.length === 0 && !showAdd && editingId === null) ? (
+        {(itemCategoryTree.length === 0 && todoCategoryTree.length === 0 && editingId === null) ? (
           <Text style={[styles.cmEmptyText, { color: palette.textMuted }]}>{t('categories.empty')}</Text>
         ) : (
           <>
@@ -418,10 +342,70 @@ export default function CategoryManageScreen() {
       </View>
       </ScrollView>
 
+      {/* 新增分类弹窗 */}
+      <BottomSheet visible={showAdd} onClose={() => setShowAdd(false)}>
+            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text }]}>新增分类</Text>
+            <TextInput
+              style={[styles.cmInput, { borderColor: palette.border, color: palette.text, backgroundColor: palette.surfaceSoft }]}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder={newParentId ? `${t('categories.name')} (${t('locations.parent')})` : t('categories.name')}
+              placeholderTextColor={palette.textMuted}
+            />
+            <View style={styles.cmTypeRow}>
+              {typeOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.cmTypeOption,
+                    { borderColor: palette.border, backgroundColor: palette.surfaceSoft },
+                    newType === opt.value && { borderColor: palette.orange, backgroundColor: palette.surface },
+                  ]}
+                  onPress={() => setNewType(opt.value)}
+                >
+                  <Text style={[
+                    styles.cmTypeOptionText,
+                    { color: palette.textMuted },
+                    newType === opt.value && { color: palette.orange },
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.cmIconColorRow}>
+              <TouchableOpacity style={[styles.cmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('add')}>
+                <LinearGradient
+                  colors={[newColor, newColor + '80']}
+                  style={styles.cmIconPreview}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
+                </LinearGradient>
+                <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.cmColorSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openColorPicker('add')}>
+                <View style={[styles.cmColorPreview, { backgroundColor: newColor, borderColor: palette.border }]} />
+                <Text style={[styles.cmColorSelectText, { color: palette.textMuted }]}>{t('categories.color')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {newParentId && (
+              <View style={[styles.cmParentInfo, { backgroundColor: palette.surfaceSoft }]}>
+                <MaterialCommunityIcons name="information-outline" size={16} color={palette.textMuted} />
+                <Text style={[styles.cmParentInfoText, { color: palette.textSecondary }]}>
+                  {`${t('locations.parent')}: ${categories.find(c => c.id === newParentId)?.name || ''}`}
+                </Text>
+              </View>
+            )}
+            <FormActions hideCancel onSubmit={handleAdd} submitLabel={t('common.save')} loading={loading} />
+      </BottomSheet>
+
       {/* 图标选择弹窗 */}
-      <Modal visible={showIconPicker} transparent animationType="fade" onRequestClose={() => setShowIconPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowIconPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
+      <BottomSheet visible={showIconPicker} onClose={() => setShowIconPicker(false)}>
             <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
             <Text style={[styles.pickerTitle, { color: palette.text }]}>选择图标</Text>
             <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerGrid}>
@@ -443,9 +427,7 @@ export default function CategoryManageScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      </BottomSheet>
 
       {/* 颜色选择弹窗 */}
       <ColorPicker
@@ -460,15 +442,7 @@ export default function CategoryManageScreen() {
 
 const styles = StyleSheet.create({
   cmContainer: { flex: 1 },
-  cmContent: { paddingBottom: 20, paddingTop: spacing.md },
-  header: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  headerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  headerCopy: { flex: 1 },
-  title: { fontSize: fontSize['4xl'], fontWeight: fontWeight.bold },
-  summaryBadge: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, minWidth: 92, alignItems: 'center', justifyContent: 'center' },
-  summaryText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
-  summaryValue: { fontSize: fontSize['2xl'], fontWeight: fontWeight.bold },
-  summaryLabel: { fontSize: fontSize.xs },
+  cmContent: { paddingBottom: 20, paddingTop: spacing.lg },
   cmSection: { marginBottom: spacing.md, paddingHorizontal: spacing.lg },
   cmSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cmSectionTitle: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold, textTransform: 'uppercase', marginBottom: spacing.xs },
@@ -516,8 +490,6 @@ const styles = StyleSheet.create({
   cmSaveBtn: { flex: 1, borderRadius: borderRadius.md, height: 40, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
   cmSaveBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
   cmEmptyText: { fontSize: fontSize.base, textAlign: 'center', padding: spacing.xl },
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
-  pickerModal: { borderTopLeftRadius: borderRadius['2xl'], borderTopRightRadius: borderRadius['2xl'], padding: spacing.xl, paddingBottom: 40, maxHeight: '70%', borderWidth: 1 },
   pickerHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg },
   pickerScroll: { maxHeight: 400 },

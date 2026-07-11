@@ -1,18 +1,23 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Toast } from '../../components/Toast';
 import { AppHeader, WorkbenchBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { useTranslation } from '../../lib/i18n';
 import { useColors } from '../../stores/themeStore';
+import { useSyncStore } from '../../stores/syncStore';
 
 type Entry = {
   title: string;
   subtitle?: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  route: string;
+  route?: string;
+  onPress?: () => void;
+  loading?: boolean;
   color: string;
   bg: string;
 };
@@ -35,6 +40,33 @@ export default function WorkbenchScreen() {
   const colors = useColors();
   const dark = colors.gray[50] === appDesign.dark.bg;
   const palette = dark ? appDesign.dark : appDesign.light;
+  const { t } = useTranslation();
+  const { status, syncAll } = useSyncStore();
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+    clearTimeout(toastTimer.current);
+    setToastVisible(false);
+    setTimeout(() => {
+      setToastMsg(msg);
+      setToastType(type);
+      setToastVisible(true);
+      toastTimer.current = setTimeout(() => setToastVisible(false), 2200);
+    }, 50);
+  }, []);
+
+  const handleSync = useCallback(async () => {
+    if (status === 'syncing') return;
+    try {
+      await syncAll();
+      showToast(t('settings.syncSuccess'), 'success');
+    } catch {
+      showToast(t('settings.syncFailed'), 'error');
+    }
+  }, [status, syncAll, showToast, t]);
 
   const core: Entry[] = [
     { title: '物品管理', subtitle: '追踪你的所有物品', icon: 'package-variant', route: '/item/list', color: palette.orange, bg: alphaBg('#F36F3C', dark ? 0.18 : 0.12) },
@@ -60,6 +92,7 @@ export default function WorkbenchScreen() {
     {
       title: '数据与提醒',
       entries: [
+        { title: '同步', subtitle: '立即同步', icon: 'cloud-sync-outline', onPress: handleSync, loading: status === 'syncing', color: palette.orange, bg: alphaBg('#F36F3C', dark ? 0.18 : 0.12) },
         { title: '统计', subtitle: '完成率', icon: 'chart-bar', route: '/settings/stats', color: palette.orange, bg: alphaBg('#F36F3C', dark ? 0.18 : 0.12) },
         { title: '通知', subtitle: '提醒中心', icon: 'bell-outline', route: '/settings/notifications', color: palette.warning, bg: alphaBg('#D89400', dark ? 0.18 : 0.12) },
         { title: '数据', subtitle: '导入导出', icon: 'database-outline', route: '/settings/data', color: palette.violet, bg: alphaBg('#7C5CFC', dark ? 0.18 : 0.12) },
@@ -116,7 +149,7 @@ export default function WorkbenchScreen() {
                         backgroundColor: entry.bg,
                       },
                     ]}
-                    onPress={() => go(entry.route)}
+                    onPress={() => go(entry.route!)}
                     activeOpacity={0.82}
                   >
                     <View style={[styles.coreIconWrap, { backgroundColor: entry.color, shadowColor: entry.color }]}>
@@ -153,11 +186,16 @@ export default function WorkbenchScreen() {
                   <TouchableOpacity
                     key={entry.title}
                     style={styles.gridItem}
-                    onPress={() => go(entry.route)}
+                    onPress={entry.onPress ? entry.onPress : () => go(entry.route!)}
                     activeOpacity={0.7}
+                    disabled={entry.loading}
                   >
                     <View style={[styles.gridIconWrap, { backgroundColor: entry.bg }]}>
-                      <MaterialCommunityIcons name={entry.icon} size={22} color={entry.color} />
+                      {entry.loading ? (
+                        <ActivityIndicator size="small" color={entry.color} />
+                      ) : (
+                        <MaterialCommunityIcons name={entry.icon} size={22} color={entry.color} />
+                      )}
                     </View>
                     <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>
                       {entry.title}
@@ -172,6 +210,7 @@ export default function WorkbenchScreen() {
               </View>
             </View>
           ))}
+          <Toast visible={toastVisible} message={toastMsg} type={toastType} />
         </ScrollView>
       </View>
     </SafeScreen>

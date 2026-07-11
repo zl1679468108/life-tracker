@@ -68,14 +68,6 @@ export default function AssetsScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: palette.text }]}>资产总览</Text>
-          </View>
-        </View>
-      </View>
-
       <View style={[styles.heroCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.heroTop}>
           <View>
@@ -248,22 +240,6 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  headerCopy: {
-    flex: 1,
-  },
-  title: {
-    fontSize: fontSize['4xl'],
-    fontWeight: fontWeight.bold,
   },
   heroCard: {
     marginHorizontal: spacing.lg,

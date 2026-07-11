@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, TextInput, RefreshControl, SafeAreaView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -247,7 +247,8 @@ export default function ItemListScreen() {
     return loc?.name || '未设置位置';
   };
 
-  const filtered = items.filter((i) => {
+  // 列表筛选结果 memo 化，避免每次渲染都重新计算
+  const filtered = useMemo(() => items.filter((i) => {
     const query = debouncedSearch.trim().toLowerCase();
     const categoryName = getCategoryName(i.category_id).toLowerCase();
     const locationName = getLocationName(i.location_id).toLowerCase();
@@ -272,7 +273,7 @@ export default function ItemListScreen() {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'category') return getCategoryName(a.category_id).localeCompare(getCategoryName(b.category_id), 'zh-CN');
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  }), [items, debouncedSearch, selectedCategory, selectedLocation, selectedStatus, sortBy, customCategories, customLocations]);
 
   const countLabel = batchMode ? `已选 ${selectedIds.size} / ${filtered.length}` : `共 ${filtered.length} 件`;
   const activeFilterCount = [
@@ -328,8 +329,11 @@ export default function ItemListScreen() {
     const valueText = hasValue
       ? ((item.currency || 'CNY') === 'CNY' ? `¥${item.current_value}` : `${item.current_value} ${item.currency}`)
       : '';
+    const expiryColor = expiryDiff !== null
+      ? (expiryDiff < 0 ? palette.danger : expiryDiff <= 7 ? palette.warning : palette.textMuted)
+      : palette.textMuted;
     return (
-      <SwipeableRow onDelete={() => handleDeleteItem(item)}>
+      <SwipeableRow onDelete={() => handleDeleteItem(item)} containerStyle={{ marginHorizontal: spacing.lg }}>
         <TouchableOpacity
           style={[
             styles.itemCard,
@@ -341,10 +345,10 @@ export default function ItemListScreen() {
         >
           <View style={styles.iconContainer}>
             {item.images && item.images.length > 0 ? (
-              <CachedImage uri={item.images[0]} size={44} borderRadius={22} />
+              <CachedImage uri={item.images[0]} size={48} borderRadius={24} />
             ) : (
               <View style={[styles.itemIcon, { backgroundColor: `${categoryColor}16` }]}>
-                <MaterialCommunityIcons name={icon as any} size={22} color={categoryColor} />
+                <MaterialCommunityIcons name={icon as any} size={24} color={categoryColor} />
               </View>
             )}
           </View>
@@ -361,14 +365,13 @@ export default function ItemListScreen() {
               <Text style={[styles.itemDesc, { color: palette.textMuted }]} numberOfLines={1}>{item.description}</Text>
             )}
             <View style={styles.itemMetaRow}>
-              <Text
-                style={[styles.tag, { color: categoryColor }]}
-                numberOfLines={1}
-              >
-                {getCategoryName(item.category_id)}
-              </Text>
+              <View style={[styles.tag, { backgroundColor: `${categoryColor}1A` }]}>
+                <Text style={[styles.tagText, { color: categoryColor }]} numberOfLines={1}>
+                  {getCategoryName(item.category_id)}
+                </Text>
+              </View>
               {item.location_id && (
-                <View style={styles.metaChip}>
+                <View style={[styles.metaChip, { backgroundColor: `${palette.textMuted}14` }]}>
                   <MaterialCommunityIcons name="map-marker-outline" size={11} color={palette.textMuted} />
                   <Text style={[styles.metaChipText, { color: palette.textMuted }]} numberOfLines={1}>
                     {getLocationName(item.location_id)}
@@ -376,17 +379,14 @@ export default function ItemListScreen() {
                 </View>
               )}
               {expiryDiff !== null && (
-                <View style={styles.metaChip}>
+                <View style={[styles.metaChip, { backgroundColor: `${expiryColor}14` }]}>
                   <MaterialCommunityIcons
                     name={expiryDiff < 0 ? 'alert-circle-outline' : expiryDiff <= 7 ? 'clock-alert-outline' : 'calendar-outline'}
                     size={11}
-                    color={expiryDiff < 0 ? palette.danger : expiryDiff <= 7 ? palette.warning : palette.textMuted}
+                    color={expiryColor}
                   />
                   <Text
-                    style={[
-                      styles.metaChipText,
-                      { color: expiryDiff < 0 ? palette.danger : expiryDiff <= 7 ? palette.warning : palette.textMuted },
-                    ]}
+                    style={[styles.metaChipText, { color: expiryColor }]}
                     numberOfLines={1}
                   >
                     {expiryDiff < 0 ? `过期 ${Math.abs(expiryDiff)} 天` : expiryDiff === 0 ? '今天到期' : `${expiryDiff} 天后到期`}
@@ -622,16 +622,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     marginBottom: spacing.sm,
     position: 'relative',
-    ...shadows.sm,
   },
   itemIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -640,7 +638,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: spacing.sm,
     justifyContent: 'center',
-    gap: 1,
+    gap: spacing.sm,
   },
   itemHead: {
     flexDirection: 'row',
@@ -664,12 +662,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: 1,
   },
   metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
   },
   metaChipText: {
     fontSize: fontSize.xs,
@@ -682,6 +682,11 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   tag: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  tagText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     lineHeight: 14,

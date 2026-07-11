@@ -21,6 +21,9 @@ const toDataUri = async (url: string): Promise<string> => {
 /** 是否 Base64 data URI */
 const isDataUri = (v: string) => v.startsWith('data:');
 
+/** 防抖间隔：30 秒内不重复请求 profile */
+const PROFILE_DEBOUNCE_MS = 30 * 1000;
+
 interface ProfileState {
   profile: LifeProfile | null;
   /** 原始头像 URL，用于检测变更 */
@@ -31,8 +34,11 @@ interface ProfileState {
   avatarConverting: boolean;
   loading: boolean;
   error: string | null;
+  /** 上次成功加载 profile 的时间戳（用于防抖） */
+  lastFetchAt: number | null;
 
-  fetchProfile: () => Promise<void>;
+  /** force: true 时强制刷新（忽略防抖） */
+  fetchProfile: (force?: boolean) => Promise<void>;
   updateProfile: (updates: Partial<LifeProfile>) => Promise<void>;
   initCachedAvatar: () => Promise<void>;
   clearCache: () => Promise<void>;
@@ -45,6 +51,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   avatarConverting: false,
   loading: false,
   error: null,
+  lastFetchAt: null,
 
   initCachedAvatar: async () => {
     try {
@@ -68,14 +75,21 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         AsyncStorage.removeItem(AVATAR_DATA_CACHE_KEY),
       ]);
     } catch {}
-    set({ profile: null, cachedAvatarUrl: null, avatarDataUri: null });
+    set({ profile: null, cachedAvatarUrl: null, avatarDataUri: null, lastFetchAt: null });
   },
 
-  fetchProfile: async () => {
+  fetchProfile: async (force = false) => {
+    // 防抖：30 秒内已成功加载过且非强制刷新，跳过
+    const { lastFetchAt } = get();
+    if (!force && lastFetchAt && Date.now() - lastFetchAt < PROFILE_DEBOUNCE_MS) {
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const response = await api.auth.getProfile();
       const profile = response.data;
+      // 成功获取就记录时间戳（用于防抖）
+      set({ lastFetchAt: Date.now() });
       const { cachedAvatarUrl, avatarDataUri, avatarConverting } = get();
 
       if (profile?.avatar_url) {

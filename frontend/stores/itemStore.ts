@@ -8,6 +8,8 @@ import { networkMonitor } from '../lib/network';
 import { socketService } from '../lib/socket';
 
 const ITEMS_CACHE_KEY = 'items';
+// 请求竞态守卫：仅接受最后一次 fetch 的结果
+let fetchItemsRequestId = 0;
 
 interface ItemState {
   items: LifeItem[];
@@ -27,37 +29,45 @@ export const useItemStore = create<ItemState>((set) => ({
   error: null,
   clearError: () => set({ error: null }),
   fetchItems: async () => {
+    const requestId = ++fetchItemsRequestId;
     const currentItems = useItemStore.getState().items;
     set({ loading: currentItems.length === 0, error: null });
-    
+
     // 离线模式：优先从缓存加载
     if (!networkMonitor.isOnline()) {
       const cached = await cache.get<LifeItem[]>(ITEMS_CACHE_KEY);
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchItemsRequestId) return;
       if (cached) {
         set({ items: cached, loading: false });
         return;
       }
     }
-    
+
     try {
       const response = await api.items.list();
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchItemsRequestId) return;
       const items = Array.isArray(response?.data) ? response.data : [];
       set({ items, loading: false });
-      
+
       // 缓存数据
       await cache.set(ITEMS_CACHE_KEY, items);
     } catch (error) {
       console.error('fetchItems error:', error);
-      
+      // 已有更新的请求发起，丢弃本次过期结果
+      if (requestId !== fetchItemsRequestId) return;
+
       // 网络错误时尝试从缓存加载
       if (!networkMonitor.isOnline()) {
         const cached = await cache.get<LifeItem[]>(ITEMS_CACHE_KEY);
+        if (requestId !== fetchItemsRequestId) return;
         if (cached) {
           set({ items: cached, loading: false });
           return;
         }
       }
-      
+
       set({ error: (error as Error).message, loading: false });
     }
   },
@@ -135,6 +145,7 @@ export const useItemStore = create<ItemState>((set) => ({
       set((state) => ({ items: state.items.filter((item) => item.id !== id), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
+      throw error;
     }
   },
   updateItemReminder: async (id, data) => {

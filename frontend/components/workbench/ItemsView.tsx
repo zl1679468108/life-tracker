@@ -139,7 +139,7 @@ export function WorkbenchItemsView() {
     const icon = getCategoryIcon(item.category_id);
     const isSelected = selectedIds.has(item.id);
     return (
-      <SwipeableRow onDelete={() => handleDeleteItem(item)}>
+      <SwipeableRow onDelete={() => handleDeleteItem(item)} containerStyle={{ marginHorizontal: spacing.lg }}>
         <TouchableOpacity
           style={[
             styles.itemCard,
@@ -352,9 +352,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.sm,
   },
   itemIcon: {
     width: 52,

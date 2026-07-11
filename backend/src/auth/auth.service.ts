@@ -4,6 +4,7 @@ import { SUPABASE_ADMIN_CLIENT, SUPABASE_CLIENT } from '../common/supabase/supab
 import { ConfigService } from '@nestjs/config';
 import { MailService } from '../common/mail/mail.service';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { signToken, verifyToken } from '../common/utils/token';
 
 @Injectable()
 export class AuthService {
@@ -52,14 +53,11 @@ export class AuthService {
 
     // 发送自定义验证邮件
     if (data.user) {
-      // 生成一个验证 token（这里使用用户的 id 作为 token，实际应该生成一个专门的验证 token）
-      // 注意：实际生产中应该使用更安全的 token 生成机制
-      const verifyToken = Buffer.from(JSON.stringify({
-        userId: data.user.id,
-        email: data.user.email,
-        type: 'signup',
-        exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
-      })).toString('base64');
+      // 生成带 HMAC 签名的验证 token，防止伪造
+      const verifyToken = signToken(
+        { userId: data.user.id, email: data.user.email, type: 'signup' },
+        24 * 60 * 60 * 1000, // 24小时后过期
+      );
 
       await this.mailService.sendVerificationEmail(email, verifyToken, 'signup');
     }
@@ -69,18 +67,8 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     try {
-      // 解析 token
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
-      // 验证 token 是否过期
-      if (decoded.exp < Date.now()) {
-        throw new HttpException('验证链接已过期', HttpStatus.BAD_REQUEST);
-      }
-
-      // 验证 token 类型
-      if (decoded.type !== 'signup') {
-        throw new HttpException('无效的验证链接', HttpStatus.BAD_REQUEST);
-      }
+      // 验证签名 + 有效期 + 类型
+      const decoded = verifyToken(token, 'signup');
 
       // 使用 admin client 确认用户邮箱
       const { data, error } = await this.adminClient.auth.admin.updateUserById(
@@ -97,7 +85,8 @@ export class AuthService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new HttpException('无效的验证链接', HttpStatus.BAD_REQUEST);
+      const message = error instanceof Error ? error.message : '无效的验证链接';
+      throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -106,7 +95,7 @@ export class AuthService {
     const { data: users, error: listError } = await this.adminClient.auth.admin.listUsers();
     
     if (listError) {
-      throw new HttpException(listError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('查询用户列表失败:', listError); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     const user = (users?.users as any[])?.find((u: any) => u.email === email);
@@ -116,13 +105,11 @@ export class AuthService {
       return { message: '重置密码邮件已发送' };
     }
 
-    // 生成重置密码 token
-    const resetToken = Buffer.from(JSON.stringify({
-      userId: user.id,
-      email: user.email,
-      type: 'reset',
-      exp: Date.now() + 60 * 60 * 1000, // 1小时后过期
-    })).toString('base64');
+    // 生成带 HMAC 签名的重置密码 token，防止伪造
+    const resetToken = signToken(
+      { userId: user.id, email: user.email, type: 'reset' },
+      60 * 60 * 1000, // 1小时后过期
+    );
 
     // 发送自定义重置密码邮件
     await this.mailService.sendVerificationEmail(email, resetToken, 'reset');
@@ -136,18 +123,8 @@ export class AuthService {
     }
 
     try {
-      // 解析 token
-      const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
-      // 验证 token 是否过期
-      if (decoded.exp < Date.now()) {
-        throw new HttpException('重置链接已过期', HttpStatus.BAD_REQUEST);
-      }
-
-      // 验证 token 类型
-      if (decoded.type !== 'reset') {
-        throw new HttpException('无效的重置链接', HttpStatus.BAD_REQUEST);
-      }
+      // 验证签名 + 有效期 + 类型
+      const decoded = verifyToken(token, 'reset');
 
       // 使用 admin client 更新用户密码
       const { data, error } = await this.adminClient.auth.admin.updateUserById(
@@ -164,7 +141,8 @@ export class AuthService {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new HttpException('无效的重置链接', HttpStatus.BAD_REQUEST);
+      const message = error instanceof Error ? error.message : '无效的重置链接';
+      throw new HttpException(message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -216,13 +194,13 @@ export class AuthService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('查询用户资料失败:', error); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
     }
     
     // 如果用户还没有 profile，返回一个默认对象
     const { data: userData, error: userError } = await userClient.auth.getUser(token);
     if (userError) {
-      throw new HttpException(userError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('获取用户信息失败:', userError); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     const email = data?.email || userData.user?.email || null;
@@ -338,7 +316,7 @@ export class AuthService {
     const { data: listData, error: listError } = await this.adminClient.auth.admin.listUsers();
     
     if (listError) {
-      throw new HttpException(listError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('查询用户列表失败:', listError); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // 查找是否已有该微信用户（通过 user_metadata 中的 wechat_openid）
@@ -354,7 +332,7 @@ export class AuthService {
       });
 
       if (sessionError) {
-        throw new HttpException(sessionError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        console.error('生成会话失败:', sessionError); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
       }
 
       return {
@@ -377,7 +355,7 @@ export class AuthService {
       });
 
       if (createError) {
-        throw new HttpException(createError.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        console.error('创建微信用户失败:', createError); throw new HttpException('操作失败，请稍后重试', HttpStatus.INTERNAL_SERVER_ERROR);
       }
 
       return {

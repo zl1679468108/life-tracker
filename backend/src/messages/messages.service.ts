@@ -91,7 +91,10 @@ export class MessagesService {
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(50);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     if (!conversations || conversations.length === 0) return [];
 
@@ -114,55 +117,84 @@ export class MessagesService {
       readAtMap.set(status.conversation_id, status.last_read_at);
     }
 
-    // 4. 组装结果
-    const enriched = await Promise.all(
-      conversations.map(async (conv) => {
-        const otherUserId = conv.participant_ids.find((id: string) => id !== userId);
-        const userInfo = userInfoMap.get(otherUserId) || {};
+    // 4. 批量获取每个对话的最后一条消息（避免 N+1 查询）
+    // Supabase JS v2 不支持 DISTINCT ON，先按 created_at 倒序拉取，在内存中按对话去重取最新
+    const lastMessageMap = new Map<string, any>();
+    const { data: recentMessages } = await this.supabase
+      .from('life_messages')
+      .select('conversation_id, type, content, card_data, created_at')
+      .in('conversation_id', conversationIds)
+      .order('created_at', { ascending: false })
+      .limit(500);
 
-        // 获取最后一条消息
-        const { data: lastMsg } = await this.supabase
-          .from('life_messages')
-          .select('type, content, card_data, created_at')
-          .eq('conversation_id', conv.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+    for (const msg of recentMessages || []) {
+      // 由于已按 created_at 倒序，首次出现的对话即为该对话的最后一条消息
+      if (!lastMessageMap.has(msg.conversation_id)) {
+        lastMessageMap.set(msg.conversation_id, msg);
+      }
+    }
 
-        const lastReadAt = readAtMap.get(conv.id);
+    // 5. 批量获取未读消息数（避免 N+1 查询）
+    const unreadCountMap = new Map<string, number>();
+    const convsWithReadAt = conversations.filter((c) => readAtMap.has(c.id));
+    const convsWithoutReadAt = conversations.filter((c) => !readAtMap.has(c.id));
 
-        // 计算未读数：对方发送且晚于最后已读时间的消息
-        let unreadQuery = this.supabase
-          .from('life_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', conv.id)
-          .eq('sender_id', otherUserId);
+    // 5.1 无已读记录的对话：所有对方发送的消息都算未读
+    if (convsWithoutReadAt.length > 0) {
+      const { data: unreadMsgs } = await this.supabase
+        .from('life_messages')
+        .select('conversation_id')
+        .in('conversation_id', convsWithoutReadAt.map((c) => c.id))
+        .neq('sender_id', userId);
+      for (const m of unreadMsgs || []) {
+        unreadCountMap.set(m.conversation_id, (unreadCountMap.get(m.conversation_id) || 0) + 1);
+      }
+    }
 
-        if (lastReadAt) {
-          unreadQuery = unreadQuery.gt('created_at', lastReadAt);
+    // 5.2 有已读记录的对话：取晚于该对话已读时间的消息
+    if (convsWithReadAt.length > 0) {
+      // 用所有已读时间中的最小值作为查询下界，减少拉取量；内存中再按各对话的已读时间精确过滤
+      const readAtValues = convsWithReadAt.map((c) => readAtMap.get(c.id)!);
+      const minReadAt = readAtValues.reduce((min, v) => (v < min ? v : min));
+      const { data: unreadMsgs } = await this.supabase
+        .from('life_messages')
+        .select('conversation_id, created_at')
+        .in('conversation_id', convsWithReadAt.map((c) => c.id))
+        .neq('sender_id', userId)
+        .gt('created_at', minReadAt);
+      for (const m of unreadMsgs || []) {
+        const convReadAt = readAtMap.get(m.conversation_id);
+        // 内存中按各对话的已读时间精确过滤
+        if (convReadAt && m.created_at > convReadAt) {
+          unreadCountMap.set(m.conversation_id, (unreadCountMap.get(m.conversation_id) || 0) + 1);
         }
+      }
+    }
 
-        const { count: unreadCount } = await unreadQuery;
+    // 6. 组装结果（纯内存 join，无额外查询）
+    const enriched = conversations.map((conv) => {
+      const otherUserId = conv.participant_ids.find((id: string) => id !== userId);
+      const userInfo = userInfoMap.get(otherUserId) || {};
+      const lastMsg = lastMessageMap.get(conv.id);
 
-        return {
-          ...conv,
-          other_user: {
-            user_id: otherUserId,
-            display_name: this.resolveDisplayName(userInfo),
-            avatar_url: userInfo.avatar_url || null,
-          },
-          last_message: lastMsg
-            ? {
-                type: lastMsg.type,
-                content: lastMsg.content,
-                card_data: lastMsg.card_data,
-                created_at: lastMsg.created_at,
-              }
-            : null,
-          unread_count: unreadCount || 0,
-        };
-      }),
-    );
+      return {
+        ...conv,
+        other_user: {
+          user_id: otherUserId,
+          display_name: this.resolveDisplayName(userInfo),
+          avatar_url: userInfo.avatar_url || null,
+        },
+        last_message: lastMsg
+          ? {
+              type: lastMsg.type,
+              content: lastMsg.content,
+              card_data: lastMsg.card_data,
+              created_at: lastMsg.created_at,
+            }
+          : null,
+        unread_count: unreadCountMap.get(conv.id) || 0,
+      };
+    });
 
     return enriched;
   }
@@ -194,7 +226,10 @@ export class MessagesService {
 
     const { data: messages, error } = await query.limit(limit);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     // 批量获取发送者信息
     const senderIds = (messages || []).map((msg) => msg.sender_id);
@@ -222,6 +257,11 @@ export class MessagesService {
       throw new BadRequestException('对话必须恰好包含两个参与者');
     }
 
+    // 校验发起者是参与者之一，防止创建他人之间的对话（对齐 createManualConversation）
+    if (!data.participant_ids.includes(userId)) {
+      throw new BadRequestException('发起者必须是对话参与者');
+    }
+
     const { data: conv, error } = await this.supabase
       .from('life_conversations')
       .insert({
@@ -233,7 +273,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     return convertTimesToBeijing(conv);
   }
@@ -267,10 +310,13 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
-    // 更新对话的最后消息信息
-    await this.supabase
+    // 更新对话的最后消息信息（与消息插入构成逻辑事务：失败则回滚消息）
+    const { error: convUpdateError } = await this.supabase
       .from('life_conversations')
       .update({
         last_message_type: data.type,
@@ -278,6 +324,15 @@ export class MessagesService {
         last_message_at: msg.created_at,
       })
       .eq('id', conversationId);
+
+    if (convUpdateError) {
+      // 补偿：删除已插入的消息，避免消息已存但对话列表未刷新的不一致
+      await this.supabase
+        .from('life_messages')
+        .delete()
+        .eq('id', msg.id);
+      throw new InternalServerErrorException('更新对话信息失败，消息已回滚');
+    }
 
     // 获取对话参与者以推送 WebSocket 事件
     const { data: convParticipants } = await this.supabase
@@ -329,9 +384,12 @@ export class MessagesService {
         { onConflict: 'user_id,conversation_id' },
       );
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
-    return { success: true };
+    return { code: 200, data: null, message: '标记已读成功' };
   }
 
   /**
@@ -348,7 +406,10 @@ export class MessagesService {
       .order('display_name', { ascending: true })
       .limit(20);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     return (profiles || []).map((p) => ({
       id: p.id,
@@ -375,7 +436,10 @@ export class MessagesService {
       .contains('participant_ids', [userId])
       .limit(200);
 
-    if (convError) throw new InternalServerErrorException(convError.message);
+    if (convError) {
+      console.error('对话操作失败:', convError);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     const conversationIds = (conversations || []).map((c) => c.id);
     const conversationMap = new Map((conversations || []).map((c) => [c.id, c]));
@@ -391,7 +455,10 @@ export class MessagesService {
         .order('created_at', { ascending: false })
         .limit(30);
 
-      if (msgError) throw new InternalServerErrorException(msgError.message);
+      if (msgError) {
+        console.error('消息操作失败:', msgError);
+        throw new InternalServerErrorException('操作失败，请稍后重试');
+      }
       messages = foundMessages || [];
     }
 
@@ -402,7 +469,7 @@ export class MessagesService {
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
       .eq('status', 'accepted');
 
-    if (friendError) throw new InternalServerErrorException(friendError.message);
+    if (friendError) { console.error('查询好友失败:', friendError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
 
     const friendIds = (friendships || []).map((row) =>
       row.requester_id === userId ? row.addressee_id : row.requester_id,
@@ -452,7 +519,10 @@ export class MessagesService {
       .eq('status', 'accepted')
       .maybeSingle();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     if (!data) throw new BadRequestException('只能与已通过好友操作');
     return data;
   }
@@ -488,7 +558,10 @@ export class MessagesService {
       .eq('status', 'accepted')
       .order('updated_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     const friends = await Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
     return friends.sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }
@@ -501,7 +574,10 @@ export class MessagesService {
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
   }
 
@@ -516,7 +592,7 @@ export class MessagesService {
       .or(`and(requester_id.eq.${userId},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${userId})`)
       .maybeSingle();
 
-    if (existingError) throw new InternalServerErrorException(existingError.message);
+    if (existingError) { console.error('查询好友申请失败:', existingError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
     if (existing) {
       if (existing.status === 'accepted') throw new BadRequestException('已经是好友');
       if (existing.status === 'pending') throw new BadRequestException('好友申请已发送');
@@ -532,7 +608,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     this.eventsGateway.emitFriendRequestUpdated(targetUserId, { type: 'request_created', friendship_id: data.id });
     return this.enrichFriendship(data, userId);
   }
@@ -556,7 +635,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     if (status === 'accepted') {
       await this.createOrGetFriendConversation(existing.requester_id, existing.addressee_id);
@@ -587,7 +669,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
     return this.enrichFriendship(data, userId);
   }
 
@@ -608,7 +693,10 @@ export class MessagesService {
       .delete()
       .eq('id', friendshipId);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     const otherId = existing.requester_id === userId ? existing.addressee_id : existing.requester_id;
     const { error: sharesError } = await this.supabase
@@ -616,11 +704,30 @@ export class MessagesService {
       .delete()
       .or(`and(owner_id.eq.${userId},shared_with_id.eq.${otherId}),and(owner_id.eq.${otherId},shared_with_id.eq.${userId})`);
 
-    if (sharesError) throw new InternalServerErrorException(sharesError.message);
+    if (sharesError) { console.error('清理共享记录失败:', sharesError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+
+    // 清理两人之间的对话及消息，避免重新加好友时复用旧对话历史
+    const { data: conversations } = await this.supabase
+      .from('life_conversations')
+      .select('id')
+      .contains('participant_ids', [userId])
+      .contains('participant_ids', [otherId]);
+
+    if (conversations && conversations.length > 0) {
+      const conversationIds = conversations.map((c) => c.id);
+      // life_messages 通过 conversation_id ON DELETE CASCADE，删除对话会级联删除消息
+      const { error: convDeleteError } = await this.supabase
+        .from('life_conversations')
+        .delete()
+        .in('id', conversationIds);
+      if (convDeleteError) {
+        console.error('清理对话失败:', convDeleteError.message);
+      }
+    }
 
     this.eventsGateway.emitFriendRequestUpdated(userId, { type: 'friend_deleted', friendship_id: friendshipId });
     this.eventsGateway.emitFriendRequestUpdated(otherId, { type: 'friend_deleted', friendship_id: friendshipId });
-    return { success: true };
+    return { code: 200, data: null, message: '删除好友成功' };
   }
 
   private async createOrGetFriendConversation(userA: string, userB: string) {
@@ -644,7 +751,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('消息操作失败:', error);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     await this.supabase
       .from('life_messages')
@@ -699,7 +809,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (convError) throw new InternalServerErrorException(convError.message);
+    if (convError) {
+      console.error('对话操作失败:', convError);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     // 如果有首条消息，创建它
     let createdMessage = null;
@@ -716,7 +829,10 @@ export class MessagesService {
         .select()
         .single();
 
-      if (msgError) throw new InternalServerErrorException(msgError.message);
+      if (msgError) {
+        console.error('消息操作失败:', msgError);
+        throw new InternalServerErrorException('操作失败，请稍后重试');
+      }
 
       // 更新对话的最后消息
       await this.supabase
@@ -762,7 +878,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (convError) throw new InternalServerErrorException(convError.message);
+    if (convError) {
+      console.error('对话操作失败:', convError);
+      throw new InternalServerErrorException('操作失败，请稍后重试');
+    }
 
     // 2. 创建卡片消息（发给对方）
     const cardData = {
@@ -785,7 +904,10 @@ export class MessagesService {
       .select()
       .single();
 
-    if (msgError) throw new InternalServerErrorException(msgError.message);
+    if (msgError) {
+        console.error('消息操作失败:', msgError);
+        throw new InternalServerErrorException('操作失败，请稍后重试');
+      }
 
     // 3. 更新对话的最后消息
     await this.supabase

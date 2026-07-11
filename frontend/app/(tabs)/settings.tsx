@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import appConfig from '../../app.json';
-import { Toast } from '../../components/Toast';
 import { AppHeader, SettingsBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
@@ -14,7 +13,6 @@ import { i18n, useTranslation } from '../../lib/i18n';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
 import { useProfileStore } from '../../stores/profileStore';
-import { useSyncStore } from '../../stores/syncStore';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -24,11 +22,6 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, avatarDataUri, initCachedAvatar } = useProfileStore();
-  const { status, lastSyncTime, syncAll } = useSyncStore();
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const profileName = profile?.display_name || user?.email?.split('@')[0] || t('settings.profile');
   const profileEmail = user?.email || t('auth.login');
   const appVersion = appConfig.expo.version;
@@ -38,39 +31,6 @@ export default function SettingsScreen() {
     initCachedAvatar();
     fetchProfile();
   }, []);
-
-  const showToast = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'info') => {
-    clearTimeout(toastTimer.current);
-    setToastVisible(false);
-    setTimeout(() => {
-      setToastMsg(msg);
-      setToastType(type);
-      setToastVisible(true);
-      toastTimer.current = setTimeout(() => setToastVisible(false), 2200);
-    }, 50);
-  }, []);
-
-  const formatLastSyncTime = (timestamp: number | null) => {
-    if (!timestamp) return t('common.noData');
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
-    if (diffMins < 1) return t('common.refresh');
-    if (diffMins < 60) return `${diffMins}m`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
-    return `${Math.floor(diffHours / 24)}d`;
-  };
-
-  const handleSync = useCallback(async () => {
-    if (status === 'syncing') return;
-    try {
-      await syncAll();
-      showToast(t('settings.syncSuccess'), 'success');
-    } catch {
-      showToast(t('settings.syncFailed'), 'error');
-    }
-  }, [status, syncAll, showToast, t]);
 
   const go = (route: string) => router.push(route as never);
 
@@ -83,10 +43,8 @@ export default function SettingsScreen() {
       ],
     },
     {
-      title: '数据与支持',
+      title: '帮助与反馈',
       entries: [
-        { title: '同步', icon: 'cloud-sync-outline', onPress: handleSync, color: palette.orange, loading: status === 'syncing' },
-        { title: '数据', icon: 'database-outline', route: '/settings/data', color: palette.violet },
         { title: '反馈', icon: 'message-alert-outline', route: '/settings/feedback', color: palette.warning },
         { title: '版本', icon: 'information-outline', color: palette.textMuted, meta: `v${appVersion}` },
       ],
@@ -151,16 +109,12 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     key={entry.title}
                     style={styles.gridItem}
-                    onPress={entry.onPress ? entry.onPress : entry.route ? () => go(entry.route) : undefined}
-                    activeOpacity={entry.onPress || entry.route ? 0.78 : 1}
-                    disabled={!entry.onPress && !entry.route}
+                    onPress={entry.route ? () => go(entry.route) : undefined}
+                    activeOpacity={entry.route ? 0.78 : 1}
+                    disabled={!entry.route}
                   >
                     <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
-                      {entry.loading ? (
-                        <ActivityIndicator size="small" color={entry.color} />
-                      ) : (
-                        <MaterialCommunityIcons name={entry.icon as any} size={20} color={entry.color} />
-                      )}
+                      <MaterialCommunityIcons name={entry.icon as any} size={20} color={entry.color} />
                     </View>
                     <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>{entry.title}</Text>
                     {entry.meta && (
@@ -171,7 +125,6 @@ export default function SettingsScreen() {
               </View>
             </View>
           ))}
-          <Toast visible={toastVisible} message={toastMsg} type={toastType} />
         </ScrollView>
       </View>
     </SafeScreen>

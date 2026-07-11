@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Keyboard, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTodoStore } from '../../stores/todoStore';
@@ -9,7 +9,7 @@ import { useShareStore } from '../../stores/shareStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { FormActions, Input, ImagePicker, DatePicker, ShareDialog, FormSection } from '../../components/ui';
+import { FormActions, Input, ImagePicker, DatePicker, ShareDialog, FormSection, FormCard, BottomSheet } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
 import { api } from '../../lib/api';
@@ -23,7 +23,7 @@ export default function CreateTodoScreen() {
   const { categories, fetchCategories, addCategory } = useCategoryStore();
   const {
     resourceShares,
-    loading: sharesLoading,
+    mutationLoading: sharesLoading,
     fetchResourceShares,
     createShare,
     updateShare,
@@ -180,11 +180,11 @@ export default function CreateTodoScreen() {
     showAlert('已保存', '待办模板已保存，可在创建页套用');
   };
 
-  const validate = (): boolean => {
+  const validate = useCallback((): boolean => {
     const newErrors: typeof errors = {};
     if (!title.trim()) newErrors.title = '请输入待办标题';
     if (!categoryId) newErrors.category = '请选择分类';
-    if (!description.trim()) newErrors.description = '请输入描述';
+    // description 非必填，与 item 表单策略统一
     if (dueDate && Number.isNaN(new Date(dueDate).getTime())) newErrors.dueDate = '截止日期无效';
     if (reminderDate) {
       const reminder = new Date(reminderDate);
@@ -198,7 +198,7 @@ export default function CreateTodoScreen() {
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [title, categoryId, dueDate, reminderDate]);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -286,8 +286,7 @@ export default function CreateTodoScreen() {
           style={{ backgroundColor: palette.bg }}
           contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
         >
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>共享待办</Text>
+          <FormCard title="共享待办">
             <Text style={[styles.readOnlyTitle, { color: palette.text }]}>{title || '未命名待办'}</Text>
             {description ? <Text style={[styles.readOnlyDesc, { color: palette.textMuted }]}>{description}</Text> : null}
             <View style={styles.readOnlyRows}>
@@ -297,7 +296,7 @@ export default function CreateTodoScreen() {
               <ReadOnlyRow icon="bell-outline" label="提醒" value={reminderDate || '未设置'} palette={palette} />
               <ReadOnlyRow icon="check-circle-outline" label="状态" value={completed ? '已完成' : '待完成'} palette={palette} />
             </View>
-          </View>
+          </FormCard>
           <View style={[styles.readOnlyNotice, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             <MaterialCommunityIcons name="eye-outline" size={18} color={palette.textMuted} />
             <Text style={[styles.readOnlyNoticeText, { color: palette.textMuted }]}>你拥有查看权限，不能编辑、删除或继续共享该待办。</Text>
@@ -369,8 +368,7 @@ export default function CreateTodoScreen() {
             </View>
           )}
 
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>基础信息</Text>
+          <FormCard title="基础信息">
             <Input
               label="待办标题"
               value={title}
@@ -465,10 +463,9 @@ export default function CreateTodoScreen() {
               minDate={new Date()}
               error={errors.reminderDate}
             />
-          </View>
+          </FormCard>
 
-          <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[styles.cardEyebrow, { color: palette.textSecondary }]}>补充说明</Text>
+          <FormCard title="补充说明">
             <Input
               label="描述"
               value={description}
@@ -476,7 +473,6 @@ export default function CreateTodoScreen() {
               placeholder="添加详细描述..."
               multiline
               numberOfLines={3}
-              required
               error={errors.description}
               style={styles.compactInput}
             />
@@ -488,7 +484,7 @@ export default function CreateTodoScreen() {
                 maxImages={5}
               />
             </FormSection>
-          </View>
+          </FormCard>
 
           {canManageResource && (
             <View style={styles.contextActions}>
@@ -525,14 +521,7 @@ export default function CreateTodoScreen() {
         </ScrollView>
         <View style={[styles.stickyActionsShell, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
           <FormActions
-            onCancel={() => {
-              if (submitSucceeded) return;
-              if (isEdit) {
-                router.back();
-              } else {
-                router.replace('/todo/list');
-              }
-            }}
+            hideCancel
             onSubmit={handleSubmit}
             submitLabel={isEdit ? '保存修改' : '保存'}
             loading={loading}
@@ -564,115 +553,99 @@ export default function CreateTodoScreen() {
         />
       )}
 
-      <Modal visible={showSaveTemplateModal} transparent animationType="fade" onRequestClose={() => setShowSaveTemplateModal(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSaveTemplateModal(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>保存为模板</Text>
-            <Input
-              label="模板名称"
-              value={templateName}
-              onChangeText={setTemplateName}
-              placeholder="例如：采购待办模板"
-              leftIcon="file-document-outline"
-            />
-            <FormActions
-              onCancel={() => setShowSaveTemplateModal(false)}
-              onSubmit={handleSaveTemplate}
-              submitLabel="保存模板"
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={showSaveTemplateModal} onClose={() => setShowSaveTemplateModal(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>保存为模板</Text>
+        <Input
+          label="模板名称"
+          value={templateName}
+          onChangeText={setTemplateName}
+          placeholder="例如：采购待办模板"
+          leftIcon="file-document-outline"
+        />
+        <FormActions
+          onCancel={() => setShowSaveTemplateModal(false)}
+          onSubmit={handleSaveTemplate}
+          submitLabel="保存模板"
+        />
+      </BottomSheet>
 
       {/* 分类选择弹窗 */}
-      <Modal visible={showCategoryPicker} transparent animationType="fade" onRequestClose={() => setShowCategoryPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowCategoryPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择分类</Text>
-            <ScrollView style={styles.pickerList}>
-              {todoCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.pickerItem, categoryId === cat.id && styles.pickerItemActive, categoryId === cat.id && { backgroundColor: palette.surfaceSoft }]}
-                  onPress={() => {
-                    setCategoryId(cat.id);
-                    if (errors.category) setErrors({ ...errors, category: undefined });
-                    setShowCategoryPicker(false);
-                  }}
-                >
-                  <View style={styles.pickerItemLeft}>
-                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                      <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={18} color={palette.orange} />
-                    </View>
-                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{cat.name}</Text>
-                  </View>
-                  {categoryId === cat.id && (
-                    <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />
-                  )}
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.pickerAddItem}
-                onPress={() => { setShowCategoryPicker(false); setShowNewCategory(true); }}
-              >
-                <MaterialCommunityIcons name="plus-circle-outline" size={20} color={palette.orange} />
-                <Text style={[styles.pickerAddText, { color: palette.orange }]}>新建分类</Text>
-              </TouchableOpacity>
-            </ScrollView>
+      <BottomSheet visible={showCategoryPicker} onClose={() => setShowCategoryPicker(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>选择分类</Text>
+        <ScrollView style={styles.pickerList}>
+          {todoCategories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[styles.pickerItem, categoryId === cat.id && styles.pickerItemActive, categoryId === cat.id && { backgroundColor: palette.surfaceSoft }]}
+              onPress={() => {
+                setCategoryId(cat.id);
+                if (errors.category) setErrors({ ...errors, category: undefined });
+                setShowCategoryPicker(false);
+              }}
+            >
+              <View style={styles.pickerItemLeft}>
+                <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name={(cat.icon || 'tag') as any} size={18} color={palette.orange} />
+                </View>
+                <Text style={[styles.pickerItemName, { color: palette.text }]}>{cat.name}</Text>
+              </View>
+              {categoryId === cat.id && (
+                <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />
+              )}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={styles.pickerAddItem}
+            onPress={() => { setShowCategoryPicker(false); setShowNewCategory(true); }}
+          >
+            <MaterialCommunityIcons name="plus-circle-outline" size={20} color={palette.orange} />
+            <Text style={[styles.pickerAddText, { color: palette.orange }]}>新建分类</Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-      <Modal visible={showPriorityPicker} transparent animationType="fade" onRequestClose={() => setShowPriorityPicker(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowPriorityPicker(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>选择优先级</Text>
-            <ScrollView style={styles.pickerList}>
-              {priorities.map((p) => (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[styles.pickerItem, priority === p.value && { backgroundColor: palette.surfaceSoft }]}
-                  onPress={() => {
-                    setPriority(p.value as 1 | 2 | 3);
-                    setShowPriorityPicker(false);
-                  }}
-                >
-                  <View style={styles.pickerItemLeft}>
-                    <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                      <MaterialCommunityIcons name={p.icon as any} size={18} color={p.color} />
-                    </View>
-                    <Text style={[styles.pickerItemName, { color: palette.text }]}>{p.label}</Text>
-                  </View>
-                  {priority === p.value && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </ScrollView>
+      </BottomSheet>
+      <BottomSheet visible={showPriorityPicker} onClose={() => setShowPriorityPicker(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>选择优先级</Text>
+        <ScrollView style={styles.pickerList}>
+          {priorities.map((p) => (
+            <TouchableOpacity
+              key={p.value}
+              style={[styles.pickerItem, priority === p.value && { backgroundColor: palette.surfaceSoft }]}
+              onPress={() => {
+                setPriority(p.value as 1 | 2 | 3);
+                setShowPriorityPicker(false);
+              }}
+            >
+              <View style={styles.pickerItemLeft}>
+                <View style={[styles.pickerItemIcon, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                  <MaterialCommunityIcons name={p.icon as any} size={18} color={p.color} />
+                </View>
+                <Text style={[styles.pickerItemName, { color: palette.text }]}>{p.label}</Text>
+              </View>
+              {priority === p.value && <MaterialCommunityIcons name="check-circle-outline" size={20} color={palette.orange} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </BottomSheet>
 
       {/* 新建分类弹窗 */}
-      <Modal visible={showNewCategory} transparent animationType="fade" onRequestClose={() => setShowNewCategory(false)}>
-        <TouchableOpacity style={[styles.pickerOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowNewCategory(false)}>
-          <TouchableOpacity activeOpacity={1} style={[styles.pickerModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text }]}>新建分类</Text>
-            <Input
-              label="分类名称"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              placeholder="输入分类名称"
-            />
-            <FormActions
-              onCancel={() => setShowNewCategory(false)}
-              onSubmit={handleCreateCategory}
-              submitLabel="创建"
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={showNewCategory} onClose={() => setShowNewCategory(false)}>
+        <View style={[styles.pickerHandle, { backgroundColor: palette.borderStrong }]} />
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>新建分类</Text>
+        <Input
+          label="分类名称"
+          value={newCategoryName}
+          onChangeText={setNewCategoryName}
+          placeholder="输入分类名称"
+        />
+        <FormActions
+          onCancel={() => setShowNewCategory(false)}
+          onSubmit={handleCreateCategory}
+          submitLabel="创建"
+        />
+      </BottomSheet>
 
       <Toast visible={toastVisible} message={isEdit ? '编辑成功' : '保存成功'} type="success" />
     </View>
@@ -706,17 +679,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: 144,
-  },
-  formCard: {
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  cardEyebrow: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.sm,
   },
   readOnlyTitle: {
     fontSize: fontSize['3xl'],
@@ -870,18 +832,6 @@ const styles = StyleSheet.create({
   },
   stickyActions: {
     marginTop: 0,
-  },
-  pickerOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    padding: spacing.xl,
-    paddingBottom: 40,
-    maxHeight: '70%',
-    borderWidth: 1,
   },
   pickerHandle: {
     width: 36,

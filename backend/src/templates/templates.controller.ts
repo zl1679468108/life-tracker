@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } fro
 import { TemplatesService } from './templates.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
+import { CreateTemplateDto, UpdateTemplateDto, UseTemplateDto } from './dto/templates.dto';
 
 @Controller('api/templates')
 @UseGuards(SupabaseAuthGuard)
@@ -22,12 +23,12 @@ export class TemplatesController {
   }
 
   @Post()
-  async create(@Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async create(@Body() body: CreateTemplateDto, @CurrentUser() user: SupabaseUser) {
     return this.templatesService.create(user.id, body);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: SupabaseUser) {
+  async update(@Param('id') id: string, @Body() body: UpdateTemplateDto, @CurrentUser() user: SupabaseUser) {
     return this.templatesService.update(id, user.id, body);
   }
 
@@ -39,7 +40,7 @@ export class TemplatesController {
   @Post(':id/use')
   async useTemplate(
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: UseTemplateDto,
     @CurrentUser() user: SupabaseUser,
   ) {
     return this.templatesService.useTemplate(id, user.id, body?.overrides);
