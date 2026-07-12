@@ -1,4 +1,4 @@
-import { getAuthToken } from './token';
+import { getAuthToken, setAuthToken, getRefreshToken, setRefreshToken } from './token';
 import { authSession } from './authSession';
 import type {
   ApiResponse,
@@ -57,11 +57,18 @@ let authExpiredEmitted = false;
 const normalizeAuthResponse = (response: ApiResponse<any>): AuthResponse => {
   const data = response.data || {};
   const token = data.token || data.session?.access_token || data.session?.accessToken || null;
+  const refreshToken =
+    data.refreshToken ||
+    data.refresh_token ||
+    data.session?.refresh_token ||
+    data.session?.refreshToken ||
+    null;
   const user = data.user || data.session?.user || null;
   return {
     code: response.code,
     data: {
       token,
+      refreshToken: refreshToken || undefined,
       user,
     },
     message: response.message,
@@ -79,63 +86,80 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
   const { method = 'GET', body, skipAuth, timeout = 30000 } = options;
   const url = `${API_BASE_URL}${path}`;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  // 构建请求头（每次调用都重新读取最新 token，便于刷新后重发）
+  const buildHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    // FormData 不设置 Content-Type，让浏览器自动设置 multipart boundary
+    if (body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+    if (!skipAuth) {
+      const token = await getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    return headers;
   };
 
-  // FormData 不设置 Content-Type，让浏览器自动设置 multipart boundary
-  if (body instanceof FormData) {
-    delete headers['Content-Type'];
-  }
+  // 单次 fetch 执行
+  const doFetch = async (headers: Record<string, string>): Promise<ApiResponse<T>> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  if (!skipAuth) {
-    const token = await getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+      signal: controller.signal,
+    });
 
-  try {
-    return await withRetry(async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
-        signal: controller.signal,
-      });
+    clearTimeout(timeoutId);
 
-      clearTimeout(timeoutId);
+    const payload = await response.json().catch(() => null);
 
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          if (!authExpiredEmitted) {
-            authExpiredEmitted = true;
-            authSession.emitExpired();
-          }
-        }
-        
-        // 服务器错误（>=500）抛异常触发重试
-        if (response.status >= 500) {
-          throw { code: response.status, message: payload?.message || response.statusText || '服务器错误' };
-        }
-        
-        return {
-          code: response.status,
-          data: null as T,
-          message: payload?.message || response.statusText || '请求失败',
-        };
+    if (!response.ok) {
+      // 服务器错误（>=500）抛异常触发 withRetry 重试
+      if (response.status >= 500) {
+        throw { code: response.status, message: payload?.message || response.statusText || '服务器错误' };
       }
 
       return {
-        code: payload?.code ?? response.status,
-        data: payload?.data ?? payload,
-        message: payload?.message,
+        code: response.status,
+        data: null as T,
+        message: payload?.message || response.statusText || '请求失败',
       };
+    }
+
+    return {
+      code: payload?.code ?? response.status,
+      data: payload?.data ?? payload,
+      message: payload?.message,
+    };
+  };
+
+  try {
+    return await withRetry(async () => {
+      const headers = await buildHeaders();
+      let result = await doFetch(headers);
+
+      // 短 token 过期（401/403）且该请求需要鉴权 → 尝试用长 token 刷新
+      if ((result.code === 401 || result.code === 403) && !skipAuth) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          // 刷新成功，用新 token 重发原请求
+          const newHeaders = await buildHeaders();
+          newHeaders['Authorization'] = `Bearer ${newToken}`;
+          result = await doFetch(newHeaders);
+        } else {
+          // 长 token 也失效，触发登录过期
+          triggerAuthExpired();
+        }
+      }
+
+      return result;
     }, method);
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error) {
@@ -152,6 +176,61 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
 export const resetAuthExpiredState = () => {
   authExpiredEmitted = false;
 };
+
+// ====== 双 token 无感刷新机制 ======
+// 当短 token (access_token) 过期返回 401 时，用长 token (refresh_token) 刷新
+// 多个并发请求同时 401 时，只发起一次刷新，其他请求等待结果
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  // 已有刷新在进行中，复用同一个 promise
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = await getRefreshToken();
+      if (!refreshToken) return null;
+
+      // 直接用 fetch，避免走 request 函数形成递归
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) return null;
+
+      const payload = await response.json();
+      if (payload?.code !== 200 || !payload?.data?.access_token) return null;
+
+      // 刷新成功，同时更新两个 token
+      await setAuthToken(payload.data.access_token);
+      await setRefreshToken(payload.data.refresh_token);
+
+      // 重置 expired 状态，允许下次再次触发刷新
+      authExpiredEmitted = false;
+      authSession.resetExpired();
+
+      return payload.data.access_token as string;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+// 触发登录过期（长 token 也失效时调用）
+function triggerAuthExpired() {
+  if (!authExpiredEmitted) {
+    authExpiredEmitted = true;
+    authSession.emitExpired();
+  }
+}
 
 export const api = {
   items: {

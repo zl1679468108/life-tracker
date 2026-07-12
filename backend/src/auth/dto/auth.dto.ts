@@ -84,3 +84,10 @@ export class OAuthDto {
   @IsNotEmpty({ message: 'redirectTo 不能为空' })
   redirectTo: string;
 }
+
+/** 刷新 token DTO */
+export class RefreshTokenDto {
+  @IsString()
+  @IsNotEmpty({ message: 'refreshToken 不能为空' })
+  refreshToken: string;
+}

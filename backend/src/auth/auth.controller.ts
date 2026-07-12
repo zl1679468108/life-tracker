@@ -12,6 +12,7 @@ import {
   UpdateProfileDto,
   ChangePasswordDto,
   OAuthDto,
+  RefreshTokenDto,
 } from './dto/auth.dto';
 
 @Controller('api/auth')
@@ -68,6 +69,12 @@ export class AuthController {
       body.provider as any,
       body.redirectTo,
     );
+  }
+
+  @Post('refresh')
+  async refreshToken(@Body() body: RefreshTokenDto) {
+    const data = await this.authService.refreshSession(body.refreshToken);
+    return { code: 200, data, message: '刷新成功' };
   }
 
   @Get('wechat/callback')

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { authSession } from '../lib/authSession';
-import { setAuthToken } from '../lib/token';
+import { setAuthToken, setRefreshToken } from '../lib/token';
 import { useAuthStore } from '../stores/authStore';
 import { showAlert } from '../lib/alert';
 
@@ -14,10 +14,12 @@ export function AuthExpiredHandler() {
       if (handlingRef.current) return;
       handlingRef.current = true;
 
+      // 长 token 也失效，清除所有 token
       await setAuthToken(null);
+      await setRefreshToken(null);
       useAuthStore.setState({ user: null, loading: false });
 
-      showAlert('身份已过期', '请重新登录后继续使用', [
+      showAlert('身份已过期', '登录已失效，请重新登录', [
         { text: '取消', style: 'cancel', onPress: () => { handlingRef.current = false; } },
         {
           text: '去登录',

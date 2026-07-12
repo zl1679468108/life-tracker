@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 import { resetAuthExpiredState } from '../lib/api';
-import { setAuthToken, getAuthToken } from '../lib/token';
+import { setAuthToken, getAuthToken, setRefreshToken } from '../lib/token';
 import { socketService } from '../lib/socket';
 import { useProfileStore } from './profileStore';
 import { authSession } from '../lib/authSession';
@@ -37,7 +37,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error(data.message || '登录失败');
     }
     const token = data.data?.token;
+    const refreshToken = data.data?.refreshToken;
     await setAuthToken(token);
+    if (refreshToken) await setRefreshToken(refreshToken);
     resetAuthExpiredState();
     authSession.resetExpired();
     set({ user: data.data?.user, loading: false });
@@ -53,7 +55,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error(data.message || '注册失败');
     }
     const token = data.data?.token;
+    const refreshToken = data.data?.refreshToken;
     await setAuthToken(token);
+    if (refreshToken) await setRefreshToken(refreshToken);
     resetAuthExpiredState();
     authSession.resetExpired();
     set({ user: data.data?.user, loading: false });
@@ -70,9 +74,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   handleOAuthCallback: async (accessToken, refreshToken) => {
     // 设置 token
     await setAuthToken(accessToken);
+    if (refreshToken) await setRefreshToken(refreshToken);
     resetAuthExpiredState();
     authSession.resetExpired();
-    
+
     // 调用后端 API 获取用户信息
     try {
       const profile = await api.auth.getProfile();
@@ -85,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Failed to get user profile:', error);
       // 如果获取 profile 失败，清除 token
       await setAuthToken(null);
+      await setRefreshToken(null);
       set({ loading: false });
       throw error;
     }
@@ -96,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await useProfileStore.getState().clearCache();
     // TODO: 调用后端登出 API
     await setAuthToken(null);
+    await setRefreshToken(null);
     set({ user: null, loading: false });
   },
   setUser: (user) => {
@@ -113,6 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (token) {
       try {
         // 用 token 获取用户信息，恢复 user 状态
+        // 注意：api.ts 内部会自动处理 401 刷新，若刷新也失败会触发 expired 事件
         const profile = await api.auth.getProfile();
         if (profile?.data) {
           resetAuthExpiredState();
@@ -121,11 +129,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           socketService.connect(profile.data.id);
         } else {
           // 区分 token 失效与网络错误：
-          // - 401/403：token 已失效，清除并登出
+          // - 401/403：短 token 和长 token 都已失效（api.ts 内部已尝试刷新），清除并登出
           // - NETWORK_ERROR / 5xx：网络抖动或服务不可用，保留 token 以便下次重试
           const code = profile?.code;
           if (code === 401 || code === 403) {
             await setAuthToken(null);
+            await setRefreshToken(null);
             set({ user: null, loading: false });
           } else {
             // 网络错误或服务器错误，保留 token，仅标记加载完成
@@ -153,6 +162,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await api.auth.changePassword(currentPassword, newPassword);
     // 修改成功后清除 token，强制重新登录
     await setAuthToken(null);
+    await setRefreshToken(null);
     set({ user: null, loading: false });
   },
 }));

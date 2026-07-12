@@ -137,6 +137,7 @@ export interface AuthResponse {
   code: number | string;
   data: {
     token: string;
+    refreshToken?: string;
     user: LifeProfile;
   };
   message?: string;

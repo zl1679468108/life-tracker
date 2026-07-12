@@ -262,6 +262,31 @@ export class AuthService {
     return convertTimesToBeijing(data);
   }
 
+  /**
+   * 使用 refresh_token 刷新会话，返回新的 access_token 和 refresh_token
+   * 使用 anon client，避免污染全局 session
+   */
+  async refreshSession(refreshToken: string) {
+    const client = this.createAnonClient();
+    const { data, error } = await client.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data.session) {
+      throw new HttpException(
+        '刷新令牌无效或已过期',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at,
+      user: data.user,
+    };
+  }
+
   async signInWithOAuth(provider: string, redirectTo: string) {
     const { data, error } = await this.adminClient.auth.signInWithOAuth({
       provider: provider as Provider,
