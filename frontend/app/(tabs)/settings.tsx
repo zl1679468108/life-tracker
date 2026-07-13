@@ -114,7 +114,9 @@ export default function SettingsScreen() {
                     disabled={!entry.route}
                   >
                     {'logo' in entry && entry.logo ? (
-                      <Logo size={40} />
+                      <View style={styles.gridLogoWrap}>
+                        <Logo size={40} />
+                      </View>
                     ) : (
                       <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
                         <MaterialCommunityIcons name={entry.icon as any} size={20} color={entry.color} />
@@ -243,6 +245,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  gridLogoWrap: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,

@@ -205,3 +205,50 @@
 | ID | 优先级 | 任务 | 模块 | 状态 | 验收 |
 |---|---|---|---|---|---|
 | T93.1 | P2 | 新增版本信息二级页 | frontend | done | 新建 `constants/changelog.ts` 维护版本日志数据源（新增/优化/修复三分类）；新建 `app/settings/version.tsx` 展示当前版本卡片 + 折叠式历史版本日志；`_layout.tsx` 注册 `settings/version` 路由；`(tabs)/settings.tsx` 给「版本」入口绑定 route；同步更新 PRD 入口矩阵；`tsc --noEmit` + `build:web` 通过 |
+
+---
+
+## 2026-07-13 消息模块 UI 优化（T94）
+
+> 范围：消息列表页 `(tabs)/messages.tsx` 与聊天页 `message/[id].tsx` 的界面布局、间距、气泡、输入框及加号展开面板的视觉与体验优化。不改动业务逻辑和接口结构。
+
+### 现状诊断
+
+| 问题 | 现状 | 影响 |
+|---|---|---|
+| 聊天页右上角三点按钮 | `onPress` 仅 `Keyboard.dismiss()`，无实际功能 | 误导用户，应移除 |
+| 聊天页未处理 SafeArea | topBar `paddingTop: 12`、composerBar `paddingBottom: 20`，未使用 `useSafeAreaInsets` | notch/home indicator 设备上顶部贴边、底部被遮挡 |
+| 输入框加号/发送按钮 | 36x36 裸图标，无背景，发送态仅靠颜色区分 | 视觉权重不足，发送态不突出 |
+| 加号展开面板（actionGrid） | 2 个 64x64 方块图标，宫格空旷 | 视觉空洞，缺少精致感 |
+| 消息气泡 | maxWidth 76%，padding 偏紧，时间戳对比度低 | 信息密度偏高，时间不显眼 |
+| 卡片消息（物品/待办） | 单层卡片，与气泡视觉层级混淆 | 卡片与文字消息区分不明显 |
+| 系统消息 | 灰色 pill，无图标 | 缺少辨识度 |
+| 故事板（最近联系人） | avatar 边框统一绿色，无在线/状态 | 视觉单调 |
+| 待处理好友申请横幅 | 仅 warning 浅色背景 | 不够吸睛 |
+| 消息列表左右间距 | `paddingHorizontal: 16` | 与聊天页一致但故事板内边距偏紧 |
+
+### 任务拆分
+
+| ID | 优先级 | 任务 | 模块 | 状态 | 验收 |
+|---|---|---|---|---|---|
+| T94.1 | P0 | 移除聊天页右上角三点按钮 | frontend | done | 删除 `topBar` 中 dots-horizontal 的 `TouchableOpacity`，顶栏右侧用 `topBarTrailing` 占位保持平衡；2026-07-13 已完成 |
+| T94.2 | P0 | 聊天页接入 SafeArea insets | frontend | done | 使用 `useSafeAreaInsets`，topBar `paddingTop: max(insets.top, spacing.sm)`、composerBar/actionPanel `paddingBottom: max(insets.bottom, spacing.sm)+spacing.xs`；修复 notch 设备顶部贴边和底部被遮挡；2026-07-13 已完成 |
+| T94.3 | P1 | 统一消息列表与聊天页左右间距 | frontend | done | 消息列表页 `content.paddingHorizontal` 与聊天页 `topBar/messageList/composerBar` 统一为 `spacing.lg` (16)；2026-07-13 已完成 |
+| T94.4 | P1 | 优化 composerBar 输入区视觉 | frontend | done | 加号按钮 40x40 圆形 + `surfaceSoft` 背景 + border，展开时背景变 `${orange}1F` + orange 边框；发送按钮可发送态 orange 圆形背景 + 白色 arrow-up 图标；输入框圆角改 `borderRadius.xl`；2026-07-13 已完成 |
+| T94.5 | P1 | 重做加号展开面板（action panel） | frontend | done | 由宫格改为横向卡片列表：发送物品/发送待办各为带图标+标题+副标题的卡片，圆角+边框+`surfaceSoft` 背景+chevron；面板顶部加"分享到对话"小标题；面板背景 `surface` + 顶部 border；2026-07-13 已完成 |
+| T94.6 | P1 | 优化文字消息气泡样式 | frontend | done | 气泡 `paddingHorizontal: 14, paddingVertical: 10`；圆角改为 `borderRadius.lg` + 底部小圆角；时间戳移到气泡外右下角小字（更接近微信）；气泡 maxWidth 78% + minWidth 80；头像改用 hash 色系；2026-07-13 已完成 |
+| T94.7 | P2 | 优化系统消息样式 | frontend | done | 居中 pill 加 `bell-outline` 图标前缀，flexDirection: 'row' + gap: 6，背景 surfaceSoft + border；2026-07-13 已完成 |
+| T94.8 | P2 | 优化卡片消息（物品/待办）样式 | frontend | done | 卡片气泡 minWidth 240；卡片头部加类型标签（物品/待办 · 已完成）+ 主色图标；卡片底部 action 按钮分"打开/查看"和"标记完成"两个按钮；待办已完成态显示 check-circle 实心图标；2026-07-13 已完成 |
+| T94.9 | P2 | 优化消息列表故事板 | frontend | done | 故事板 avatar 边框颜色按 hash 取主色系 `${ac}66`（不再统一绿色）；右下角加 12px 在线小绿点（带白色描边）；2026-07-13 已完成 |
+| T94.10 | P2 | 优化待处理好友申请横幅 | frontend | done | 横幅加 `LinearGradient` warning 渐变背景（深浅模式分别配色）+ 1px warning 边框 + overflow hidden；图标加边框；右侧加 chevron-right；2026-07-13 已完成 |
+| T94.11 | P3 | 聊天页顶栏增加对方头像 | frontend | done | topBar 中间区域加 28px peer avatar + 文字列；与返回按钮形成视觉平衡；2026-07-13 已完成 |
+| T94.12 | P3 | 聊天页空状态精致化 | frontend | done | 用 `EmptyState` 组件 `variant="messages"` 替换原 `icon="message-text-outline"` 调用，复用 messages 变体的紫色配色；2026-07-13 已完成 |
+| T94.13 | P1 | 验证：tsc + build:web | frontend | done | `cd frontend && npx tsc --noEmit` + `npm run build:web` 全部通过；35 个静态路由全部生成成功；2026-07-13 已完成 |
+
+### 执行顺序
+
+1. P0：T94.1 → T94.2（修复阻断问题）
+2. P1：T94.3 → T94.4 → T94.5 → T94.6（核心布局与视觉）
+3. P2：T94.7 → T94.8 → T94.9 → T94.10（精致化）
+4. P3：T94.11 → T94.12（增强）
+5. 验证：T94.13（统一 tsc + build:web）

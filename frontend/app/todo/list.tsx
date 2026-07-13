@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Text, RefreshControl, SafeAreaView, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useTodoStore } from '../../stores/todoStore';
@@ -38,7 +38,10 @@ export default function TodoListScreen() {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
   const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos } = useTodoStore();
-  const [filter, setFilter] = useState<FilterType>('all');
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const [filter, setFilter] = useState<FilterType>(
+    params.filter === 'pending' || params.filter === 'completed' ? params.filter : 'all',
+  );
   const [focusFilter, setFocusFilter] = useState<FocusFilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('time');
   const [showSortModal, setShowSortModal] = useState(false);
@@ -229,7 +232,7 @@ export default function TodoListScreen() {
 
   const renderEmpty = () => (
     <EmptyState
-      icon="check-circle-outline"
+      variant="todos"
       title={activeFilterCount === 0 ? '暂无待办事项' : '没有匹配的待办'}
       description={activeFilterCount === 0 ? '点击下方按钮添加第一个待办' : '调整筛选条件或清空搜索后再看看'}
       actionLabel="添加待办"

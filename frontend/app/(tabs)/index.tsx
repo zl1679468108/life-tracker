@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
-import { HomeBackground } from '../../components/ui';
+import { HomeBackground, InlineEmptyState } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useItemStore } from '../../stores/itemStore';
 import { useNotificationStore } from '../../stores/notificationStore';
@@ -294,7 +294,7 @@ export default function HomeScreen() {
 
           <View style={styles.stats}>
             <Stat label="物品总数" value={items.length} palette={palette} meta="管理中" onPress={() => router.push('/item/list')} />
-            <Stat label="待办未完成" value={pendingTodos} palette={palette} meta="优先处理" onPress={() => router.push('/todo/list')} />
+            <Stat label="待办未完成" value={pendingTodos} palette={palette} meta="优先处理" onPress={() => router.push('/todo/list?filter=pending')} />
             <Stat label="已完成" value={completedTodos} palette={palette} meta="总已完成" />
           </View>
 
@@ -336,23 +336,23 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {recentTodos.length > 0 && (
-            <View style={styles.section}>
-              <View
-                style={[
-                  styles.todoPanel,
-                  { backgroundColor: palette.surface },
-                  !isDark && shadows.sm,
-                ]}
-              >
-                <View style={styles.todoHeader}>
-                  <Text style={[styles.todoHeaderTitle, { color: palette.text }]}>最近待办</Text>
-                  <TouchableOpacity onPress={() => router.push('/todo/list')} activeOpacity={0.7} style={styles.todoHeaderLink}>
-                    <Text style={[styles.todoHeaderLinkText, { color: palette.orange }]}>查看全部</Text>
-                    <MaterialCommunityIcons name="chevron-right" size={14} color={palette.orange} />
-                  </TouchableOpacity>
-                </View>
-                {recentTodos.map((todo, index) => (
+          <View style={styles.section}>
+            <View
+              style={[
+                styles.todoPanel,
+                { backgroundColor: palette.surface },
+                !isDark && shadows.sm,
+              ]}
+            >
+              <View style={styles.todoHeader}>
+                <Text style={[styles.todoHeaderTitle, { color: palette.text }]}>最近待办</Text>
+                <TouchableOpacity onPress={() => router.push('/todo/list')} activeOpacity={0.7} style={styles.todoHeaderLink}>
+                  <Text style={[styles.todoHeaderLinkText, { color: palette.orange }]}>查看全部</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={14} color={palette.orange} />
+                </TouchableOpacity>
+              </View>
+              {recentTodos.length > 0 ? (
+                recentTodos.map((todo, index) => (
                   <TouchableOpacity
                     key={todo.id}
                     style={[
@@ -391,29 +391,31 @@ export default function HomeScreen() {
                     </View>
                     <MaterialCommunityIcons name="chevron-right" size={16} color={palette.textMuted} />
                   </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* celebration animation overlay */}
-              {celebratedId && (
-                <View style={styles.celebrationOverlay} pointerEvents="none">
-                  <Animated.View
-                    style={[
-                      styles.celebrationBadge,
-                      {
-                        backgroundColor: palette.success,
-                        opacity: celebrateOpacity,
-                        transform: [{ scale: celebrateScale }],
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons name="check-circle" size={36} color="#FFF" />
-                    <Text style={styles.celebrationText}>已完成</Text>
-                  </Animated.View>
-                </View>
+                ))
+              ) : (
+                <InlineEmptyState title="暂无待办" />
               )}
             </View>
-          )}
+
+            {/* celebration animation overlay */}
+            {celebratedId && (
+              <View style={styles.celebrationOverlay} pointerEvents="none">
+                <Animated.View
+                  style={[
+                    styles.celebrationBadge,
+                    {
+                      backgroundColor: palette.success,
+                      opacity: celebrateOpacity,
+                      transform: [{ scale: celebrateScale }],
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="check-circle" size={36} color="#FFF" />
+                  <Text style={styles.celebrationText}>已完成</Text>
+                </Animated.View>
+              </View>
+            )}
+          </View>
         </ScrollView>
       </View>
       <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />

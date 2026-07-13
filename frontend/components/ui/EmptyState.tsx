@@ -10,7 +10,7 @@ type EmptyVariant = 'items' | 'todos' | 'messages' | 'categories' | 'locations' 
 
 const variantConfig: Record<EmptyVariant, { icon: string; iconBg: string; accent: string }> = {
   items: { icon: 'package-variant-closed', iconBg: '#fff5ed', accent: '#F36F3C' },
-  todos: { icon: 'check-circle-outline', iconBg: '#ecfdf5', accent: '#10A66E' },
+  todos: { icon: 'clipboard-list-outline', iconBg: '#ecfdf5', accent: '#10A66E' },
   messages: { icon: 'message-text-outline', iconBg: '#f0edff', accent: '#7C5CFC' },
   categories: { icon: 'shape-outline', iconBg: '#fef2f2', accent: '#E84A5F' },
   locations: { icon: 'map-marker-outline', iconBg: '#fff8e1', accent: '#D89400' },
