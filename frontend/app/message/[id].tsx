@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { EmptyState } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
@@ -28,6 +29,15 @@ import { useTodoStore } from '../../stores/todoStore';
 import type { Message, LifeItem, LifeTodo } from '../../types';
 
 type Palette = typeof appDesign.dark;
+
+const AVATAR_COLORS = ['#F36F3C', '#7C5CFC', '#1E88E5', '#10A66E', '#E84A5F', '#D89400', '#8E24AA', '#43A047'];
+
+function avatarColor(name?: string): string {
+  if (!name) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 function formatMessageTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -70,6 +80,7 @@ function Avatar({
   size?: number;
 }) {
   const [hasError, setHasError] = useState(false);
+  const ac = avatarColor(name);
 
   if (avatarUrl && !hasError) {
     return (
@@ -94,12 +105,12 @@ function Avatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: palette.surfaceSoft,
-          borderColor: palette.border,
+          backgroundColor: `${ac}18`,
+          borderColor: `${ac}40`,
         },
       ]}
     >
-      <Text style={[styles.avatarText, { color: palette.orange, fontSize: size * 0.4 }]}>
+      <Text style={[styles.avatarText, { color: ac, fontSize: size * 0.42 }]}>
         {(name || '友').slice(0, 1).toUpperCase()}
       </Text>
     </View>
@@ -109,20 +120,36 @@ function Avatar({
 function ResourceCard({
   message,
   palette,
+  isOwn,
   onToggleComplete,
 }: {
   message: Message;
   palette: Palette;
+  isOwn: boolean;
   onToggleComplete?: () => void;
 }) {
   const router = useRouter();
   const { card_data } = message || {};
   const isItem = message?.type === 'item';
+  const accent = isItem ? palette.orange : palette.success;
 
   if (!card_data?.resource_id) return null;
 
+  const todoCompleted = !isItem && (card_data as any)?.completed === true;
+
   return (
-    <View style={[styles.resourceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <View style={[styles.resourceCard, { backgroundColor: palette.surfaceSoft, borderColor: `${accent}40` }]}>
+      <View style={[styles.resourceTypeTag, { backgroundColor: `${accent}1F` }]}>
+        <MaterialCommunityIcons
+          name={isItem ? 'package-variant-closed' : 'check-circle-outline'}
+          size={11}
+          color={accent}
+        />
+        <Text style={[styles.resourceTypeTagText, { color: accent }]}>
+          {isItem ? '物品' : todoCompleted ? '待办 · 已完成' : '待办'}
+        </Text>
+      </View>
+
       <TouchableOpacity
         style={styles.resourceHeader}
         onPress={() => {
@@ -134,13 +161,13 @@ function ResourceCard({
         <View
           style={[
             styles.resourceIcon,
-            { backgroundColor: isItem ? `${palette.orange}18` : `${palette.success}18`, borderColor: palette.border },
+            { backgroundColor: `${accent}18`, borderColor: `${accent}40` },
           ]}
         >
           <MaterialCommunityIcons
-            name={isItem ? 'package-variant-closed' : 'check-circle-outline'}
+            name={isItem ? 'package-variant-closed' : todoCompleted ? 'check-circle' : 'checkbox-blank-circle-outline'}
             size={18}
-            color={isItem ? palette.orange : palette.success}
+            color={accent}
           />
         </View>
         <View style={styles.resourceCopy}>
@@ -148,18 +175,37 @@ function ResourceCard({
             {card_data.name || (isItem ? '物品' : '待办')}
           </Text>
           <Text style={[styles.resourceMeta, { color: palette.textMuted }]} numberOfLines={1}>
-            {card_data.location || '点击查看详情'}
+            {card_data.location || (todoCompleted ? '已完成' : '点击查看详情')}
           </Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
       </TouchableOpacity>
 
-      {onToggleComplete ? (
-        <TouchableOpacity style={[styles.completeButton, { backgroundColor: palette.success }]} onPress={onToggleComplete} activeOpacity={0.82}>
-          <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
-          <Text style={styles.completeButtonText}>标记完成</Text>
+      <View style={styles.resourceActions}>
+        <TouchableOpacity
+          style={[styles.resourceActionBtn, { borderColor: palette.border }]}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.push(isItem ? `/item/${card_data.resource_id}` : `/todo/${card_data.resource_id}`);
+          }}
+          activeOpacity={0.82}
+        >
+          <MaterialCommunityIcons name="open-in-new" size={14} color={palette.textSecondary} />
+          <Text style={[styles.resourceActionText, { color: palette.textSecondary }]}>
+            {isItem ? '打开' : '查看'}
+          </Text>
         </TouchableOpacity>
-      ) : null}
+        {onToggleComplete && !todoCompleted ? (
+          <TouchableOpacity
+            style={[styles.resourceActionBtn, { backgroundColor: palette.success, borderColor: palette.success }]}
+            onPress={onToggleComplete}
+            activeOpacity={0.82}
+          >
+            <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+            <Text style={[styles.resourceActionText, { color: '#FFFFFF' }]}>标记完成</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -183,25 +229,20 @@ function MessageBubble({
     return (
       <View style={styles.systemMessage}>
         <View style={[styles.systemBadge, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+          <MaterialCommunityIcons name="bell-outline" size={12} color={palette.textMuted} />
           <Text style={[styles.systemText, { color: palette.textMuted }]}>{content || '系统通知'}</Text>
         </View>
       </View>
     );
   }
 
-  const bubbleContent = (type === 'item' || type === 'todo') && card_data?.resource_id ? (
-    <View
-      style={[
-        styles.cardBubble,
-        {
-          backgroundColor: isOwn ? `${palette.orange}14` : palette.surface,
-          borderColor: isOwn ? palette.orange : palette.border,
-        },
-      ]}
-    >
+  const isCard = (type === 'item' || type === 'todo') && card_data?.resource_id;
+  const bubbleContent = isCard ? (
+    <View style={[styles.cardBubble, { backgroundColor: palette.surface, borderColor: palette.border }]}>
       <ResourceCard
         message={message}
         palette={palette}
+        isOwn={isOwn}
         onToggleComplete={
           type === 'todo'
             ? async () => {
@@ -214,10 +255,11 @@ function MessageBubble({
             : undefined
         }
       />
-      {content ? <Text style={[styles.cardText, { color: palette.textSecondary }]}>{cleanMessageContent(content)}</Text> : null}
-      <Text style={[styles.timeText, { color: palette.textMuted, alignSelf: isOwn ? 'flex-end' : 'flex-start' }]}>
-        {formatMessageTime(message.created_at)}
-      </Text>
+      {content ? (
+        <Text style={[styles.cardText, { color: palette.textSecondary }]}>
+          {cleanMessageContent(content)}
+        </Text>
+      ) : null}
     </View>
   ) : (
     <View
@@ -232,9 +274,6 @@ function MessageBubble({
       <Text style={[styles.messageText, { color: isOwn ? '#FFFFFF' : palette.text }]} selectable>
         {cleanMessageContent(content) || '(空消息)'}
       </Text>
-      <Text style={[styles.timeText, { color: isOwn ? 'rgba(255,255,255,0.72)' : palette.textMuted, alignSelf: isOwn ? 'flex-end' : 'flex-start' }]}>
-        {formatMessageTime(message.created_at)}
-      </Text>
     </View>
   );
 
@@ -242,13 +281,18 @@ function MessageBubble({
     <View style={[styles.messageRow, isOwn ? styles.messageRowOwn : styles.messageRowOther]}>
       {!isOwn && (
         <View style={styles.messageAvatar}>
-          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={36} />
+          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={32} />
         </View>
       )}
-      <View style={styles.bubbleWrap}>{bubbleContent}</View>
+      <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
+        {bubbleContent}
+        <Text style={[styles.timeText, { color: palette.textMuted, alignSelf: isOwn ? 'flex-end' : 'flex-start' }]}>
+          {formatMessageTime(message.created_at)}
+        </Text>
+      </View>
       {isOwn && (
         <View style={styles.messageAvatar}>
-          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={36} />
+          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={32} />
         </View>
       )}
     </View>
@@ -258,6 +302,7 @@ function MessageBubble({
 export default function MessageDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
@@ -352,6 +397,7 @@ export default function MessageDetailScreen() {
     });
     setShowPicker(false);
     setPickerType(null);
+    setShowActionPanel(false);
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
@@ -363,6 +409,8 @@ export default function MessageDetailScreen() {
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
+  const canSend = inputText.trim().length > 0 && !loading;
+
   if (loading && messages.length === 0) {
     return (
       <View style={[styles.center, { backgroundColor: palette.bg }]}>
@@ -373,7 +421,17 @@ export default function MessageDetailScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
-      <View style={[styles.topBar, { backgroundColor: palette.bg, borderBottomColor: palette.border }]}>
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: palette.bg,
+            borderBottomColor: palette.border,
+            paddingTop: Math.max(insets.top, spacing.sm),
+            paddingBottom: spacing.sm,
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
           onPress={handleBack}
@@ -383,21 +441,20 @@ export default function MessageDetailScreen() {
         </TouchableOpacity>
 
         <View style={styles.topBarTitle}>
-          <Text style={[styles.topBarName, { color: palette.text }]} numberOfLines={1}>
-            {peerName}
-          </Text>
-          <Text style={[styles.topBarMeta, { color: palette.textMuted }]} numberOfLines={1}>
-            {activityText}
-          </Text>
+          <View style={styles.topBarTitleRow}>
+            <Avatar name={peerName} avatarUrl={peerAvatar} palette={palette} size={28} />
+            <View style={styles.topBarTitleText}>
+              <Text style={[styles.topBarName, { color: palette.text }]} numberOfLines={1}>
+                {peerName}
+              </Text>
+              <Text style={[styles.topBarMeta, { color: palette.textMuted }]} numberOfLines={1}>
+                {activityText}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.iconButton, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
-          activeOpacity={0.82}
-          onPress={() => Keyboard.dismiss()}
-        >
-          <MaterialCommunityIcons name="dots-horizontal" size={20} color={palette.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.topBarTrailing} />
       </View>
 
       <ScrollView
@@ -409,7 +466,7 @@ export default function MessageDetailScreen() {
       >
         {messages.length === 0 ? (
           <EmptyState
-            icon="message-text-outline"
+            variant="messages"
             title="暂无消息"
             description="分享物品或待办时会自动创建对话，这里就是你们后续协作的聊天区。"
             style={styles.emptyState}
@@ -431,23 +488,41 @@ export default function MessageDetailScreen() {
         )}
       </ScrollView>
 
-      <KeyboardAvoidingView keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} behavior="padding">
-        <View style={[styles.composerBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
+      <KeyboardAvoidingView keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} behavior="padding">
+        <View
+          style={[
+            styles.composerBar,
+            {
+              backgroundColor: palette.bg,
+              borderTopColor: palette.border,
+              paddingBottom: Math.max(insets.bottom, spacing.sm) + spacing.xs,
+            },
+          ]}
+        >
           <TouchableOpacity
-            style={styles.composerIconBtn}
+            style={[
+              styles.composerIconBtn,
+              {
+                backgroundColor: showActionPanel ? `${palette.orange}1F` : palette.surfaceSoft,
+                borderColor: showActionPanel ? palette.orange : palette.border,
+              },
+            ]}
             activeOpacity={0.7}
             onPress={() => {
               Keyboard.dismiss();
               setPickerType(null);
               setShowActionPanel((prev) => !prev);
             }}
+            accessibilityLabel={showActionPanel ? '收起功能面板' : '展开功能面板'}
+            accessibilityRole="button"
           >
             <MaterialCommunityIcons
               name={showActionPanel ? 'close' : 'plus'}
-              size={22}
-              color={showActionPanel ? palette.orange : palette.textMuted}
+              size={20}
+              color={showActionPanel ? palette.orange : palette.textSecondary}
             />
           </TouchableOpacity>
+
           <View style={[styles.inputWrap, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <TextInput
               style={[styles.input, { color: palette.text }]}
@@ -457,55 +532,90 @@ export default function MessageDetailScreen() {
               onChangeText={setInputText}
               multiline
               maxLength={500}
-              onSubmitEditing={handleSend}
             />
           </View>
+
           <TouchableOpacity
-            style={styles.composerIconBtn}
+            style={[
+              styles.composerIconBtn,
+              styles.sendBtn,
+              {
+                backgroundColor: canSend ? palette.orange : palette.surfaceSoft,
+                borderColor: canSend ? palette.orange : palette.border,
+              },
+            ]}
             onPress={handleSend}
-            disabled={!inputText.trim() || loading}
+            disabled={!canSend}
             activeOpacity={0.7}
+            accessibilityLabel="发送消息"
+            accessibilityRole="button"
           >
             <MaterialCommunityIcons
-              name="arrow-right"
-              size={22}
-              color={inputText.trim() && !loading ? palette.orange : palette.textMuted}
+              name="arrow-up"
+              size={20}
+              color={canSend ? '#FFFFFF' : palette.textMuted}
             />
           </TouchableOpacity>
         </View>
 
-        {/* 底部功能面板（在输入栏下方自然展开，不覆盖消息） */}
+        {/* 底部功能面板 — 横向卡片，自然展开，不覆盖消息 */}
         {showActionPanel && (
-          <View style={styles.actionPanel}>
-            {/* 宫格功能区 */}
-            <View style={styles.actionGrid}>
+          <View
+            style={[
+              styles.actionPanel,
+              {
+                backgroundColor: palette.surface,
+                borderTopColor: palette.border,
+                paddingBottom: Math.max(insets.bottom, spacing.sm) + spacing.xs,
+              },
+            ]}
+          >
+            <Text style={[styles.actionPanelTitle, { color: palette.textMuted }]}>分享到对话</Text>
+            <View style={styles.actionCards}>
               <TouchableOpacity
-                style={styles.actionGridItem}
+                style={[styles.actionCard, { backgroundColor: palette.surfaceSoft, borderColor: `${palette.orange}40` }]}
                 onPress={() => {
                   if (myItems.length === 0) fetchMyItems();
                   setPickerType('item');
                   setShowPicker(true);
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.78}
+                accessibilityLabel="发送物品"
+                accessibilityRole="button"
               >
-                <View style={[styles.actionGridIconWrap, { backgroundColor: `${palette.orange}14` }]}>
-                  <MaterialCommunityIcons name="package-variant-closed" size={28} color={palette.orange} />
+                <View style={[styles.actionCardIcon, { backgroundColor: `${palette.orange}1F` }]}>
+                  <MaterialCommunityIcons name="package-variant-closed" size={22} color={palette.orange} />
                 </View>
-                <Text style={[styles.actionGridLabel, { color: palette.textSecondary }]}>发送物品</Text>
+                <View style={styles.actionCardText}>
+                  <Text style={[styles.actionCardTitle, { color: palette.text }]}>发送物品</Text>
+                  <Text style={[styles.actionCardDesc, { color: palette.textMuted }]} numberOfLines={1}>
+                    从你的物品中选择分享
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={styles.actionGridItem}
+                style={[styles.actionCard, { backgroundColor: palette.surfaceSoft, borderColor: `${palette.success}40` }]}
                 onPress={() => {
                   if (myTodos.length === 0) fetchMyTodos();
                   setPickerType('todo');
                   setShowPicker(true);
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.78}
+                accessibilityLabel="发送待办"
+                accessibilityRole="button"
               >
-                <View style={[styles.actionGridIconWrap, { backgroundColor: `${palette.success}14` }]}>
-                  <MaterialCommunityIcons name="check-circle-outline" size={28} color={palette.success} />
+                <View style={[styles.actionCardIcon, { backgroundColor: `${palette.success}1F` }]}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={22} color={palette.success} />
                 </View>
-                <Text style={[styles.actionGridLabel, { color: palette.textSecondary }]}>发送待办</Text>
+                <View style={styles.actionCardText}>
+                  <Text style={[styles.actionCardTitle, { color: palette.text }]}>发送待办</Text>
+                  <Text style={[styles.actionCardDesc, { color: palette.textMuted }]} numberOfLines={1}>
+                    分享一条待办给对方
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -628,23 +738,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
     borderBottomWidth: 1,
   },
   topBarTitle: {
     flex: 1,
     minWidth: 0,
   },
+  topBarTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  topBarTitleText: {
+    flex: 1,
+    minWidth: 0,
+  },
   topBarName: {
     fontSize: fontSize.lg,
-    lineHeight: 22,
+    lineHeight: 20,
     fontWeight: fontWeight.semiBold,
   },
   topBarMeta: {
     fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 2,
+    lineHeight: 16,
+    marginTop: 1,
+  },
+  topBarTrailing: {
+    width: 40,
   },
   iconButton: {
     width: 40,
@@ -667,7 +787,7 @@ const styles = StyleSheet.create({
   },
   messageListContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.md,
   },
@@ -676,6 +796,7 @@ const styles = StyleSheet.create({
   },
   systemMessage: {
     alignItems: 'center',
+    marginVertical: spacing.xs,
   },
   systemBadge: {
     maxWidth: '80%',
@@ -683,10 +804,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   systemText: {
     fontSize: fontSize.sm,
-    lineHeight: 18,
+    lineHeight: 16,
     textAlign: 'center',
   },
   messageRow: {
@@ -695,7 +819,8 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   messageRowOwn: {
-    alignSelf: 'flex-end',
+    alignSelf: 'stretch',
+    justifyContent: 'flex-end',
     flexDirection: 'row',
   },
   messageRowOther: {
@@ -703,18 +828,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   messageAvatar: {
-    marginHorizontal: 4,
+    marginBottom: spacing.xs,
   },
   bubbleWrap: {
-    maxWidth: '76%',
+    maxWidth: '78%',
+    minWidth: 80,
+  },
+  bubbleWrapOwn: {
+    alignItems: 'flex-end',
+    marginRight: spacing.xs,
+  },
+  bubbleWrapOther: {
+    alignItems: 'flex-start',
+    marginLeft: spacing.xs,
   },
   textBubble: {
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: 6,
+    borderRadius: borderRadius.lg,
+    borderBottomRightRadius: borderRadius.sm,
+    borderBottomLeftRadius: borderRadius.sm,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: 10,
   },
   messageText: {
     fontSize: fontSize.base,
@@ -722,14 +856,29 @@ const styles = StyleSheet.create({
   },
   cardBubble: {
     borderWidth: 1,
-    borderRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.sm,
+    minWidth: 240,
   },
   resourceCard: {
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     padding: spacing.sm,
+  },
+  resourceTypeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    marginBottom: spacing.sm,
+  },
+  resourceTypeTagText: {
+    fontSize: fontSize.xs,
+    lineHeight: 14,
+    fontWeight: fontWeight.semiBold,
   },
   resourceHeader: {
     flexDirection: 'row',
@@ -750,27 +899,32 @@ const styles = StyleSheet.create({
   },
   resourceName: {
     fontSize: fontSize.base,
-    lineHeight: 20,
+    lineHeight: 18,
     fontWeight: fontWeight.semiBold,
   },
   resourceMeta: {
     fontSize: fontSize.sm,
-    lineHeight: 18,
+    lineHeight: 16,
     marginTop: 2,
   },
-  completeButton: {
+  resourceActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginTop: spacing.sm,
-    minHeight: 36,
+  },
+  resourceActionBtn: {
+    flex: 1,
+    height: 32,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
   },
-  completeButtonText: {
-    color: '#FFFFFF',
+  resourceActionText: {
     fontSize: fontSize.sm,
-    lineHeight: 18,
+    lineHeight: 16,
     fontWeight: fontWeight.semiBold,
   },
   cardText: {
@@ -781,28 +935,33 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: fontSize.xs,
-    lineHeight: 16,
-    marginTop: 6,
+    lineHeight: 14,
+    marginTop: 4,
   },
   composerBar: {
     borderTopWidth: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: spacing.sm,
   },
   composerIconBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
+  },
+  sendBtn: {
+    borderWidth: 0,
   },
   inputWrap: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
     maxHeight: 100,
@@ -811,41 +970,66 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     lineHeight: 20,
     padding: 0,
-    maxHeight: 100,
+    maxHeight: 92,
   },
 
-  // 底部功能面板 — WeChat 风格
+  // 底部功能面板 — 横向卡片
   actionPanel: {
+    borderTopWidth: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
   },
-  actionGrid: {
+  actionPanelTitle: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    fontWeight: fontWeight.medium,
+    marginBottom: spacing.sm,
+  },
+  actionCards: {
+    gap: spacing.sm,
+  },
+  actionCard: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  actionGridItem: {
     alignItems: 'center',
-    gap: 8,
-  },
-  actionGridIconWrap: {
-    width: 64,
-    height: 64,
+    borderWidth: 1,
     borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  actionCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionGridLabel: {
+  actionCardText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  actionCardTitle: {
+    fontSize: fontSize.base,
+    lineHeight: 18,
+    fontWeight: fontWeight.semiBold,
+  },
+  actionCardDesc: {
+    fontSize: fontSize.sm,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  actionPanelEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  actionPanelEmptyText: {
     fontSize: fontSize.sm,
     lineHeight: 18,
-    fontWeight: fontWeight.medium,
+    marginTop: spacing.sm,
   },
-  actionPanelList: {
-    marginTop: spacing.md,
-  },
-  actionPanelListScroll: {
-    maxHeight: 180,
-  },
+
+  // Picker 弹窗内的列表项
   actionPanelItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -872,16 +1056,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     lineHeight: 16,
     marginTop: 1,
-  },
-  actionPanelEmpty: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  actionPanelEmptyText: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: spacing.sm,
   },
 
   // Picker 弹窗

@@ -440,14 +440,18 @@ export default function MessagesScreen() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.storyListContent}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.storyItem} onPress={item.onPress} activeOpacity={0.82}>
-                      <View style={[styles.storyAvatarWrap, { borderColor: palette.success }]}>
-                        <ConversationAvatar name={item.name} avatarUrl={item.avatarUrl} palette={palette} size={48} />
-                      </View>
-                      <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
+                  renderItem={({ item }) => {
+                    const ac = avatarColor(item.name);
+                    return (
+                      <TouchableOpacity style={styles.storyItem} onPress={item.onPress} activeOpacity={0.82}>
+                        <View style={[styles.storyAvatarWrap, { borderColor: `${ac}66` }]}>
+                          <ConversationAvatar name={item.name} avatarUrl={item.avatarUrl} palette={palette} size={48} />
+                          <View style={[styles.storyOnlineDot, { backgroundColor: palette.success, borderColor: palette.surface }]} />
+                        </View>
+                        <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  }}
                 />
               </View>
             </View>
@@ -474,16 +478,25 @@ export default function MessagesScreen() {
             <View style={styles.list}>
               {incomingRequests.length > 0 && (
                 <TouchableOpacity
-                  style={[styles.featuredRow, { backgroundColor: `${palette.warning}0A` }]}
-          onPress={() => {
-            setShowNewChat(true);
-            setNewChatMode('records');
-            setRecordTab('pending');
-          }}
+                  style={[styles.featuredRow, { borderColor: `${palette.warning}40` }]}
+                  onPress={() => {
+                    setShowNewChat(true);
+                    setNewChatMode('records');
+                    setRecordTab('pending');
+                  }}
                   activeOpacity={0.82}
                 >
-                  <View style={[styles.featuredIcon, { backgroundColor: `${palette.warning}18` }]}>
-                    <MaterialCommunityIcons name="account-clock-outline" size={18} color={palette.warning} />
+                  <LinearGradient
+                    colors={
+                      isDark
+                        ? [`${palette.warning}1F`, `${palette.warning}0A`, palette.surface]
+                        : [`${palette.warning}26`, `${palette.warning}0F`, palette.surface]
+                    }
+                    locations={[0, 0.55, 1]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={[styles.featuredIcon, { backgroundColor: `${palette.warning}26`, borderColor: `${palette.warning}40` }]}>
+                    <MaterialCommunityIcons name="account-clock-outline" size={20} color={palette.warning} />
                   </View>
                   <View style={styles.featuredContent}>
                     <View style={styles.featuredHead}>
@@ -496,6 +509,7 @@ export default function MessagesScreen() {
                       {incomingRequests.length} 位用户请求添加你为好友
                     </Text>
                   </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} style={styles.featuredChevron} />
                 </TouchableOpacity>
               )}
               <View
@@ -566,6 +580,7 @@ export default function MessagesScreen() {
             <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSheet} />
             <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.sheetHeader}>
+                <View style={styles.sheetHeaderPlaceholder} />
                 <Text style={[styles.sheetTitle, { color: palette.text }]}>{newChatMode === 'search' ? '添加好友' : '申请记录'}</Text>
                 <TouchableOpacity style={styles.closeButton} onPress={closeSheet}>
                   <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
@@ -811,6 +826,7 @@ export default function MessagesScreen() {
             <TouchableOpacity style={[styles.overlayBackdrop, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={closeSearch} />
             <View style={[styles.searchSheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={styles.sheetHeader}>
+                <View style={styles.sheetHeaderPlaceholder} />
                 <Text style={[styles.sheetTitle, { color: palette.text }]}>搜索</Text>
                 <TouchableOpacity style={styles.closeButton} onPress={closeSearch}>
                   <MaterialCommunityIcons name="close" size={22} color={palette.textMuted} />
@@ -1041,6 +1057,15 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 4,
   },
+  storyOnlineDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
   storyAddDot: {
     position: 'absolute',
     right: -3,
@@ -1095,18 +1120,21 @@ const styles = StyleSheet.create({
   featuredRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   featuredIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.md,
   },
   featuredContent: {
     flex: 1,
@@ -1127,6 +1155,9 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     lineHeight: 18,
     marginTop: 2,
+  },
+  featuredChevron: {
+    marginLeft: spacing.sm,
   },
   row: {
     minHeight: 68,
@@ -1252,7 +1283,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize['2xl'],
     lineHeight: 28,
     fontWeight: fontWeight.bold,
+    textAlign: 'center',
     flex: 1,
+  },
+  sheetHeaderPlaceholder: {
+    width: 36,
   },
   closeButton: {
     width: 36,
@@ -1300,14 +1335,14 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   resultList: {
-    maxHeight: 320,
+    flex: 1,
   },
   searchSheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    maxHeight: '80%',
+    height: '50%',
     borderTopLeftRadius: borderRadius['2xl'],
     borderTopRightRadius: borderRadius['2xl'],
     borderWidth: 1,

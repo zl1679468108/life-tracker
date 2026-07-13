@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   lmSaveBtnText: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
   lmEmptyText: { fontSize: fontSize.base, textAlign: 'center', padding: spacing.xl },
   pickerHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
-  pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg },
+  pickerTitle: { fontSize: fontSize['4xl'], fontWeight: fontWeight.semiBold, marginBottom: spacing.lg, textAlign: 'center' },
   pickerScroll: { maxHeight: 400 },
   pickerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pickerIconItem: { width: 48, height: 48, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

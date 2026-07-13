@@ -265,6 +265,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize['4xl'],
     fontWeight: fontWeight.semiBold,
     marginBottom: spacing.lg,
+    textAlign: 'center',
   },
   pickerList: {
     maxHeight: 360,
