@@ -199,3 +199,9 @@
 | T92.8 | P3 | socket transports 允许 polling 回退 | frontend/lib | done | `socket.ts` transports 改为 `['polling','websocket']`，受限网络环境可回退；2026-07-10 已完成，socket transports改为['polling','websocket'] |
 | T92.9 | P3 | OAuth 回调清理 URL token | frontend/app | done | Web 端 OAuth 回调用 `history.replaceState` 清除 URL 中的 token 参数；2026-07-10 已完成，OAuth回调用history.replaceState清理URL token |
 | T92.10 | P3 | stripUnsupportedOptionalColumn 收敛 | backend/items | done | 修复 schema 与代码不同步问题，移除运行时兜底重试逻辑，部署流程保证 schema 一致；2026-07-10 已完成，移除stripUnsupportedOptionalColumn运行时兜底 |
+
+## 2026-07-12 版本信息页
+
+| ID | 优先级 | 任务 | 模块 | 状态 | 验收 |
+|---|---|---|---|---|---|
+| T93.1 | P2 | 新增版本信息二级页 | frontend | done | 新建 `constants/changelog.ts` 维护版本日志数据源（新增/优化/修复三分类）；新建 `app/settings/version.tsx` 展示当前版本卡片 + 折叠式历史版本日志；`_layout.tsx` 注册 `settings/version` 路由；`(tabs)/settings.tsx` 给「版本」入口绑定 route；同步更新 PRD 入口矩阵；`tsc --noEmit` + `build:web` 通过 |

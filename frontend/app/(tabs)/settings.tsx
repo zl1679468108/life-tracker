@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import appConfig from '../../app.json';
-import { AppHeader, SettingsBackground } from '../../components/ui';
+import { AppHeader, Logo, SettingsBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { showAlert } from '../../lib/alert';
@@ -46,7 +46,7 @@ export default function SettingsScreen() {
       title: '帮助与反馈',
       entries: [
         { title: '反馈', icon: 'message-alert-outline', route: '/settings/feedback', color: palette.warning },
-        { title: '版本', icon: 'information-outline', color: palette.textMuted, meta: `v${appVersion}` },
+        { title: '版本', icon: 'information-outline', route: '/settings/version', color: palette.textMuted, meta: `v${appVersion}`, logo: true },
       ],
     },
   ];
@@ -113,9 +113,13 @@ export default function SettingsScreen() {
                     activeOpacity={entry.route ? 0.78 : 1}
                     disabled={!entry.route}
                   >
-                    <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
-                      <MaterialCommunityIcons name={entry.icon as any} size={20} color={entry.color} />
-                    </View>
+                    {'logo' in entry && entry.logo ? (
+                      <Logo size={40} />
+                    ) : (
+                      <View style={[styles.gridIconWrap, { backgroundColor: `${entry.color}12` }]}>
+                        <MaterialCommunityIcons name={entry.icon as any} size={20} color={entry.color} />
+                      </View>
+                    )}
                     <Text style={[styles.gridLabel, { color: palette.text }]} numberOfLines={1}>{entry.title}</Text>
                     {entry.meta && (
                       <Text style={[styles.gridMeta, { color: palette.textMuted }]} numberOfLines={1}>{entry.meta}</Text>

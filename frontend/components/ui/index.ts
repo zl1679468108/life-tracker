@@ -33,3 +33,4 @@ export { FormActions } from './FormActions';
 export { FormCard } from './FormCard';
 export { DecorativeBackground } from './DecorativeBackground';
 export { HomeBackground, WorkbenchBackground, MessagesBackground, SettingsBackground } from './PageBackground';
+export { Logo } from './Logo';

@@ -208,6 +208,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings/assets" options={{ ...subPageOptions, headerTitle: '资产总览' }} />
             <Stack.Screen name="settings/calendar" options={{ ...subPageOptions, headerTitle: '日历视图' }} />
             <Stack.Screen name="settings/widgets" options={{ ...subPageOptions, headerTitle: '桌面快捷入口' }} />
+            <Stack.Screen name="settings/version" options={{ ...subPageOptions, headerTitle: '版本信息' }} />
             </Stack>
           </PaperProvider>
         </ThemeProvider>
