@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 export interface LogoProps {
@@ -8,7 +8,7 @@ export interface LogoProps {
 // LifeTracker 应用 Logo
 // 渐变圆角方形（橙→紫）+ 白色勾选圆环，寓意"追踪与完成"
 export function Logo({ size = 64 }: LogoProps) {
-  const gradId = 'lt-logo-grad';
+  const gradId = `lt-logo-grad-${useId()}`;
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
       <Defs>
