@@ -1,29 +1,20 @@
-import React, { useId } from 'react';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import React from 'react';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 export interface LogoProps {
   size?: number;
 }
 
 // LifeTracker 应用 Logo
-// 渐变圆角方形（橙→紫）+ 白色勾选圆环，寓意"追踪与完成"
+// 基于 favicon.ico：浅蓝圆角方形 + 深蓝 V 形（顶点向左下、右下分叉），寓意"从一点出发，追踪多个方向"
 export function Logo({ size = 64 }: LogoProps) {
-  const gradId = `lt-logo-grad-${useId()}`;
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <Defs>
-        <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#FF6B35" />
-          <Stop offset="1" stopColor="#7C5CFC" />
-        </LinearGradient>
-      </Defs>
-      <Rect width="64" height="64" rx="16" fill={`url(#${gradId})`} />
-      <Circle cx="32" cy="32" r="14" fill="none" stroke="#FFFFFF" strokeWidth="3" />
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      <Rect width="48" height="48" rx={10} fill="#E6F4FE" />
       <Path
-        d="M25 32 L30 37 L40 26"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="3"
+        d="M 12 37 L 24 10 L 36 37"
+        stroke="#0072DE"
+        strokeWidth={7}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
