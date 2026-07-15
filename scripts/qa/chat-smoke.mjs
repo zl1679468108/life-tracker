@@ -17,11 +17,24 @@
  */
 
 import { chromium } from 'playwright';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 const APP_BASE = 'http://localhost:3021';
 const API_BASE = 'http://localhost:3020';
 const SUPABASE_URL = 'https://fvggqgeiwewsjojargxe.supabase.co';
-const SUPABASE_SERVICE_KEY = '***REMOVED***';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || loadEnvKey('SUPABASE_SERVICE_ROLE_KEY');
+
+// 从本地 backend/.env.development 读取密钥（该文件不入库）
+function loadEnvKey(key) {
+  try {
+    const content = readFileSync(resolve(process.cwd(), 'backend/.env.development'), 'utf-8');
+    const match = content.match(new RegExp(`^${key}=(.+)$`, 'm'));
+    return match?.[1]?.trim() || '';
+  } catch {
+    return '';
+  }
+}
 
 const USER_A = { email: '1679468108@qq.com', password: 'zl123456', label: 'A-zhaolong1' };
 

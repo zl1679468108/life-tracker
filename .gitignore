@@ -3,10 +3,13 @@ node_modules/
 .pnp
 .pnp.js
 
-# Environment variables
+# Environment variables（所有 .env 文件都不提交，只用 .env.example 作为模板）
 .env
 .env.local
-.env.*.local
+.env.development
+.env.production
+.env.*
+!.env.example
 
 # CloudBase config (contains secrets)
 cloudbaserc.json
