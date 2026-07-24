@@ -8,7 +8,7 @@ import { AppHeader, WorkbenchBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useTranslation } from '../../lib/i18n';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette, useTheme } from '../../stores/themeStore';
 import { useSyncStore } from '../../stores/syncStore';
 
 type Entry = {
@@ -38,8 +38,8 @@ const alphaBg = (hex: string, alpha = 0.12): string => {
 export default function WorkbenchScreen() {
   const router = useRouter();
   const colors = useColors();
-  const dark = colors.gray[50] === appDesign.dark.bg;
-  const palette = dark ? appDesign.dark : appDesign.light;
+  const { isDark: dark } = useTheme();
+  const palette = usePalette();
   const { t } = useTranslation();
   const { status, syncAll } = useSyncStore();
   const [toastVisible, setToastVisible] = useState(false);

@@ -17,97 +17,27 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { SwipeableRow } from '../../components/SwipeableRow';
-import { AppHeader, MessagesBackground } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { AppHeader, MessagesBackground, UserAvatar } from '../../components/ui';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
 import { useDebounce } from '../../lib/hooks';
 import { showAlert } from '../../lib/alert';
+import { avatarColor } from '../../lib/avatar';
+import { formatChatListTime, getMessageSummary } from '../../lib/format';
 import { socketService } from '../../lib/socket';
 import { useAuthStore } from '../../stores/authStore';
-import { useColors } from '../../stores/themeStore';
+import { usePalette, useTheme, type AppPalette } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import type { Conversation, LifeFriend } from '../../types';
 
-type Palette = typeof appDesign.dark;
 
-const AVATAR_COLORS = ['#F36F3C', '#7C5CFC', '#1E88E5', '#10A66E', '#E84A5F', '#D89400', '#8E24AA', '#43A047'];
 
-function avatarColor(name?: string): string {
-  if (!name) return AVATAR_COLORS[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
-function formatTime(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
-  if (diffMins < 1) return '刚刚';
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}小时前`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return '昨天';
-  if (diffDays < 7) return `${diffDays}天前`;
-  return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function getMessageSummary(msg: { type?: string; content?: string } | null) {
-  if (!msg) return '暂无消息';
-  if (msg.type === 'item') return '分享了一件物品';
-  if (msg.type === 'todo') return '分享了一条待办';
-  if (msg.type === 'system') return msg.content || '系统通知';
-  return msg.content || '暂无消息';
-}
-
-function AvatarWord({ name, palette }: { name?: string; palette: Palette }) {
-  const ac = avatarColor(name);
-  return (
-    <View style={[styles.avatar, { backgroundColor: `${ac}18` }]}>
-      <Text style={[styles.avatarText, { color: ac }]}>{(name || '友').slice(0, 1).toUpperCase()}</Text>
-    </View>
-  );
-}
-
-function ConversationAvatar({
-  name,
-  avatarUrl,
-  palette,
-  size = 50,
-}: {
-  name?: string;
-  avatarUrl?: string | null;
-  palette: Palette;
-  size?: number;
-}) {
-  if (avatarUrl) {
-    return <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
-  }
-  const ac = avatarColor(name);
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: `${ac}18`,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text style={{ fontSize: size * 0.4, lineHeight: size * 0.48, fontWeight: '700', color: ac }}>
-        {(name || '友').slice(0, 1).toUpperCase()}
-      </Text>
-    </View>
-  );
-}
 
 export default function MessagesScreen() {
   const router = useRouter();
-  const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const isDark = palette.bg === appDesign.dark.bg;
+  const palette = usePalette();
+  const { isDark } = useTheme();
   const { conversations, loading, error, fetchConversations } = useConversationStore();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -382,7 +312,7 @@ export default function MessagesScreen() {
         {/* 氛围背景层 */}
         <View style={styles.atmosphereArea} pointerEvents="none">
           <LinearGradient
-            colors={palette.bg === appDesign.dark.bg
+            colors={isDark
               ? ['rgba(124,92,252,0.06)', 'rgba(16,166,110,0.03)', palette.bg]
               : ['#F0EDFF', '#ECFDF5', palette.bg]
             }
@@ -447,7 +377,7 @@ export default function MessagesScreen() {
                     return (
                       <TouchableOpacity style={styles.storyItem} onPress={item.onPress} activeOpacity={0.82}>
                         <View style={[styles.storyAvatarWrap, { borderColor: `${ac}66` }]}>
-                          <ConversationAvatar name={item.name} avatarUrl={item.avatarUrl} palette={palette} size={48} />
+                          <UserAvatar name={item.name} avatarUrl={item.avatarUrl} size={48} />
                           <View style={[styles.storyOnlineDot, { backgroundColor: palette.success, borderColor: palette.surface }]} />
                         </View>
                         <Text style={[styles.storyLabel, { color: palette.text }]} numberOfLines={1}>{item.name}</Text>
@@ -546,14 +476,14 @@ export default function MessagesScreen() {
                       accessibilityLabel={`打开对话 ${userInfo.display_name}`}
                       accessibilityRole="button"
                     >
-                      <ConversationAvatar name={userInfo.display_name} avatarUrl={userInfo.avatar_url} palette={palette} size={50} />
+                      <UserAvatar name={userInfo.display_name} avatarUrl={userInfo.avatar_url} size={50} />
                       <View style={styles.rowContent}>
                         <View style={styles.rowHead}>
                           <Text style={[styles.rowTitle, { color: palette.text }]} numberOfLines={1}>
                             {userInfo.display_name}
                           </Text>
                           <Text style={[styles.timeText, { color: palette.textMuted }]}>
-                            {conv.last_message_at ? formatTime(conv.last_message_at) : ''}
+                            {conv.last_message_at ? formatChatListTime(conv.last_message_at) : ''}
                           </Text>
                         </View>
                         <Text style={[styles.previewText, { color: palette.textMuted }]} numberOfLines={1}>
@@ -702,7 +632,7 @@ export default function MessagesScreen() {
                               .filter((r) => r.status === 'pending')
                               .map((r) => (
                                 <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                                  <AvatarWord name={r.friend.display_name} palette={palette} />
+                                  <UserAvatar name={r.friend.display_name} size={40} />
                                   <View style={styles.userText}>
                                     <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
                                     <Text style={[styles.userDesc, { color: palette.textMuted }]}>
@@ -779,7 +709,7 @@ export default function MessagesScreen() {
                               .filter((r) => r.status === 'rejected')
                               .map((r) => (
                                 <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                                  <AvatarWord name={r.friend.display_name} palette={palette} />
+                                  <UserAvatar name={r.friend.display_name} size={40} />
                                   <View style={styles.userText}>
                                     <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
                                     <Text style={[styles.userDesc, { color: palette.textMuted }]}>
@@ -883,7 +813,7 @@ export default function MessagesScreen() {
                             }}
                             activeOpacity={0.82}
                           >
-                            <AvatarWord name={f.friend.display_name} palette={palette} />
+                            <UserAvatar name={f.friend.display_name} size={40} />
                             <View style={styles.userText}>
                               <Text style={[styles.userName, { color: palette.text }]}>{f.friend.display_name}</Text>
                               {f.friend.email && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{f.friend.email}</Text>}
@@ -916,7 +846,7 @@ export default function MessagesScreen() {
                               {msg.sender_name}: {msg.content || ''}
                             </Text>
                           </View>
-                          <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatTime(msg.created_at)}</Text>
+                          <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatChatListTime(msg.created_at)}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -931,7 +861,7 @@ export default function MessagesScreen() {
   );
 }
 
-function SheetStatus({ palette, text, icon }: { palette: Palette; text: string; icon?: keyof typeof MaterialCommunityIcons.glyphMap }) {
+function SheetStatus({ palette, text, icon }: { palette: AppPalette; text: string; icon?: keyof typeof MaterialCommunityIcons.glyphMap }) {
   return (
     <View style={styles.sheetStatus}>
       {icon ? <MaterialCommunityIcons name={icon} size={28} color={palette.textMuted} /> : <ActivityIndicator size="small" color={palette.orange} />}
@@ -954,7 +884,7 @@ function UserPickRow({
   name: string;
   desc?: string;
   selected: boolean;
-  palette: Palette;
+  palette: AppPalette;
   onPress: () => void;
   pinned?: boolean;
   trailing?: React.ReactNode;
@@ -969,7 +899,7 @@ function UserPickRow({
       accessibilityLabel={`选择用户 ${name || '未知用户'}`}
       accessibilityRole="button"
     >
-      <AvatarWord name={name} palette={palette} />
+      <UserAvatar name={name} size={40} />
       <View style={styles.userText}>
         <View style={styles.userNameRow}>
           <Text style={[styles.userName, { color: palette.text }]} numberOfLines={1}>

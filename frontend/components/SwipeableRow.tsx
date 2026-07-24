@@ -2,8 +2,8 @@ import React, { useRef } from 'react';
 import { View, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, Platform, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
-import { useColors } from '../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
+import { useColors, usePalette } from '../stores/themeStore';
 
 const DELETE_WIDTH = 80;
 
@@ -15,7 +15,7 @@ interface SwipeableRowProps {
 
 export function SwipeableRow({ children, onDelete, containerStyle }: SwipeableRowProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
   const isOpen = useRef(false);

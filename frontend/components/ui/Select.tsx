@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { BottomSheet } from './BottomSheet';
 
 export interface SelectOption {
@@ -37,7 +37,7 @@ export function Select({
 }: SelectProps) {
   const [visible, setVisible] = useState(false);
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const selectedOption = options.find((option) => option.value === value);
   const selectedLabel = selectedOption?.label ?? placeholder;

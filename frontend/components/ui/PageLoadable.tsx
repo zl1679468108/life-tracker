@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { Loading } from './Loading';
 import { Skeleton } from './Skeleton';
 
@@ -43,7 +43,7 @@ export function PageLoadable({
   children,
 }: PageLoadableProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   // 错误状态
   if (error) {
@@ -102,7 +102,7 @@ export function PageLoadable({
 /** 默认全屏骨架屏 */
 function SkeletonPage() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   return (
     <View style={[styles.skeletonContainer, { backgroundColor: palette.bg }]}>
       {Array.from({ length: 5 }).map((_, i) => (

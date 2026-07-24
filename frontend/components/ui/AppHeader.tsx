@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 export type HeaderAction = {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -22,7 +22,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, actions = [], backAction, align = 'left', leftActions = [] }: AppHeaderProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const renderAction = (action: HeaderAction, isBack = false) => {
     const color = action.tone === 'primary' ? palette.orange : action.tone === 'danger' ? palette.danger : palette.textSecondary;

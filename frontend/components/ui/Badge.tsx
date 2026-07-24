@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface BadgeProps {
   label: string;
@@ -11,7 +11,7 @@ interface BadgeProps {
 
 export function Badge({ label, variant = 'medium', style }: BadgeProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   
   const variantStyles = {
     high: { backgroundColor: palette.surfaceSoft, color: palette.danger },

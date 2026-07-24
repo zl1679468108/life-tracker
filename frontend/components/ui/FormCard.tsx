@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface FormCardProps {
   /** 卡片标题，留空则不渲染标题行 */
@@ -19,7 +19,7 @@ interface FormCardProps {
  */
 export function FormCard({ title, accentColor, style, children }: FormCardProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const barColor = accentColor ?? palette.orange;
 
   return (

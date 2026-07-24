@@ -16,106 +16,25 @@ import {
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { EmptyState } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { formatMessageTime, formatRelativeActive, formatDateZh } from '../../lib/format';
+import { EmptyState, UserAvatar } from '../../components/ui';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { socketService } from '../../lib/socket';
 import { useAuthStore } from '../../stores/authStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useMessageStore } from '../../stores/messageStore';
 import { useProfileStore } from '../../stores/profileStore';
 import { useItemStore } from '../../stores/itemStore';
-import { useColors } from '../../stores/themeStore';
+import { usePalette, type AppPalette } from '../../stores/themeStore';
 import { useTodoStore } from '../../stores/todoStore';
 import type { Message, LifeItem, LifeTodo } from '../../types';
 
-type Palette = typeof appDesign.dark;
-
-const AVATAR_COLORS = ['#F36F3C', '#7C5CFC', '#1E88E5', '#10A66E', '#E84A5F', '#D89400', '#8E24AA', '#43A047'];
-
-function avatarColor(name?: string): string {
-  if (!name) return AVATAR_COLORS[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function formatMessageTime(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isToday) return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  if (isYesterday) return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
-  return `${date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-function formatRelativeTime(dateStr?: string) {
-  if (!dateStr) return '刚刚活跃';
-  const date = new Date(dateStr);
-  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (diffMins < 1) return '刚刚活跃';
-  if (diffMins < 60) return `${diffMins} 分钟前`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} 小时前`;
-  return `${Math.floor(diffHours / 24)} 天前`;
-}
 
 function cleanMessageContent(content?: string) {
   if (!content) return '';
   return content.replace(/^.+?[:：]\s*/, '');
 }
 
-function Avatar({
-  name,
-  avatarUrl,
-  palette,
-  size = 36,
-}: {
-  name?: string;
-  avatarUrl?: string | null;
-  palette: Palette;
-  size?: number;
-}) {
-  const [hasError, setHasError] = useState(false);
-  const ac = avatarColor(name);
-
-  if (avatarUrl && !hasError) {
-    return (
-      <Image
-        source={{ uri: avatarUrl }}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: palette.surfaceSoft,
-        }}
-        resizeMode="cover"
-        onError={() => setHasError(true)}
-      />
-    );
-  }
-  return (
-    <View
-      style={[
-        styles.avatar,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: `${ac}18`,
-          borderColor: `${ac}40`,
-        },
-      ]}
-    >
-      <Text style={[styles.avatarText, { color: ac, fontSize: size * 0.42 }]}>
-        {(name || '友').slice(0, 1).toUpperCase()}
-      </Text>
-    </View>
-  );
-}
 
 function ResourceCard({
   message,
@@ -124,7 +43,7 @@ function ResourceCard({
   onToggleComplete,
 }: {
   message: Message;
-  palette: Palette;
+  palette: AppPalette;
   isOwn: boolean;
   onToggleComplete?: () => void;
 }) {
@@ -221,7 +140,7 @@ function MessageBubble({
   isOwn: boolean;
   senderName?: string;
   senderAvatar?: string | null;
-  palette: Palette;
+  palette: AppPalette;
 }) {
   const { type, content, card_data } = message;
 
@@ -281,7 +200,7 @@ function MessageBubble({
     <View style={[styles.messageRow, isOwn ? styles.messageRowOwn : styles.messageRowOther]}>
       {!isOwn && (
         <View style={styles.messageAvatar}>
-          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={32} />
+          <UserAvatar name={senderName} avatarUrl={senderAvatar} size={32} />
         </View>
       )}
       <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
@@ -292,7 +211,7 @@ function MessageBubble({
       </View>
       {isOwn && (
         <View style={styles.messageAvatar}>
-          <Avatar name={senderName} avatarUrl={senderAvatar} palette={palette} size={32} />
+          <UserAvatar name={senderName} avatarUrl={senderAvatar} size={32} />
         </View>
       )}
     </View>
@@ -304,8 +223,7 @@ export default function MessageDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { id: conversationId } = useLocalSearchParams<{ id: string }>();
-  const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { user } = useAuthStore();
   const { messages, loading, fetchMessages, sendMessage, markAsRead, setCurrentConversation, clearMessages } = useMessageStore();
   const { conversations, fetchConversations } = useConversationStore();
@@ -319,7 +237,7 @@ export default function MessageDetailScreen() {
   const currentConv = conversations.find((c) => c.id === conversationId);
   const peerName = currentConv?.other_user?.display_name || '对话';
   const peerAvatar = currentConv?.other_user?.avatar_url;
-  const activityText = useMemo(() => formatRelativeTime(currentConv?.last_message_at), [currentConv?.last_message_at]);
+  const activityText = useMemo(() => formatRelativeActive(currentConv?.last_message_at), [currentConv?.last_message_at]);
 
   // 自己的头像和名称
   const { profile } = useProfileStore();
@@ -442,7 +360,7 @@ export default function MessageDetailScreen() {
 
         <View style={styles.topBarTitle}>
           <View style={styles.topBarTitleRow}>
-            <Avatar name={peerName} avatarUrl={peerAvatar} palette={palette} size={28} />
+            <UserAvatar name={peerName} avatarUrl={peerAvatar} size={28} />
             <View style={styles.topBarTitleText}>
               <Text style={[styles.topBarName, { color: palette.text }]} numberOfLines={1}>
                 {peerName}
@@ -708,7 +626,7 @@ export default function MessageDetailScreen() {
                         <View style={styles.actionPanelItemCopy}>
                           <Text style={[styles.actionPanelItemName, { color: palette.text }]} numberOfLines={1}>{todo.title}</Text>
                           <Text style={[styles.actionPanelItemMeta, { color: palette.textMuted }]} numberOfLines={1}>
-                            {todo.completed ? '已完成' : todo.due_date ? `截止 ${new Date(todo.due_date).toLocaleDateString('zh-CN')}` : '未设截止'}
+                            {todo.completed ? '已完成' : todo.due_date ? `截止 ${formatDateZh(todo.due_date)}` : '未设截止'}
                           </Text>
                         </View>
                       </TouchableOpacity>

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { formatDateZh } from '../../lib/format';
 
 interface DatePickerProps {
   label: string;
@@ -30,7 +31,7 @@ export function DatePicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const [showNative, setShowNative] = useState(false);
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const handleClick = () => {
     if (Platform.OS === 'web') {
@@ -85,7 +86,7 @@ export function DatePicker({
     ? isValidDate
       ? mode === 'datetime'
         ? normalizedDate.toLocaleString('zh-CN')
-        : normalizedDate.toLocaleDateString('zh-CN')
+        : formatDateZh(normalizedDate)
       : value
     : '';
 

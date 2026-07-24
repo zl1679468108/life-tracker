@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import { useShareStore } from '../../stores/shareStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { FormActions, Input, ImagePicker, FormSection, DatePicker, ReminderToggle, ShareDialog, BottomSheet, FormCard } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
@@ -34,7 +34,7 @@ export default function CreateItemScreen() {
   } = useShareStore();
   const currentUser = useAuthStore((state) => state.user);
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);

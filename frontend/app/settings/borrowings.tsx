@@ -4,9 +4,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
-import { appDesign, spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
-import { BorrowingCard, Button, EmptyState, Skeleton } from '../../components/ui';
+import { spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { BorrowingCard, Button, EmptyState, SegmentedTabs, ListSkeleton } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
@@ -17,7 +17,7 @@ export default function BorrowingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ itemId?: string }>();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { borrowings, fetchBorrowings, fetchByItemId, returnBorrowing, deleteBorrowing } = useBorrowingStore();
   const { items, fetchItems } = useItemStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -151,37 +151,14 @@ export default function BorrowingsScreen() {
               </View>
             )}
             {!itemContextId && (
-              <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                {tabs.map((tab) => (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[styles.filterTab, activeTab === tab.key && { backgroundColor: palette.surface, borderColor: palette.border }]}
-                    onPress={() => setActiveTab(tab.key)}
-                  >
-                    <Text style={[styles.filterText, { color: palette.textMuted }, activeTab === tab.key && { color: palette.text }]}>
-                      {tab.label}
-                    </Text>
-                    <Text style={[styles.filterCount, { color: activeTab === tab.key ? palette.orange : palette.textMuted }]}>
-                      {tab.count}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <SegmentedTabs tabs={tabs} value={activeTab} onChange={setActiveTab} />
             )}
           </View>
         }
         ListEmptyComponent={
           loading ? (
             <View style={{ padding: spacing.lg, gap: spacing.md }}>
-              {[1, 2, 3].map((i) => (
-                <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-                  <Skeleton width={44} height={44} borderRadius={22} />
-                  <View style={styles.skeletonContent}>
-                    <Skeleton width="60%" height={16} />
-                    <Skeleton width="40%" height={12} style={{ marginTop: 8 }} />
-                  </View>
-                </View>
-              ))}
+              <ListSkeleton count={3} avatarSize={44} />
             </View>
           ) : (
             <EmptyState
@@ -249,30 +226,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     marginTop: 2,
   },
-  filterTabs: {
-    flexDirection: 'row',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    padding: 4,
-    gap: spacing.xs,
-  },
-  filterTab: {
-    flex: 1,
-    minHeight: 36,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingHorizontal: spacing.sm,
-  },
-  filterText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  filterCount: {
-    fontSize: fontSize.xs,
-  },
   actionBar: {
     borderTopWidth: 1,
     paddingHorizontal: spacing.lg,
@@ -281,16 +234,4 @@ const styles = StyleSheet.create({
   },
   actionIcon: {
     marginRight: 6,
-  },
-  skeletonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  skeletonContent: {
-    flex: 1,
-  },
-});
+  },});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
-import { appDesign, fontSize, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { fontSize, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface LoadingProps {
   size?: 'small' | 'large';
@@ -12,7 +12,7 @@ interface LoadingProps {
 
 export function Loading({ size = 'large', text, overlay = false, style }: LoadingProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   
   if (overlay) {
     return (

@@ -6,9 +6,9 @@ import { useItemStore } from '../../stores/itemStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { LifeItem } from '../../types';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
-import { FAB, PageLoadable, CachedImage, EmptyState, Select } from '../../components/ui';
+import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { FAB, PageLoadable, CachedImage, EmptyState, Select, SortPickerModal } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
@@ -147,7 +147,7 @@ const ItemListHeader = React.forwardRef<TextInput, ItemListHeaderProps>(function
 export default function ItemListScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { t } = useTranslation();
   const ALL_CATEGORY = 'ALL';
 
@@ -498,29 +498,17 @@ export default function ItemListScreen() {
         {!batchMode && <FAB onPress={() => router.push('/item/create')} />}
 
         {showSortModal && (
-          <TouchableOpacity style={[styles.sortOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSortModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.sortHandle, { backgroundColor: palette.borderStrong }]} />
-              <Text style={[styles.sortTitle, { color: palette.text }]}>排序方式</Text>
-              {([
-                { key: 'time' as const, label: '添加时间', icon: 'clock-outline' },
-                { key: 'name' as const, label: '名称', icon: 'sort-alphabetical-ascending' },
-                { key: 'category' as const, label: '分类', icon: 'tag-outline' },
-              ]).map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: palette.surfaceSoft }]}
-                  onPress={() => { setSortBy(opt.key); setShowSortModal(false); }}
-                >
-                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? palette.orange : palette.textMuted} />
-                  <Text style={[styles.sortOptionText, { color: palette.text }, sortBy === opt.key && { color: palette.orange }]}>
-                    {opt.label}
-                  </Text>
-                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={palette.orange} />}
-                </TouchableOpacity>
-              ))}
-            </TouchableOpacity>
-          </TouchableOpacity>
+          <SortPickerModal
+            visible
+            value={sortBy}
+            options={[
+              { key: 'time', label: '添加时间', icon: 'clock-outline' },
+              { key: 'name', label: '名称', icon: 'sort-alphabetical-ascending' },
+              { key: 'category', label: '分类', icon: 'tag-outline' },
+            ]}
+            onChange={setSortBy}
+            onClose={() => setShowSortModal(false)}
+          />
         )}
       </View>
     </SafeAreaView>
@@ -738,43 +726,6 @@ const styles = StyleSheet.create({
   },
   batchDeleteText: {
     fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
-  },
-  sortOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    zIndex: 100,
-  },
-  sortModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    borderWidth: 1,
-    padding: spacing.xl,
-    paddingBottom: 40,
-  },
-  sortHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.xl,
-  },
-  sortTitle: {
-    fontSize: fontSize['4xl'],
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.xl,
-  },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-  },
-  sortOptionText: {
-    flex: 1,
-    fontSize: fontSize.xl,
     fontWeight: fontWeight.medium,
   },
 });

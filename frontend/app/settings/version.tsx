@@ -5,7 +5,7 @@ import { AppScreen, Logo } from '../../components/ui';
 import appConfig from '../../app.json';
 import { CHANGELOGS, type ChangelogEntry } from '../../constants/changelog';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette, useTheme } from '../../stores/themeStore';
 
 interface ChangeGroup {
   key: 'new' | 'improved' | 'fixed';
@@ -27,8 +27,8 @@ const GROUP_COLORS = {
 
 export default function VersionScreen() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const isDark = palette.bg === appDesign.dark.bg;
+  const palette = usePalette();
+  const { isDark } = useTheme();
   const [expanded, setExpanded] = useState<Set<string>>(new Set([CHANGELOGS[0]?.version].filter(Boolean) as string[]));
 
   const currentVersion = appConfig.expo.version;

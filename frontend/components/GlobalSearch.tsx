@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text, TextInput, Modal, ScrollView 
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
-import { useColors } from '../stores/themeStore';
+import { useColors, usePalette } from '../stores/themeStore';
 import { useCategoryStore } from '../stores/categoryStore';
 import { useItemStore } from '../stores/itemStore';
 import { useLocationStore } from '../stores/locationStore';
@@ -48,7 +48,7 @@ const featureEntries: SearchResult[] = [
 export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { items } = useItemStore();
   const { todos } = useTodoStore();
   const { categories, fetchCategories } = useCategoryStore();

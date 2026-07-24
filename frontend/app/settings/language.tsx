@@ -3,14 +3,14 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppScreen } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { i18n, Language, useTranslation } from '../../lib/i18n';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 export default function LanguageScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { t } = useTranslation();
   const currentLanguage = i18n.getLanguage();
 

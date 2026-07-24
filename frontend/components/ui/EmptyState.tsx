@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, useWindowDimensions } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, fontSize, fontWeight, spacing, borderRadius } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { fontSize, fontWeight, spacing, borderRadius } from '../../constants/theme';
+import { usePalette, useTheme } from '../../stores/themeStore';
 import { Button } from './Button';
 
 type EmptyVariant = 'items' | 'todos' | 'messages' | 'categories' | 'locations' | 'calendar' | 'notifications' | 'borrowings' | 'templates' | 'assets' | 'widgets' | 'generic';
@@ -44,8 +44,8 @@ export function EmptyState({
   variant = 'generic',
   style,
 }: EmptyStateProps) {
-  const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
+  const { isDark } = useTheme();
   const { width: screenW } = useWindowDimensions();
 
   const config = variantConfig[variant] || variantConfig.generic;
@@ -58,7 +58,7 @@ export function EmptyState({
       {/* decorative SVG dots */}
       <View style={styles.svgWrapper} pointerEvents="none">
         <Svg width={screenW * 0.4} height={180} viewBox="0 0 200 200">
-          <G opacity={palette.bg === appDesign.dark.bg ? 0.15 : 0.08}>
+          <G opacity={isDark ? 0.15 : 0.08}>
             <Circle cx="100" cy="80" r="60" fill={usedAccent} opacity={0.15} />
             <Circle cx="80" cy="100" r="40" fill={usedAccent} opacity={0.15} />
             <Circle cx="130" cy="120" r="28" fill={usedAccent} opacity={0.1} />

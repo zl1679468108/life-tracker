@@ -13,7 +13,7 @@ import { useTranslation } from '../../lib/i18n';
 import { compressAvatar, uploadImage } from '../../lib/upload';
 import { useAuthStore } from '../../stores/authStore';
 import { useProfileStore } from '../../stores/profileStore';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 type Palette = typeof appDesign.dark;
 
@@ -58,7 +58,7 @@ function InfoField({
 export default function AccountScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
   const { profile, fetchProfile, updateProfile, cachedAvatarUrl, avatarDataUri, initCachedAvatar } = useProfileStore();

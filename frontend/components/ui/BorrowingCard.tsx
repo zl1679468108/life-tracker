@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../stores/themeStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { formatDateZh } from '../../lib/format';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import type { LifeBorrowing } from '../../types';
 
 interface BorrowingCardProps {
@@ -13,7 +14,7 @@ interface BorrowingCardProps {
 
 export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const statusConfig = {
     borrowed: { label: '借出中', color: palette.warning, bgColor: palette.surfaceSoft, icon: 'arrow-right-bold-circle' },
@@ -26,7 +27,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
   const getDaysInfo = () => {
     if (borrowing.status === 'returned') {
       if (borrowing.actual_return_date) {
-        return `归还于 ${new Date(borrowing.actual_return_date).toLocaleDateString('zh-CN')}`;
+        return `归还于 ${formatDateZh(borrowing.actual_return_date)}`;
       }
       return '已归还';
     }
@@ -85,7 +86,7 @@ export function BorrowingCard({ borrowing, onPress, onReturn }: BorrowingCardPro
           <View style={styles.summaryCell}>
             <Text style={[styles.dateLabel, { color: palette.textMuted }]}>借出日期</Text>
             <Text style={[styles.summaryValue, { color: palette.text }]}>
-              {new Date(borrowing.borrow_date).toLocaleDateString('zh-CN')}
+              {formatDateZh(borrowing.borrow_date)}
             </Text>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: palette.border }]} />

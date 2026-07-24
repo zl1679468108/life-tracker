@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface AppListRowProps {
   title: string;
@@ -30,7 +30,7 @@ export function AppListRow({
   onPress,
 }: AppListRowProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const tone = accent || palette.orange;
   const Container = onPress ? TouchableOpacity : View;
 

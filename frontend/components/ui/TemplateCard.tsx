@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColors } from '../../stores/themeStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import type { LifeTemplate } from '../../types';
 
 interface TemplateCardProps {
@@ -14,7 +14,7 @@ interface TemplateCardProps {
 
 export function TemplateCard({ template, onPress, onUse, onDelete }: TemplateCardProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const iconColor = template.color || palette.orange;
   const iconName = template.icon || (template.template_type === 'item' ? 'package-variant' : 'checkbox-marked');

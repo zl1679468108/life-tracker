@@ -6,7 +6,7 @@ import { useItemStore } from '../../stores/itemStore';
 import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette } from '../../stores/themeStore';
 import type { LifeTodo } from '../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -39,7 +39,7 @@ function formatDueLabel(todo: LifeTodo) {
 
 export default function StatsScreen() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { items, fetchItems } = useItemStore();
   const { todos, fetchTodos } = useTodoStore();
   const { categories, fetchCategories } = useCategoryStore();

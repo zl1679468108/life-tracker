@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../constants/theme';
+import { borderRadius, fontSize, fontWeight, spacing } from '../constants/theme';
 import { AppAlertRequest, setAlertHandler } from '../lib/alert';
-import { useColors } from '../stores/themeStore';
+import { useColors, usePalette } from '../stores/themeStore';
 
 export function AppAlertHost() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [request, setRequest] = useState<AppAlertRequest | null>(null);
 
   useEffect(() => {

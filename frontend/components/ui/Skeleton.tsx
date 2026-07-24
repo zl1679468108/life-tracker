@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
-import { appDesign, spacing, borderRadius } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius } from '../../constants/theme';
+import { usePalette } from '../../stores/themeStore';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
@@ -17,8 +17,7 @@ export function Skeleton({
   borderRadius: br = 4,
   style,
 }: SkeletonProps) {
-  const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -51,8 +50,7 @@ interface SkeletonListProps {
 }
 
 export function SkeletonList({ rows = 5, rowHeight = 72, showAvatar = true, style }: SkeletonListProps) {
-  const palette = useColors();
-  const p = palette.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const p = usePalette();
 
   return (
     <View style={[{ paddingHorizontal: spacing.lg, gap: spacing.md }, style]}>
@@ -87,8 +85,7 @@ interface SkeletonCardProps {
 }
 
 export function SkeletonCard({ lines = 3, style }: SkeletonCardProps) {
-  const palette = useColors();
-  const p = palette.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const p = usePalette();
 
   return (
     <View

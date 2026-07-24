@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface ButtonProps {
   title: string;
@@ -27,7 +27,7 @@ export function Button({
   icon,
 }: ButtonProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const getButtonStyle = (): ViewStyle[] => {
     const baseStyle: ViewStyle[] = [styles.base, styles[`size_${size}`] as ViewStyle];

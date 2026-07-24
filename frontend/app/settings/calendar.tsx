@@ -4,8 +4,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { CalendarDay } from '../../types';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const PRIORITY_COLORS: Record<number, string> = {
@@ -23,7 +23,7 @@ const formatLocalDate = (date: Date) => {
 
 export default function CalendarScreen() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [days, setDays] = useState<CalendarDay[]>([]);

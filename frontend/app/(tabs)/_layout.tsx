@@ -2,8 +2,8 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, layout, fontSize, fontWeight, borderRadius } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { layout, fontSize, fontWeight, borderRadius } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
 
 function TabIcon({ name, color, focused }: { name: string; color: string; focused?: boolean }) {
@@ -18,7 +18,7 @@ function TabIcon({ name, color, focused }: { name: string; color: string; focuse
 export default function TabLayout() {
   const colors = useColors();
   const conversations = useConversationStore((s) => s.conversations);
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   // 计算总未读数
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);

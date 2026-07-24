@@ -35,3 +35,7 @@ export { FormCard } from './FormCard';
 export { DecorativeBackground } from './DecorativeBackground';
 export { HomeBackground, WorkbenchBackground, MessagesBackground, SettingsBackground } from './PageBackground';
 export { Logo } from './Logo';
+export { SegmentedTabs, type SegmentedTabItem } from './SegmentedTabs';
+export { SortPickerModal, type SortOption } from './SortPickerModal';
+export { ListSkeleton } from './ListSkeleton';
+export { UserAvatar } from './UserAvatar';

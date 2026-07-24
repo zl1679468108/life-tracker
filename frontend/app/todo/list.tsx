@@ -5,9 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { useTodoStore } from '../../stores/todoStore';
 import { LifeTodo } from '../../types';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
-import { FAB, Checkbox, Badge, PageLoadable, Skeleton, EmptyState } from '../../components/ui';
+import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { formatDateZh } from '../../lib/format';
+import { FAB, Checkbox, Badge, PageLoadable, Skeleton, EmptyState, SegmentedTabs, SortPickerModal } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -30,13 +31,13 @@ const formatDueLabel = (dateValue?: string) => {
   if (diff < 0) return `逾期 ${Math.abs(diff)} 天`;
   if (diff === 0) return '今天截止';
   if (diff === 1) return '明天截止';
-  return `${new Date(dateValue!).toLocaleDateString('zh-CN')} 截止`;
+  return `${formatDateZh(dateValue!)} 截止`;
 };
 
 export default function TodoListScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { todos, loading, error: todosError, fetchTodos, toggleComplete, deleteTodo, reorderTodos } = useTodoStore();
   const params = useLocalSearchParams<{ filter?: string }>();
   const [filter, setFilter] = useState<FilterType>(
@@ -246,19 +247,16 @@ export default function TodoListScreen() {
       <View style={[styles.container, { backgroundColor: palette.bg }]}>
         <View style={[styles.header, { backgroundColor: palette.bg }]}>
           <View style={styles.headerTop}>
-            <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}> 
-              {(['all', 'pending', 'completed'] as FilterType[]).map((f) => (
-                <TouchableOpacity
-                  key={f}
-                  style={[styles.filterTab, filter === f && { backgroundColor: palette.surface }]}
-                  onPress={() => setFilter(f)}
-                >
-                  <Text style={[styles.filterText, { color: palette.textMuted }, filter === f && { color: palette.text }]}> 
-                    {f === 'all' ? '全部' : f === 'pending' ? '待完成' : '已完成'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <SegmentedTabs
+              tabs={[
+                { key: 'all' as const, label: '全部' },
+                { key: 'pending' as const, label: '待完成' },
+                { key: 'completed' as const, label: '已完成' },
+              ]}
+              value={filter}
+              onChange={setFilter}
+              showCount={false}
+            />
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={[styles.headerBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }, dragEnabled && { borderColor: palette.orange }]}
@@ -397,29 +395,17 @@ export default function TodoListScreen() {
         <FAB variant="secondary" onPress={() => router.push('/todo/create')} />
 
         {showSortModal && (
-          <TouchableOpacity style={[styles.sortOverlay, { backgroundColor: palette.scrim }]} activeOpacity={1} onPress={() => setShowSortModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.sortModal, { backgroundColor: palette.surface, borderColor: palette.border }]} onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.sortHandle, { backgroundColor: palette.borderStrong }]} />
-              <Text style={[styles.sortTitle, { color: palette.text }]}>排序方式</Text>
-              {([
-                { key: 'time' as const, label: '添加时间', icon: 'clock-outline' },
-                { key: 'priority' as const, label: '优先级', icon: 'flag-outline' },
-                { key: 'title' as const, label: '名称', icon: 'sort-alphabetical-ascending' },
-              ]).map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  style={[styles.sortOption, sortBy === opt.key && { backgroundColor: palette.surfaceSoft }]}
-                  onPress={() => { setSortBy(opt.key); setShowSortModal(false); }}
-                >
-                  <MaterialCommunityIcons name={opt.icon as any} size={20} color={sortBy === opt.key ? palette.orange : palette.textMuted} />
-                  <Text style={[styles.sortOptionText, { color: palette.text }, sortBy === opt.key && { color: palette.orange }]}>
-                    {opt.label}
-                  </Text>
-                  {sortBy === opt.key && <MaterialCommunityIcons name="check" size={20} color={palette.orange} />}
-                </TouchableOpacity>
-              ))}
-            </TouchableOpacity>
-          </TouchableOpacity>
+          <SortPickerModal
+            visible
+            value={sortBy}
+            options={[
+              { key: 'time', label: '添加时间', icon: 'clock-outline' },
+              { key: 'priority', label: '优先级', icon: 'flag-outline' },
+              { key: 'title', label: '名称', icon: 'sort-alphabetical-ascending' },
+            ]}
+            onChange={setSortBy}
+            onClose={() => setShowSortModal(false)}
+          />
         )}
       </View>
     </SafeAreaView>
@@ -443,14 +429,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     gap: spacing.sm,
-  },
-  filterTabs: {
-    flex: 1,
-    minHeight: 36,
-    flexDirection: 'row',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    padding: 4,
   },
   searchBox: {
     height: 44,
@@ -507,18 +485,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     lineHeight: 18,
     fontWeight: fontWeight.bold,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: spacing.xs,
-    alignItems: 'center',
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  filterText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.medium,
   },
   list: {
     padding: spacing.lg,
@@ -601,42 +567,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sortOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    zIndex: 100,
-  },
-  sortModal: {
-    borderTopLeftRadius: borderRadius['2xl'],
-    borderTopRightRadius: borderRadius['2xl'],
-    borderWidth: 1,
-    padding: spacing.xl,
-    paddingBottom: 40,
-  },
-  sortHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: spacing.xl,
-  },
-  sortTitle: {
-    fontSize: fontSize['4xl'],
-    fontWeight: fontWeight.semiBold,
-    marginBottom: spacing.xl,
-  },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-  },
-  sortOptionText: {
-    flex: 1,
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.medium,
   },
 });

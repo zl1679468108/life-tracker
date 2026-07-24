@@ -1,3 +1,4 @@
+import { formatDateZh } from './format';
 import { Platform, Share } from 'react-native';
 import { showAlert } from './alert';
 
@@ -123,7 +124,7 @@ export async function shareTodo(todo: {
   const priorityMap = { 1: '低', 2: '普通', 3: '紧急' };
   const priorityLabel = priorityMap[todo.priority as 1 | 2 | 3] || '普通';
   const statusLabel = todo.completed ? '已完成' : '进行中';
-  const dueDateLabel = todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置';
+  const dueDateLabel = todo.due_date ? formatDateZh(todo.due_date) : '未设置';
 
   const message = `待办标题：${todo.title}${todo.description ? '\n描述：' + todo.description : ''}\n优先级：${priorityLabel}\n状态：${statusLabel}\n截止日期：${dueDateLabel}`;
 

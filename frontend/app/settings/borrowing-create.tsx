@@ -3,8 +3,8 @@ import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Keyboard,
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { Input, FormSection, DatePicker, FormActions, BottomSheet, FormCard } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
@@ -15,7 +15,7 @@ export default function CreateBorrowingScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ itemId?: string }>();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { createBorrowing, loading } = useBorrowingStore();
   const { items, fetchItems } = useItemStore();
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { shadows } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface FABProps {
   icon?: string;
@@ -13,7 +13,7 @@ interface FABProps {
 
 export function FAB({ icon = 'plus', onPress, variant = 'primary', style }: FABProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const backgroundColor = variant === 'primary' ? palette.orange : palette.violet;
 
   return (

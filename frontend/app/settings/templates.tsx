@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTemplateStore } from '../../stores/templateStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
-import { TemplateCard, EmptyState, Skeleton, AppScreen } from '../../components/ui';
+import { spacing } from '../../constants/theme';
+import { usePalette } from '../../stores/themeStore';
+import { TemplateCard, EmptyState, AppScreen, SegmentedTabs, ListSkeleton } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -13,8 +12,7 @@ type TabType = 'all' | 'item' | 'todo';
 
 export default function TemplatesScreen() {
   const router = useRouter();
-  const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { templates, fetchTemplates, deleteTemplate } = useTemplateStore();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -71,35 +69,14 @@ export default function TemplatesScreen() {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
     >
-        <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-            {tabs.map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.filterTab, activeTab === tab.key && { backgroundColor: palette.surface, borderColor: palette.border }]}
-                onPress={() => setActiveTab(tab.key)}
-              >
-                <Text style={[styles.filterText, { color: palette.textMuted }, activeTab === tab.key && { color: palette.text }]}>
-                  {tab.label}
-                </Text>
-                <Text style={[styles.filterCount, { color: activeTab === tab.key ? palette.orange : palette.textMuted }]}>
-                  {tab.count}
-                </Text>
-              </TouchableOpacity>
-            ))}
-        </View>
+        <SegmentedTabs
+          tabs={tabs}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
 
         {loading ? (
-          <View style={{ gap: spacing.md }}>
-            {[1, 2, 3].map((i) => (
-              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-                <Skeleton width={40} height={40} borderRadius={borderRadius.md} />
-                <View style={styles.skeletonContent}>
-                  <Skeleton width="60%" height={16} />
-                  <Skeleton width="40%" height={12} style={{ marginTop: 8 }} />
-                </View>
-              </View>
-            ))}
-          </View>
+          <ListSkeleton count={3} avatarSize={40} />
         ) : filteredTemplates.length === 0 ? (
           <EmptyState
             icon="file-document-outline"
@@ -130,42 +107,5 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xl,
-  },
-  filterTabs: {
-    flexDirection: 'row',
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    padding: 4,
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  filterTab: {
-    flex: 1,
-    minHeight: 36,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingHorizontal: spacing.xs,
-  },
-  filterText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.medium,
-  },
-  filterCount: {
-    fontSize: fontSize.xs,
-    marginTop: 1,
-  },
-  skeletonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  skeletonContent: {
-    flex: 1,
   },
 });

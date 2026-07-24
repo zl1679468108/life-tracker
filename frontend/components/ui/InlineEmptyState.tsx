@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface InlineEmptyStateProps {
   /** 空状态主文案 */
@@ -18,7 +18,7 @@ interface InlineEmptyStateProps {
  */
 export function InlineEmptyState({ title, description, style }: InlineEmptyStateProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   return (
     <View style={[styles.container, style]}>

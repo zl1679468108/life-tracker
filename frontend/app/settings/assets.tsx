@@ -1,3 +1,4 @@
+import { formatDateZh } from '../../lib/format';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AppScreen } from '../../components/ui';
 import { ActivityIndicator, Dimensions, StyleSheet, Text, View } from 'react-native';
@@ -5,8 +6,8 @@ import { PieChart } from 'react-native-chart-kit';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { TotalValueResponse } from '../../types';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_COLORS = ['#F36F3C', '#7C5CFC', '#10A66E', '#D89400', '#3B82F6', '#E84A5F', '#8B5CF6', '#06B6D4'];
@@ -20,7 +21,7 @@ const formatDelta = (value: number, currency?: string) => {
 
 export default function AssetsScreen() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [loading, setLoading] = useState(true);
   const [totalValue, setTotalValue] = useState<TotalValueResponse | null>(null);
 
@@ -206,7 +207,7 @@ export default function AssetsScreen() {
                       {change.item_name}
                     </Text>
                     <Text style={[styles.detailMeta, { color: palette.textMuted }]}>
-                      {new Date(change.recorded_at).toLocaleDateString('zh-CN')} · {change.reason || '估值更新'}
+                      {formatDateZh(change.recorded_at)} · {change.reason || '估值更新'}
                     </Text>
                   </View>
                   <View style={styles.changeValueBlock}>

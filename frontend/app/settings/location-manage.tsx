@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocationStore } from '../../stores/locationStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { FormActions, BottomSheet } from '../../components/ui';
@@ -55,7 +55,7 @@ const buildLocationTree = (locations: LifeLocation[]): LifeLocation[] => {
 export default function LocationManageScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { t } = useTranslation();
   const { locations, fetchLocations, addLocation, updateLocation, deleteLocation } = useLocationStore();
   const [showAdd, setShowAdd] = useState(false);

@@ -8,7 +8,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useShareStore } from '../../stores/shareStore';
 import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { FormActions, Input, ImagePicker, DatePicker, ShareDialog, FormSection, FormCard, BottomSheet } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
@@ -32,7 +32,7 @@ export default function CreateTodoScreen() {
   const { templates: todoTemplates, fetchTemplates: fetchTodoTemplates, createTemplate } = useTemplateStore();
   const currentUser = useAuthStore((state) => state.user);
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<1 | 2 | 3>(2);

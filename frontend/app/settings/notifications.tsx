@@ -3,10 +3,10 @@ import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View, Platf
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { usePalette, useTheme, type AppPalette } from '../../stores/themeStore';
 import { Notification, useNotificationStore } from '../../stores/notificationStore';
-import { EmptyState, Skeleton, AppScreen } from '../../components/ui';
+import { EmptyState, Skeleton, AppScreen, SegmentedTabs } from '../../components/ui';
 
 type FilterTab = 'all' | 'unread' | 'read';
 const MARK_UNREAD_WIDTH = 80;
@@ -21,7 +21,7 @@ function SwipeableNotifItem({
 }: {
   notification: Notification;
   isRead: boolean;
-  palette: typeof appDesign.light;
+  palette: AppPalette;
   onMarkAsRead: () => void;
   onMarkAsUnread: () => void;
   onOpenLink: (link: string) => void;
@@ -29,7 +29,7 @@ function SwipeableNotifItem({
   const translateX = useRef(new Animated.Value(0)).current;
   const lastOffset = useRef(0);
   const isOpen = useRef(false);
-  const dark = palette.bg === appDesign.dark.bg;
+  const { isDark: dark } = useTheme();
 
   const panResponder = useRef(
     PanResponder.create({
@@ -144,9 +144,7 @@ function SwipeableNotifItem({
 }
 
 export default function NotificationsScreen() {
-  const colors = useColors();
-  const dark = colors.gray[50] === appDesign.dark.bg;
-  const palette = dark ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const router = useRouter();
   const {
     notifications,
@@ -181,41 +179,11 @@ export default function NotificationsScreen() {
 
   return (
     <AppScreen contentContainerStyle={styles.content}>
-      {/* filter tabs */}
-      <View style={[styles.segmentWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[
-              styles.segmentBtn,
-              activeTab === tab.key && { backgroundColor: palette.surface, borderColor: palette.border },
-            ]}
-            onPress={() => setActiveTab(tab.key)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.segmentLabel, { color: activeTab === tab.key ? palette.text : palette.textMuted }]}>
-              {tab.label}
-            </Text>
-            {tab.count !== undefined && (
-              <View
-                style={[
-                  styles.segmentBadge,
-                  { backgroundColor: activeTab === tab.key ? palette.orange : palette.surfaceHover },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.segmentBadgeLabel,
-                    { color: activeTab === tab.key ? '#FFF' : palette.textMuted },
-                  ]}
-                >
-                  {tab.count > 99 ? '99+' : tab.count}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SegmentedTabs
+        tabs={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* mark all read */}
       {activeTab === 'unread' && unreadCount > 0 && (
@@ -296,34 +264,6 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: spacing.xl },
-  segmentWrap: {
-    flexDirection: 'row',
-    padding: 4,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-  },
-  segmentBtn: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: borderRadius.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  segmentLabel: { fontSize: fontSize.base, fontWeight: fontWeight.semiBold },
-  segmentBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  segmentBadgeLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semiBold },
   markAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',

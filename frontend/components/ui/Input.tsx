@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { View, TextInput, Text, StyleSheet, ViewStyle, TouchableOpacity, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface InputProps {
   label?: string;
@@ -47,7 +47,7 @@ export function Input({
   const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
   const inputRef = useRef<TextInput>(null);
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const containerStyles = [
     styles.container,

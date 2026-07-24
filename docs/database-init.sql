@@ -533,3 +533,10 @@ BEGIN
     ADD CONSTRAINT life_messages_sender_id_fkey
     FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 END $$;
+
+-- ============================================================
+-- 23. life_items.barcode 幂等补齐
+-- 文档 schema 已包含 barcode，但部分线上实例在早期建表后未同步该列。
+-- T98 列表改为显式 select 后，缺列会直接导致 GET /api/items 500。
+-- ============================================================
+ALTER TABLE life_items ADD COLUMN IF NOT EXISTS barcode TEXT;

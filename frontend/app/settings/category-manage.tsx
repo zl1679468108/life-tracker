@@ -5,8 +5,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCategoryStore } from '../../stores/categoryStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { ColorPicker, FormActions, BottomSheet } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
@@ -60,7 +60,7 @@ const buildCategoryTree = (categories: LifeCategory[]): LifeCategory[] => {
 export default function CategoryManageScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const { t } = useTranslation();
   const { categories, fetchCategories, addCategory, updateCategory, deleteCategory, loading } = useCategoryStore();
   const [showAdd, setShowAdd] = useState(false);

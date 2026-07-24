@@ -1,3 +1,4 @@
+import { formatDateZh } from '../../lib/format';
 import React, { useEffect, useState } from 'react';
 import { AppScreen } from '../../components/ui';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -5,12 +6,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
 import type { WidgetStatsData, WidgetTodoData } from '../../types';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 export default function WidgetsScreen() {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const [stats, setStats] = useState<WidgetStatsData | null>(null);
   const [todos, setTodos] = useState<WidgetTodoData[]>([]);
 
@@ -109,7 +110,7 @@ export default function WidgetsScreen() {
                     {todo.title}
                   </Text>
                   <Text style={[styles.todoMeta, { color: palette.textMuted }]}>
-                    {todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置日期'}
+                    {todo.due_date ? formatDateZh(todo.due_date) : '未设置日期'}
                   </Text>
                 </View>
                 <View style={[styles.priorityBadge, { backgroundColor: `${priorityColors[todo.priority]}20` }]}>

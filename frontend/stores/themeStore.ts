@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme as useRNColorScheme } from 'react-native';
-import { colors as lightColors, darkColors } from '../constants/theme';
+import { colors as lightColors, darkColors, appDesign } from '../constants/theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -60,4 +60,25 @@ export const useColors = () => {
   const systemColorScheme = useRNColorScheme();
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
   return isDark ? darkColors : lightColors;
+};
+
+/** appDesign 语义色板类型（浅/深结构一致） */
+export type AppPalette = typeof appDesign.light;
+
+/**
+ * 统一获取当前主题下的 appDesign 语义色板。
+ * 替代各页面重复的：
+ * `colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light`
+ */
+export const usePalette = (): AppPalette => {
+  const { isDark } = useTheme();
+  return isDark ? appDesign.dark : appDesign.light;
+};
+
+/** 一次取 colors + palette + isDark，减少页面样板代码 */
+export const useAppTheme = () => {
+  const colors = useColors();
+  const { isDark, themeMode, colorScheme } = useTheme();
+  const palette = isDark ? appDesign.dark : appDesign.light;
+  return { colors, palette, isDark, themeMode, colorScheme };
 };

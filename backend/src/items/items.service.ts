@@ -21,6 +21,29 @@ const OPTIONAL_ITEM_COLUMNS = new Set([
   'borrowed_by',
 ]);
 
+/** 列表页按需字段；可选列若线上库缺失会自动剥离并降级重试 */
+const ITEM_LIST_FIELDS = [
+  'id',
+  'name',
+  'description',
+  'location_id',
+  'category_id',
+  'images',
+  'barcode',
+  'expiry_date',
+  'reminder_enabled',
+  'reminder_days_before',
+  'is_borrowed',
+  'borrowed_by',
+  'purchase_price',
+  'purchase_date',
+  'current_value',
+  'currency',
+  'user_id',
+  'created_at',
+  'updated_at',
+];
+
 @Injectable()
 export class ItemsService {
   constructor(
@@ -83,8 +106,8 @@ export class ItemsService {
     }
   }
 
-  // 注意：OPTIONAL_ITEM_COLUMNS 中的字段需与 database-init.sql 中 life_items 表结构保持一致。
-  // 如需新增可选字段，请同步更新数据库 schema 和此列表，避免运行时列缺失错误。
+  // 运行时探测到线上库缺失的可选列，避免 schema 漂移导致列表 500
+  private unsupportedItemColumns = new Set<string>();
 
   /**
    * 将前端传入的北京时间字段转为 UTC ISO 后入库
@@ -96,19 +119,65 @@ export class ItemsService {
     return result;
   }
 
-  async findAll(userId: string) {
-    const listFields = 'id, name, description, location_id, category_id, images, barcode, expiry_date, reminder_enabled, reminder_days_before, is_borrowed, borrowed_by, purchase_price, purchase_date, current_value, currency, user_id, created_at, updated_at';
-    const { data, error } = await this.supabase
-      .from('life_items')
-      .select(listFields)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+  private getMissingItemColumn(error: { code?: string; message?: string } | null | undefined): string | null {
+    const message = error?.message || '';
+    const pgMatch = message.match(/column\s+life_items\.(\w+)\s+does not exist/i);
+    if (pgMatch?.[1]) return pgMatch[1];
+    const cacheMatch = message.match(/Could not find the '([^']+)' column of 'life_items'/i);
+    if (cacheMatch?.[1]) return cacheMatch[1];
+    return null;
+  }
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
+  private noteUnsupportedItemColumn(column: string | null): boolean {
+    if (!column || !OPTIONAL_ITEM_COLUMNS.has(column) || this.unsupportedItemColumns.has(column)) {
+      return Boolean(column && OPTIONAL_ITEM_COLUMNS.has(column));
     }
-    const ownItems = (data || []).map((item) => this.withAccessMeta(item, userId, 'owner'));
+    this.unsupportedItemColumns.add(column);
+    console.warn(
+      `[ItemsService] life_items 缺少可选列 ${column}，已降级跳过。请按 docs/database-init.sql / docs/migrations/2026-07-24-add-life-items-barcode.sql 补齐列后重启服务。`,
+    );
+    return true;
+  }
+
+  private resolveListFields(): string {
+    return ITEM_LIST_FIELDS.filter((field) => !this.unsupportedItemColumns.has(field)).join(', ');
+  }
+
+  private stripUnsupportedOptionalColumn(payload: Record<string, any>, error: { message?: string } | null | undefined) {
+    const missingColumn = this.getMissingItemColumn(error);
+    if (!missingColumn || !OPTIONAL_ITEM_COLUMNS.has(missingColumn) || !(missingColumn in payload)) {
+      return null;
+    }
+    this.noteUnsupportedItemColumn(missingColumn);
+    const nextPayload = { ...payload };
+    delete nextPayload[missingColumn];
+    return nextPayload;
+  }
+
+  private async selectItemsByFields(
+    applyQuery: (query: any) => any,
+  ): Promise<any[]> {
+    for (let attempt = 0; attempt <= OPTIONAL_ITEM_COLUMNS.size; attempt += 1) {
+      const listFields = this.resolveListFields();
+      const { data, error } = await applyQuery(
+        this.supabase.from('life_items').select(listFields),
+      );
+      if (!error) return data || [];
+
+      const missingColumn = this.getMissingItemColumn(error);
+      if (!this.noteUnsupportedItemColumn(missingColumn)) {
+        console.error('物品操作失败:', error);
+        throw new InternalServerErrorException('操作失败，请稍后重试');
+      }
+    }
+    throw new InternalServerErrorException('操作失败，请稍后重试');
+  }
+
+  async findAll(userId: string) {
+    const data = await this.selectItemsByFields((query) =>
+      query.eq('user_id', userId).order('created_at', { ascending: false }),
+    );
+    const ownItems = data.map((item) => this.withAccessMeta(item, userId, 'owner'));
 
     const { data: shares, error: sharesError } = await this.supabase
       .from('life_shares')
@@ -121,15 +190,10 @@ export class ItemsService {
     const resourceIds = Array.from(new Set((shares || []).map((share) => share.resource_id)));
     if (resourceIds.length === 0) return ownItems;
 
-    const { data: sharedItems, error: sharedError } = await this.supabase
-      .from('life_items')
-      .select(listFields)
-      .in('id', resourceIds);
-
-    if (sharedError) { console.error('查询共享物品列表失败:', sharedError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    const sharedItems = await this.selectItemsByFields((query) => query.in('id', resourceIds));
 
     const permissionById = new Map((shares || []).map((share) => [share.resource_id, share.permission as 'view' | 'edit']));
-    const visibleSharedItems = (sharedItems || []).map((item) => this.withAccessMeta(item, userId, permissionById.get(item.id) || 'view'));
+    const visibleSharedItems = sharedItems.map((item) => this.withAccessMeta(item, userId, permissionById.get(item.id) || 'view'));
     return [...ownItems, ...visibleSharedItems];
   }
 
@@ -139,12 +203,28 @@ export class ItemsService {
   }
 
   async create(item: any) {
-    const normalizedItem = this.normalizeTimeFields(item);
-    const { data, error } = await this.supabase
+    let normalizedItem = this.normalizeTimeFields(item);
+    for (const column of this.unsupportedItemColumns) {
+      if (column in normalizedItem) delete normalizedItem[column];
+    }
+
+    let { data, error } = await this.supabase
       .from('life_items')
       .insert(normalizedItem)
       .select()
       .single();
+
+    if (error) {
+      const fallbackItem = this.stripUnsupportedOptionalColumn(normalizedItem, error);
+      if (fallbackItem) {
+        normalizedItem = fallbackItem;
+        ({ data, error } = await this.supabase
+          .from('life_items')
+          .insert(normalizedItem)
+          .select()
+          .single());
+      }
+    }
 
     if (error) {
       console.error('物品操作失败:', error);
@@ -160,15 +240,31 @@ export class ItemsService {
       throw new ForbiddenException('只有查看权限，不能编辑该物品');
     }
 
-    const normalizedUpdates = this.normalizeTimeFields(updates);
+    let normalizedUpdates = this.normalizeTimeFields(updates);
+    for (const column of this.unsupportedItemColumns) {
+      if (column in normalizedUpdates) delete normalizedUpdates[column];
+    }
     await this.recordValueChangeIfNeeded(id, item, normalizedUpdates, '物品表单更新估值');
 
-    const { data, error } = await this.supabase
+    let { data, error } = await this.supabase
       .from('life_items')
       .update({ ...normalizedUpdates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
+
+    if (error) {
+      const fallbackUpdates = this.stripUnsupportedOptionalColumn(normalizedUpdates, error);
+      if (fallbackUpdates) {
+        normalizedUpdates = fallbackUpdates;
+        ({ data, error } = await this.supabase
+          .from('life_items')
+          .update({ ...normalizedUpdates, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single());
+      }
+    }
 
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');

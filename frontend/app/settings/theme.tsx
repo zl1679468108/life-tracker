@@ -2,8 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppScreen } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
-import { useColors, useThemeStore } from '../../stores/themeStore';
+import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
+import { useColors, useThemeStore, usePalette } from '../../stores/themeStore';
 
 type ThemeOption = {
   mode: 'light' | 'dark' | 'system';
@@ -20,7 +20,7 @@ const themeOptions: ThemeOption[] = [
 export default function ThemeSettingsScreen() {
   const { themeMode, setThemeMode } = useThemeStore();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   return (
     <AppScreen contentContainerStyle={styles.content}>

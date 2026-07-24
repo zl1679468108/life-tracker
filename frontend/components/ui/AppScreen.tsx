@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, ScrollViewProps, StyleSheet, View, ViewProps } from 'react-native';
 import { SafeScreen } from '../SafeScreen';
-import { appDesign, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface AppScreenProps {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export function AppScreen({
   refreshControl,
 }: AppScreenProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   const padStyle = padded ? styles.contentPadded : styles.contentFlush;
 
   return (

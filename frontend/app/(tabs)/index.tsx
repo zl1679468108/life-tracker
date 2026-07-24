@@ -16,19 +16,20 @@ import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { HomeBackground, InlineEmptyState } from '../../components/ui';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useItemStore } from '../../stores/itemStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useTodoStore } from '../../stores/todoStore';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette, useTheme, type AppPalette } from '../../stores/themeStore';
+import { formatDateZh } from '../../lib/format';
 import type { LifeItem, LifeTodo } from '../../types';
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const isDark = palette.bg === appDesign.dark.bg;
+  const palette = usePalette();
+  const { isDark } = useTheme();
   const { items, fetchItems, error: itemsError } = useItemStore();
   const { todos, fetchTodos, toggleComplete, error: todosError } = useTodoStore();
   const { getUnreadCount, loaded } = useNotificationStore();
@@ -385,7 +386,7 @@ export default function HomeScreen() {
                       <Text style={[styles.todoTitle, { color: palette.text }]} numberOfLines={1}>{todo.title}</Text>
                       {todo.due_date && (
                         <Text style={[styles.todoDue, { color: isOverdueTodo(todo) ? palette.danger : palette.textMuted }]}>
-                          {isOverdueTodo(todo) ? '已逾期' : isTodayTodo(todo) ? '今天' : new Date(todo.due_date).toLocaleDateString('zh-CN')}
+                          {isOverdueTodo(todo) ? '已逾期' : isTodayTodo(todo) ? '今天' : formatDateZh(todo.due_date)}
                         </Text>
                       )}
                     </View>
@@ -432,7 +433,7 @@ function Stat({
 }: {
   label: string;
   value: number;
-  palette: typeof appDesign.dark;
+  palette: AppPalette;
   meta: string;
   onPress?: () => void;
 }) {

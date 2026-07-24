@@ -1,3 +1,4 @@
+import { formatDateZh } from '../lib/format';
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTodoStore } from './todoStore';
@@ -76,7 +77,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         iconBg: '#F59E0B',
         title: '待办提醒',
         desc: todo.title,
-        time: todo.due_date ? new Date(todo.due_date).toLocaleDateString('zh-CN') : '未设置截止日期',
+        time: todo.due_date ? formatDateZh(todo.due_date) : '未设置截止日期',
         link: `/todo/${todo.id}`,
       });
     });

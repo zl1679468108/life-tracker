@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { appDesign, spacing, fontSize, fontWeight } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { spacing, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface FormSectionProps {
   label: string;
@@ -13,7 +13,7 @@ interface FormSectionProps {
 
 export function FormSection({ label, required, error, density = 'default', children }: FormSectionProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
   
   return (
     <View style={[styles.section, density === 'compact' && styles.sectionCompact]}>

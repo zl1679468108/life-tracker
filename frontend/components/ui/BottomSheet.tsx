@@ -9,8 +9,8 @@ import {
   Easing,
   ViewStyle,
 } from 'react-native';
-import { appDesign, borderRadius, spacing } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { borderRadius, spacing } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -28,7 +28,7 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
  */
 export function BottomSheet({ visible, onClose, children, sheetStyle }: BottomSheetProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   const [shouldRender, setShouldRender] = useState(visible);
   const fadeAnim = useRef(new Animated.Value(0)).current;

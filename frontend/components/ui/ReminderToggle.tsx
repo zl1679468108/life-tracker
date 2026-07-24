@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Switch, Chip } from 'react-native-paper';
-import { useColors } from '../../stores/themeStore';
-import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { useColors, usePalette } from '../../stores/themeStore';
+import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 
 interface ReminderToggleProps {
   enabled: boolean;
@@ -26,7 +26,7 @@ export function ReminderToggle({
   onDaysChange,
 }: ReminderToggleProps) {
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const palette = usePalette();
 
   return (
     <View style={[styles.container, { backgroundColor: palette.surface, borderColor: palette.border }]}>

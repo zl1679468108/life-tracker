@@ -7,18 +7,18 @@ import { useRouter } from 'expo-router';
 import appConfig from '../../app.json';
 import { AppHeader, Logo, SettingsBackground } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
-import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
+import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { showAlert } from '../../lib/alert';
 import { i18n, useTranslation } from '../../lib/i18n';
 import { useAuthStore } from '../../stores/authStore';
-import { useColors } from '../../stores/themeStore';
+import { useColors, usePalette, useTheme } from '../../stores/themeStore';
 import { useProfileStore } from '../../stores/profileStore';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useColors();
-  const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
-  const isDark = palette.bg === appDesign.dark.bg;
+  const palette = usePalette();
+  const { isDark } = useTheme();
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { profile, fetchProfile, cachedAvatarUrl, avatarDataUri, initCachedAvatar } = useProfileStore();
@@ -57,7 +57,7 @@ export default function SettingsScreen() {
         {/* 氛围背景层 */}
         <View style={styles.atmosphereArea} pointerEvents="none">
           <LinearGradient
-            colors={palette.bg === appDesign.dark.bg
+            colors={isDark
               ? ['rgba(243,111,60,0.1)', 'rgba(124,92,252,0.04)', palette.bg]
               : ['#FFF0E9', '#F0EDFF', palette.bg]
             }
