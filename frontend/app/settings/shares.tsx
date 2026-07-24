@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text, FlatList } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useShareStore } from '../../stores/shareStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
-import { EmptyState, ShareDialog, Skeleton } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { usePalette } from '../../stores/themeStore';
+import { EmptyState, SegmentedTabs, ListSkeleton, AppScreen } from '../../components/ui';
 import { showAlert } from '../../lib/alert';
+import { formatDateZh } from '../../lib/format';
 import type { LifeShare } from '../../types';
 
 type TabType = 'outgoing' | 'incoming';
 
 export default function SharesScreen() {
-  const router = useRouter();
-  const colors = useColors();
+  const palette = usePalette();
   const {
     outgoingShares,
     incomingShares,
@@ -59,52 +57,68 @@ export default function SharesScreen() {
   };
 
   const currentList = activeTab === 'outgoing' ? outgoingShares : incomingShares;
+  const tabs = [
+    { key: 'outgoing' as const, label: '我共享的', count: outgoingShares.length },
+    { key: 'incoming' as const, label: '共享给我', count: incomingShares.length },
+  ];
 
   const renderShareItem = (item: LifeShare) => {
     const isOutgoing = activeTab === 'outgoing';
     const personName = isOutgoing ? item.shared_with_name : item.owner_name;
+    const isEdit = item.permission === 'edit';
 
     return (
-      <View style={[styles.card, { backgroundColor: colors.white }]}>
+      <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.cardHeader}>
-          <View style={[styles.avatar, { backgroundColor: colors.primaryLight }]}>
-            <MaterialCommunityIcons name="account" size={20} color={colors.primary} />
+          <View style={[styles.avatar, { backgroundColor: `${palette.orange}18`, borderColor: `${palette.orange}40` }]}>
+            <MaterialCommunityIcons name="account" size={20} color={palette.orange} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.personName, { color: colors.gray[800] }]}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.personName, { color: palette.text }]} numberOfLines={1}>
               {personName || '未知用户'}
             </Text>
-            <Text style={[styles.resourceName, { color: colors.gray[500] }]}>
+            <Text style={[styles.resourceName, { color: palette.textMuted }]} numberOfLines={1}>
               {item.resource_type === 'item' ? '物品' : '待办'}：{item.resource_name}
             </Text>
           </View>
-          <View style={[styles.permBadge, {
-            backgroundColor: item.permission === 'edit' ? colors.warningLight : colors.successLight,
-          }]}>
-            <Text style={{ color: item.permission === 'edit' ? colors.warning : colors.success, fontSize: fontSize.xs, fontWeight: fontWeight.medium }}>
-              {item.permission === 'view' ? '查看' : '编辑'}
+          <View
+            style={[
+              styles.permBadge,
+              {
+                backgroundColor: isEdit ? `${palette.warning}22` : `${palette.success}22`,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: isEdit ? palette.warning : palette.success,
+                fontSize: fontSize.xs,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              {isEdit ? '编辑' : '查看'}
             </Text>
           </View>
         </View>
-        <View style={[styles.cardFooter, { borderTopColor: colors.gray[100] }]}>
-          <Text style={[styles.dateText, { color: colors.gray[400] }]}>
-            {item.created_at?.split('T')[0]}
+        <View style={[styles.cardFooter, { borderTopColor: palette.border }]}>
+          <Text style={[styles.dateText, { color: palette.textMuted }]}>
+            {formatDateZh(item.created_at)}
           </Text>
           {isOutgoing && (
             <View style={styles.cardActions}>
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: colors.gray[50] }]}
+                style={[styles.actionBtn, { backgroundColor: palette.surfaceSoft }]}
                 onPress={() => handleTogglePermission(item)}
               >
-                <MaterialCommunityIcons name="swap-horizontal" size={16} color={colors.primary} />
-                <Text style={[styles.actionText, { color: colors.primary }]}>切换权限</Text>
+                <MaterialCommunityIcons name="swap-horizontal" size={16} color={palette.orange} />
+                <Text style={[styles.actionText, { color: palette.orange }]}>切换权限</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: colors.dangerLight }]}
+                style={[styles.actionBtn, { backgroundColor: `${palette.danger}18` }]}
                 onPress={() => handleDeleteShare(item.id)}
               >
-                <MaterialCommunityIcons name="delete-outline" size={16} color={colors.danger} />
-                <Text style={[styles.actionText, { color: colors.danger }]}>取消共享</Text>
+                <MaterialCommunityIcons name="delete-outline" size={16} color={palette.danger} />
+                <Text style={[styles.actionText, { color: palette.danger }]}>取消共享</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -114,87 +128,41 @@ export default function SharesScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={colors.gray[50]}>
-      <View style={[styles.tabBar, { backgroundColor: colors.white }]}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'outgoing' && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
-          onPress={() => setActiveTab('outgoing')}
-        >
-          <Text style={[styles.tabText, { color: colors.gray[500] }, activeTab === 'outgoing' && { color: colors.primary, fontWeight: fontWeight.semiBold }]}>
-            我共享的 ({outgoingShares.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'incoming' && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
-          onPress={() => setActiveTab('incoming')}
-        >
-          <Text style={[styles.tabText, { color: colors.gray[500] }, activeTab === 'incoming' && { color: colors.primary, fontWeight: fontWeight.semiBold }]}>
-            共享给我 ({incomingShares.length})
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <AppScreen
+      scroll
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />
+      }
+    >
+      <SegmentedTabs tabs={tabs} value={activeTab} onChange={setActiveTab} style={{ marginBottom: spacing.md }} />
 
-      <ScrollView
-        style={{ backgroundColor: colors.gray[50] }}
-        contentContainerStyle={[styles.content, { backgroundColor: colors.gray[50] }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
-      >
-        {/* 首次加载时显示骨架屏，避免白屏 */}
-        {listLoading && currentList.length === 0 ? (
-          [1, 2, 3].map((i) => (
-            <View key={i} style={[styles.card, { backgroundColor: colors.white }]}>
-              <View style={styles.cardHeader}>
-                <Skeleton width={40} height={40} borderRadius={20} />
-                <View style={{ flex: 1, gap: spacing.xs }}>
-                  <Skeleton width="50%" height={14} />
-                  <Skeleton width="35%" height={11} />
-                </View>
-                <Skeleton width={44} height={20} borderRadius={borderRadius.sm} />
-              </View>
-              <View style={[styles.cardFooter, { borderTopColor: colors.gray[100] }]}>
-                <Skeleton width="20%" height={10} />
-                <Skeleton width="30%" height={10} />
-              </View>
-            </View>
-          ))
-        ) : currentList.length === 0 ? (
-          <EmptyState
-            icon="share-variant"
-            title={activeTab === 'outgoing' ? '暂无共享' : '暂无共享给我'}
-            description={activeTab === 'outgoing' ? '在物品详情中点击分享按钮添加共享' : '其他用户共享给你的资源会显示在这里'}
-          />
-        ) : (
-          currentList.map((item) => (
-            <React.Fragment key={item.id}>{renderShareItem(item)}</React.Fragment>
-          ))
-        )}
-      </ScrollView>
-    </SafeScreen>
+      {listLoading && currentList.length === 0 ? (
+        <ListSkeleton count={3} avatarSize={40} trailing />
+      ) : currentList.length === 0 ? (
+        <EmptyState
+          icon="share-variant"
+          title={activeTab === 'outgoing' ? '暂无共享' : '暂无共享给我'}
+          description={
+            activeTab === 'outgoing'
+              ? '在物品详情中点击分享按钮添加共享'
+              : '其他用户共享给你的资源会显示在这里'
+          }
+        />
+      ) : (
+        currentList.map((item) => <React.Fragment key={item.id}>{renderShareItem(item)}</React.Fragment>)
+      )}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  tabText: {
-    fontSize: fontSize.base,
-  },
   content: {
-    padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   card: {
     borderRadius: borderRadius.lg,
+    borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.sm,
     ...shadows.sm,
@@ -208,6 +176,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

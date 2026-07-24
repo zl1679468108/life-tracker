@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { LifeBorrowing, CreateBorrowingRequest, UpdateBorrowingRequest } from '../types';
 
 interface BorrowingState {
@@ -26,12 +26,8 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   fetchBorrowings: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.list();
-      if (res.data) {
-        set({ borrowings: res.data, loading: false });
-      } else {
-        set({ error: res.message || '获取借用记录失败', loading: false });
-      }
+      const list = assertApiData(await api.borrowings.list(), '获取借用记录失败');
+      set({ borrowings: list, loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -40,12 +36,8 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   fetchActiveBorrowings: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.active();
-      if (res.data) {
-        set({ activeBorrowings: res.data, loading: false });
-      } else {
-        set({ error: res.message || '获取借用记录失败', loading: false });
-      }
+      const list = assertApiData(await api.borrowings.active(), '获取借用记录失败');
+      set({ activeBorrowings: list, loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -54,14 +46,9 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   fetchByItemId: async (itemId: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.getByItem(itemId);
-      set({ loading: false });
-      if (res.data) {
-        set({ borrowings: res.data });
-        return res.data;
-      }
-      set({ error: res.message || '获取借用记录失败' });
-      return [];
+      const list = assertApiData(await api.borrowings.getByItem(itemId), '获取借用记录失败');
+      set({ borrowings: list, loading: false });
+      return list;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       return [];
@@ -71,18 +58,12 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   createBorrowing: async (data: CreateBorrowingRequest) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.create(data);
-      if (res.data) {
-        set((state) => ({
-          borrowings: [res.data!, ...state.borrowings],
-          activeBorrowings: [res.data!, ...state.activeBorrowings],
-          loading: false,
-        }));
-      } else {
-        const message = res.message || '创建借用记录失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
+      const created = assertApiData(await api.borrowings.create(data), '创建借用记录失败');
+      set((state) => ({
+        borrowings: [created, ...state.borrowings],
+        activeBorrowings: [created, ...state.activeBorrowings],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -92,20 +73,14 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   updateBorrowing: async (id: string, data: UpdateBorrowingRequest) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.update(id, data);
-      if (res.data) {
-        set((state) => ({
-          borrowings: state.borrowings.map((b) => (b.id === id ? res.data! : b)),
-          activeBorrowings: data.status === 'returned'
-            ? state.activeBorrowings.filter((b) => b.id !== id)
-            : state.activeBorrowings.map((b) => (b.id === id ? res.data! : b)),
-          loading: false,
-        }));
-      } else {
-        const message = res.message || '更新借用记录失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
+      const updated = assertApiData(await api.borrowings.update(id, data), '更新借用记录失败');
+      set((state) => ({
+        borrowings: state.borrowings.map((b) => (b.id === id ? updated : b)),
+        activeBorrowings: data.status === 'returned'
+          ? state.activeBorrowings.filter((b) => b.id !== id)
+          : state.activeBorrowings.map((b) => (b.id === id ? updated : b)),
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -116,11 +91,11 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       assertApiOk(await api.borrowings.delete(id), '删除失败');
-        set((state) => ({
-          borrowings: state.borrowings.filter((b) => b.id !== id),
-          activeBorrowings: state.activeBorrowings.filter((b) => b.id !== id),
-          loading: false,
-        }));
+      set((state) => ({
+        borrowings: state.borrowings.filter((b) => b.id !== id),
+        activeBorrowings: state.activeBorrowings.filter((b) => b.id !== id),
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;

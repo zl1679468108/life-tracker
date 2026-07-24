@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { LifeTemplate, CreateTemplateRequest, UpdateTemplateRequest } from '../types';
 
 interface TemplateState {
@@ -43,17 +43,11 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   createTemplate: async (data: CreateTemplateRequest) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.templates.create(data);
-      if (res.data) {
-        set((state) => ({
-          templates: [res.data!, ...state.templates],
-          loading: false,
-        }));
-      } else {
-        const message = res.message || '创建模板失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
+      const created = assertApiData(await api.templates.create(data), '创建模板失败');
+      set((state) => ({
+        templates: [created, ...state.templates],
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -63,20 +57,14 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   useTemplate: async (id: string, overrides?: Record<string, any>) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.templates.use(id, overrides);
-      if (res.data) {
-        // 更新使用次数
-        set((state) => ({
-          templates: state.templates.map((t) =>
-            t.id === id ? { ...t, usage_count: t.usage_count + 1 } : t
-          ),
-          loading: false,
-        }));
-        return res.data.id;
-      } else {
-        set({ error: res.message || '使用模板失败', loading: false });
-        throw new Error(res.message || '使用模板失败');
-      }
+      const used = assertApiData(await api.templates.use(id, overrides), '使用模板失败');
+      set((state) => ({
+        templates: state.templates.map((t) =>
+          t.id === id ? { ...t, usage_count: t.usage_count + 1 } : t
+        ),
+        loading: false,
+      }));
+      return used.id;
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -86,17 +74,11 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   updateTemplate: async (id: string, data: UpdateTemplateRequest) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.templates.update(id, data);
-      if (res.data) {
-        set((state) => ({
-          templates: state.templates.map((t) => (t.id === id ? res.data! : t)),
-          loading: false,
-        }));
-      } else {
-        const message = res.message || '更新模板失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
+      const updated = assertApiData(await api.templates.update(id, data), '更新模板失败');
+      set((state) => ({
+        templates: state.templates.map((t) => (t.id === id ? updated : t)),
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;
@@ -107,10 +89,10 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       assertApiOk(await api.templates.delete(id), '删除失败');
-        set((state) => ({
-          templates: state.templates.filter((t) => t.id !== id),
-          loading: false,
-        }));
+      set((state) => ({
+        templates: state.templates.filter((t) => t.id !== id),
+        loading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;

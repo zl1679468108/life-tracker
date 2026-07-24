@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { LifeShare, CreateShareRequest, UpdateShareRequest } from '../types';
 
 interface ShareState {
@@ -73,19 +73,13 @@ export const useShareStore = create<ShareState>((set) => ({
   createShare: async (data: CreateShareRequest) => {
     set({ mutationLoading: true, error: null });
     try {
-      const res = await api.shares.create(data);
-      if (res.data) {
-        set((state) => ({
-          outgoingShares: [res.data!, ...state.outgoingShares],
-          resourceShares: [res.data!, ...state.resourceShares],
-          mutationLoading: false,
-        }));
-        return res.data;
-      } else {
-        const message = res.message || '创建共享失败';
-        set({ error: message, mutationLoading: false });
-        throw new Error(message);
-      }
+      const created = assertApiData(await api.shares.create(data), '创建共享失败');
+      set((state) => ({
+        outgoingShares: [created, ...state.outgoingShares],
+        resourceShares: [created, ...state.resourceShares],
+        mutationLoading: false,
+      }));
+      return created;
     } catch (error) {
       set({ error: (error as Error).message, mutationLoading: false });
       throw error;
@@ -95,19 +89,13 @@ export const useShareStore = create<ShareState>((set) => ({
   updateShare: async (id: string, data: UpdateShareRequest) => {
     set({ mutationLoading: true, error: null });
     try {
-      const res = await api.shares.update(id, data);
-      if (res.data) {
-        set((state) => ({
-          outgoingShares: state.outgoingShares.map((s) => (s.id === id ? res.data! : s)),
-          incomingShares: state.incomingShares.map((s) => (s.id === id ? res.data! : s)),
-          resourceShares: state.resourceShares.map((s) => (s.id === id ? res.data! : s)),
-          mutationLoading: false,
-        }));
-      } else {
-        const message = res.message || '更新失败';
-        set({ error: message, mutationLoading: false });
-        throw new Error(message);
-      }
+      const updated = assertApiData(await api.shares.update(id, data), '更新失败');
+      set((state) => ({
+        outgoingShares: state.outgoingShares.map((s) => (s.id === id ? updated : s)),
+        incomingShares: state.incomingShares.map((s) => (s.id === id ? updated : s)),
+        resourceShares: state.resourceShares.map((s) => (s.id === id ? updated : s)),
+        mutationLoading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, mutationLoading: false });
       throw error;
@@ -118,12 +106,12 @@ export const useShareStore = create<ShareState>((set) => ({
     set({ mutationLoading: true, error: null });
     try {
       assertApiOk(await api.shares.delete(id), '删除失败');
-        set((state) => ({
-          outgoingShares: state.outgoingShares.filter((s) => s.id !== id),
-          incomingShares: state.incomingShares.filter((s) => s.id !== id),
-          resourceShares: state.resourceShares.filter((s) => s.id !== id),
-          mutationLoading: false,
-        }));
+      set((state) => ({
+        outgoingShares: state.outgoingShares.filter((s) => s.id !== id),
+        incomingShares: state.incomingShares.filter((s) => s.id !== id),
+        resourceShares: state.resourceShares.filter((s) => s.id !== id),
+        mutationLoading: false,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, mutationLoading: false });
       throw error;

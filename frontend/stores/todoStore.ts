@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { scheduleTodoReminder, cancelReminder } from '../lib/notifications';
 import { useAuthStore } from './authStore';
 import { LifeTodo } from '../types';
@@ -75,11 +75,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   addTodo: async (todo) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.todos.create(todo);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '创建待办失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.todos.create(todo), '创建待办失败');
       
       // 如果设置了提醒时间，调度通知
       if (todo.reminder_date) {
@@ -132,11 +128,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         }
       }
       
-      const response = await api.todos.update(id, updates);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '更新待办失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.todos.update(id, updates), '更新待办失败');
       set((state) => ({ todos: state.todos.map((t) => t.id === id ? { ...t, ...updates, ...data } : t), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

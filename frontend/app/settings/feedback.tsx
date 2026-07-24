@@ -3,10 +3,10 @@ import { View, StyleSheet, TouchableOpacity, Text, TextInput, KeyboardAvoidingVi
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { Toast } from '../../components/Toast';
 import { FormSection, AppScreen } from '../../components/ui';
-import { api } from '../../lib/api';
+import { api, assertApiOk } from '../../lib/api';
 
 const feedbackTypes = [
   { value: 'bug', label: '问题反馈', icon: 'bug', colorKey: 'danger' },
@@ -16,7 +16,7 @@ const feedbackTypes = [
 
 export default function FeedbackScreen() {
   const router = useRouter();
-  const colors = useColors();
+  const palette = usePalette();
   const [type, setType] = useState('bug');
   const [content, setContent] = useState('');
   const [contact, setContact] = useState('');
@@ -25,9 +25,9 @@ export default function FeedbackScreen() {
   const [errors, setErrors] = useState<{ content?: string }>({});
 
   const getFeedbackTypeColor = (colorKey: string) => {
-    if (colorKey === 'danger') return colors.danger;
-    if (colorKey === 'primary') return colors.primary;
-    return colors.gray[500];
+    if (colorKey === 'danger') return palette.danger;
+    if (colorKey === 'primary') return palette.orange;
+    return palette.textMuted;
   };
 
   const handleSubmit = async () => {
@@ -39,10 +39,10 @@ export default function FeedbackScreen() {
     setErrors({});
     setLoading(true);
     try {
-      await api.feedback.create({
+      assertApiOk(await api.feedback.create({
         content: content.trim(),
         contact_info: contact.trim(),
-      });
+      }), '提交反馈失败');
       setToastVisible(true);
       setTimeout(() => {
         setToastVisible(false);
@@ -57,7 +57,7 @@ export default function FeedbackScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.gray[50] }]}
+      style={[styles.container, { backgroundColor: palette.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <AppScreen contentContainerStyle={styles.content}>
@@ -70,19 +70,19 @@ export default function FeedbackScreen() {
                     key={ft.value}
                     style={[
                       styles.typeItem,
-                      { borderColor: colors.gray[200], backgroundColor: colors.white },
-                      type === ft.value && { borderColor: colors.primary, backgroundColor: colors.primaryLight }
+                      { borderColor: palette.border, backgroundColor: palette.surface },
+                      type === ft.value && { borderColor: palette.orange, backgroundColor: `${palette.orange}18` }
                     ]}
                     onPress={() => setType(ft.value)}
                   >
                     <MaterialCommunityIcons
                       name={ft.icon as any}
                       size={24}
-                      color={type === ft.value ? typeColor : colors.gray[400]}
+                      color={type === ft.value ? typeColor : palette.textMuted}
                     />
                     <Text style={[
                       styles.typeText,
-                      { color: colors.gray[500] },
+                      { color: palette.textMuted },
                       type === ft.value && { color: typeColor }
                     ]}>
                       {ft.label}
@@ -97,37 +97,37 @@ export default function FeedbackScreen() {
             <TextInput
               style={[
                 styles.textArea,
-                { backgroundColor: colors.white, borderColor: colors.gray[200], color: colors.gray[800] },
-                errors.content && { borderColor: colors.danger }
+                { backgroundColor: palette.surface, borderColor: palette.border, color: palette.text },
+                errors.content && { borderColor: palette.danger }
               ]}
               value={content}
               onChangeText={(t) => { setContent(t); if (errors.content) setErrors({}); }}
               placeholder="请详细描述您遇到的问题或建议..."
-              placeholderTextColor={colors.gray[400]}
+              placeholderTextColor={palette.textMuted}
               multiline
               numberOfLines={6}
               textAlignVertical="top"
             />
-            <Text style={[styles.charCount, { color: colors.gray[400] }]}>{content.length}/500</Text>
+            <Text style={[styles.charCount, { color: palette.textMuted }]}>{content.length}/500</Text>
           </FormSection>
 
           <FormSection label="联系方式">
             <TextInput
               style={[
                 styles.input,
-                { backgroundColor: colors.white, borderColor: colors.gray[200], color: colors.gray[800] }
+                { backgroundColor: palette.surface, borderColor: palette.border, color: palette.text }
               ]}
               value={contact}
               onChangeText={setContact}
               placeholder="选填，方便我们联系您"
-              placeholderTextColor={colors.gray[400]}
+              placeholderTextColor={palette.textMuted}
             />
           </FormSection>
 
           <TouchableOpacity
             style={[
               styles.submitBtn,
-              { backgroundColor: colors.primary, shadowColor: colors.primary },
+              { backgroundColor: palette.orange, shadowColor: palette.orange },
               loading && styles.submitBtnDisabled
             ]}
             onPress={handleSubmit}
@@ -135,9 +135,9 @@ export default function FeedbackScreen() {
             activeOpacity={0.8}
           >
             {loading ? (
-              <View style={[styles.loadingIndicator, { borderColor: colors.white, borderTopColor: 'transparent' }]} />
+              <View style={[styles.loadingIndicator, { borderColor: '#FFFFFF', borderTopColor: 'transparent' }]} />
             ) : (
-              <Text style={[styles.submitBtnText, { color: colors.white }]}>提交反馈</Text>
+              <Text style={[styles.submitBtnText, { color: '#FFFFFF' }]}>提交反馈</Text>
             )}
           </TouchableOpacity>
       </AppScreen>

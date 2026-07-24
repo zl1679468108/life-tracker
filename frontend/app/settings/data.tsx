@@ -3,7 +3,7 @@ import { AppScreen } from '../../components/ui';
 import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { useItemStore } from '../../stores/itemStore';
 import { useTodoStore } from '../../stores/todoStore';
 import { useCategoryStore } from '../../stores/categoryStore';
@@ -13,7 +13,7 @@ import { showAlert } from '../../lib/alert';
 import type { ImportResult } from '../../types';
 
 export default function DataManagementScreen() {
-  const colors = useColors();
+  const palette = usePalette();
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState('');
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -105,75 +105,75 @@ export default function DataManagementScreen() {
   return (
     <AppScreen contentContainerStyle={styles.content}>
       {/* 数据统计 */}
-      <View style={[styles.card, { backgroundColor: colors.white }]}>
-        <Text style={[styles.cardTitle, { color: colors.gray[800] }]}>数据统计</Text>
+      <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <Text style={[styles.cardTitle, { color: palette.text }]}>数据统计</Text>
         <View style={styles.statsGrid}>
-          <View style={[styles.statItem, { backgroundColor: colors.primaryLight }]}>
-            <MaterialCommunityIcons name="package-variant" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.gray[800] }]}>{items.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.gray[500] }]}>物品</Text>
+          <View style={[styles.statItem, { backgroundColor: `${palette.orange}18` }]}>
+            <MaterialCommunityIcons name="package-variant" size={24} color={palette.orange} />
+            <Text style={[styles.statValue, { color: palette.text }]}>{items.length}</Text>
+            <Text style={[styles.statLabel, { color: palette.textMuted }]}>物品</Text>
           </View>
-          <View style={[styles.statItem, { backgroundColor: colors.successLight }]}>
-            <MaterialCommunityIcons name="checkbox-marked" size={24} color={colors.success} />
-            <Text style={[styles.statValue, { color: colors.gray[800] }]}>{todos.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.gray[500] }]}>待办</Text>
+          <View style={[styles.statItem, { backgroundColor: `${palette.success}18` }]}>
+            <MaterialCommunityIcons name="checkbox-marked" size={24} color={palette.success} />
+            <Text style={[styles.statValue, { color: palette.text }]}>{todos.length}</Text>
+            <Text style={[styles.statLabel, { color: palette.textMuted }]}>待办</Text>
           </View>
-          <View style={[styles.statItem, { backgroundColor: colors.secondaryLight }]}>
-            <MaterialCommunityIcons name="tag" size={24} color={colors.secondary} />
-            <Text style={[styles.statValue, { color: colors.gray[800] }]}>{categories.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.gray[500] }]}>分类</Text>
+          <View style={[styles.statItem, { backgroundColor: `${palette.violet}18` }]}>
+            <MaterialCommunityIcons name="tag" size={24} color={palette.violet} />
+            <Text style={[styles.statValue, { color: palette.text }]}>{categories.length}</Text>
+            <Text style={[styles.statLabel, { color: palette.textMuted }]}>分类</Text>
           </View>
-          <View style={[styles.statItem, { backgroundColor: colors.warningLight }]}>
-            <MaterialCommunityIcons name="map-marker" size={24} color={colors.warning} />
-            <Text style={[styles.statValue, { color: colors.gray[800] }]}>{locations.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.gray[500] }]}>位置</Text>
+          <View style={[styles.statItem, { backgroundColor: `${palette.warning}18` }]}>
+            <MaterialCommunityIcons name="map-marker" size={24} color={palette.warning} />
+            <Text style={[styles.statValue, { color: palette.text }]}>{locations.length}</Text>
+            <Text style={[styles.statLabel, { color: palette.textMuted }]}>位置</Text>
           </View>
         </View>
       </View>
 
       {/* 导出数据 */}
-      <View style={[styles.card, { backgroundColor: colors.white }]}>
-        <Text style={[styles.cardTitle, { color: colors.gray[800] }]}>导出数据</Text>
-        <Text style={[styles.cardDesc, { color: colors.gray[500] }]}>
+      <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <Text style={[styles.cardTitle, { color: palette.text }]}>导出数据</Text>
+        <Text style={[styles.cardDesc, { color: palette.textMuted }]}>
           将所有数据导出为备份文件，可用于迁移或恢复
         </Text>
         <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.exportBtn, { backgroundColor: colors.primary }]}
+            style={[styles.exportBtn, { backgroundColor: palette.orange }]}
             onPress={handleExportJSON}
           >
-            <MaterialCommunityIcons name="code-json" size={20} color={colors.white} />
-            <Text style={[styles.exportBtnText, { color: colors.white }]}>导出 JSON</Text>
+            <MaterialCommunityIcons name="code-json" size={20} color={palette.surface} />
+            <Text style={[styles.exportBtnText, { color: '#FFFFFF' }]}>导出 JSON</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.exportBtn, { backgroundColor: colors.success }]}
+            style={[styles.exportBtn, { backgroundColor: palette.success }]}
             onPress={handleExportCSV}
           >
-            <MaterialCommunityIcons name="file-delimited" size={20} color={colors.white} />
-            <Text style={[styles.exportBtnText, { color: colors.white }]}>导出 CSV</Text>
+            <MaterialCommunityIcons name="file-delimited" size={20} color={palette.surface} />
+            <Text style={[styles.exportBtnText, { color: '#FFFFFF' }]}>导出 CSV</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* 导入数据 */}
-      <View style={[styles.card, { backgroundColor: colors.white }]}>
-        <Text style={[styles.cardTitle, { color: colors.gray[800] }]}>导入数据</Text>
-        <Text style={[styles.cardDesc, { color: colors.gray[500] }]}>
+      <View style={[styles.card, { backgroundColor: palette.surface }]}>
+        <Text style={[styles.cardTitle, { color: palette.text }]}>导入数据</Text>
+        <Text style={[styles.cardDesc, { color: palette.textMuted }]}>
           从备份文件恢复数据，将创建新记录不会覆盖现有数据
         </Text>
         <TouchableOpacity
-          style={[styles.importBtn, { backgroundColor: colors.secondaryLight }]}
+          style={[styles.importBtn, { backgroundColor: `${palette.violet}18` }]}
           onPress={handleImport}
           disabled={importing}
         >
-          <MaterialCommunityIcons name="upload" size={20} color={colors.secondary} />
-          <Text style={[styles.importBtnText, { color: colors.secondary }]}>
+          <MaterialCommunityIcons name="upload" size={20} color={palette.violet} />
+          <Text style={[styles.importBtnText, { color: palette.violet }]}>
             {importing ? importProgress : '从文件导入'}
           </Text>
         </TouchableOpacity>
         {importResult && importResult.errors.length > 0 && (
-          <View style={[styles.errorBox, { backgroundColor: colors.dangerLight }]}>
-            <Text style={[styles.errorText, { color: colors.danger }]}>
+          <View style={[styles.errorBox, { backgroundColor: `${palette.danger}18` }]}>
+            <Text style={[styles.errorText, { color: palette.danger }]}>
               {importResult.errors.length} 条数据导入失败
             </Text>
           </View>
@@ -181,14 +181,14 @@ export default function DataManagementScreen() {
       </View>
 
       {/* 提示 */}
-      <View style={[styles.card, { backgroundColor: colors.warningLight, borderLeftWidth: 3, borderLeftColor: colors.warning }]}>
+      <View style={[styles.card, { backgroundColor: `${palette.warning}18`, borderLeftWidth: 3, borderLeftColor: palette.warning }]}>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <MaterialCommunityIcons name="alert-circle" size={20} color={colors.warning} />
+          <MaterialCommunityIcons name="alert-circle" size={20} color={palette.warning} />
           <View style={{ flex: 1 }}>
-            <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.semiBold, color: colors.gray[800] }]}>
+            <Text style={[{ fontSize: fontSize.base, fontWeight: fontWeight.semiBold, color: palette.text }]}>
               注意事项
             </Text>
-            <Text style={[{ fontSize: fontSize.sm, color: colors.gray[600], marginTop: spacing.xs }]}>
+            <Text style={[{ fontSize: fontSize.sm, color: palette.textSecondary, marginTop: spacing.xs }]}>
               • 导入会创建新数据，不会覆盖已有数据{'\n'}
               • 分类和位置名称重复时会复用并重映射关联{'\n'}
               • 物品和待办重复时会跳过并写入导入报告{'\n'}

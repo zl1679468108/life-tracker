@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiData } from '../lib/api';
 import type { Message, CreateMessageRequest } from '../types';
 
 interface MessageState {
@@ -33,20 +33,16 @@ export const useMessageStore = create<MessageState>((set, get) => ({
   fetchMessages: async (conversationId: string, limit = 50, before?: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.messages.getMessages(conversationId, limit, before);
-      if (res.data) {
-        set((state) => ({
-          // before 游标分页：拉取的是更早的历史消息，需要前置拼接；
-          // 首次加载（无 before）或切换会话时直接覆盖。
-          messages: before && state.currentConversationId === conversationId
-            ? [...res.data, ...state.messages]
-            : res.data,
-          loading: false,
-          error: null,
-        }));
-      } else {
-        set({ error: res.message || '获取消息失败', loading: false });
-      }
+      const list = assertApiData(await api.messages.getMessages(conversationId, limit, before), '获取消息失败');
+      set((state) => ({
+        // before 游标分页：拉取的是更早的历史消息，需要前置拼接；
+        // 首次加载（无 before）或切换会话时直接覆盖。
+        messages: before && state.currentConversationId === conversationId
+          ? [...list, ...state.messages]
+          : list,
+        loading: false,
+        error: null,
+      }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
     }
@@ -54,14 +50,11 @@ export const useMessageStore = create<MessageState>((set, get) => ({
 
   sendMessage: async (conversationId: string, data: CreateMessageRequest) => {
     try {
-      const res = await api.messages.createMessage(conversationId, data);
-      if (res.data) {
-        set((state) => ({
-          messages: [...state.messages, res.data as Message],
-        }));
-        return res.data as Message;
-      }
-      return null;
+      const created = assertApiData(await api.messages.createMessage(conversationId, data), '发送失败');
+      set((state) => ({
+        messages: [...state.messages, created],
+      }));
+      return created;
     } catch (error) {
       set({ error: (error as Error).message });
       return null;

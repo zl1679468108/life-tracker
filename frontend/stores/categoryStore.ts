@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { LifeCategory } from '../types';
 import { cache } from '../lib/cache';
 import { networkMonitor } from '../lib/network';
@@ -65,11 +65,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   addCategory: async (category) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.categories.create(category);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '创建分类失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.categories.create(category), '创建分类失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => {
         // 仅当新分类属于当前作用域时才加入列表
@@ -95,11 +91,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   updateCategory: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.categories.update(id, updates);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '更新分类失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.categories.update(id, updates), '更新分类失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => ({
         categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates, ...data } : c)),

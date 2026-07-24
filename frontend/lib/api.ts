@@ -206,6 +206,15 @@ export function assertApiOk<T>(response: ApiResponse<T> | null | undefined, fall
   return response;
 }
 
+/** 成功且 data 非空；失败或缺 data 时抛错 */
+export function assertApiData<T>(response: ApiResponse<T> | null | undefined, fallbackMessage = '操作失败'): T {
+  const ok = assertApiOk(response, fallbackMessage);
+  if (ok.data == null) {
+    throw new Error(ok.message || fallbackMessage);
+  }
+  return ok.data;
+}
+
 export const resetAuthExpiredState = () => {
   authExpiredEmitted = false;
 };

@@ -7,11 +7,13 @@ import { Skeleton } from './Skeleton';
 interface ListSkeletonProps {
   count?: number;
   avatarSize?: number;
+  /** 右侧小徽章/按钮占位（待办列表等） */
+  trailing?: boolean;
   style?: ViewStyle;
 }
 
-/** 通用列表骨架（图标 + 两行文字） */
-export function ListSkeleton({ count = 3, avatarSize = 40, style }: ListSkeletonProps) {
+/** 通用列表骨架（图标 + 两行文字 [+ 右侧]） */
+export function ListSkeleton({ count = 3, avatarSize = 40, trailing = false, style }: ListSkeletonProps) {
   const palette = usePalette();
   return (
     <View style={[styles.wrap, style]}>
@@ -20,11 +22,12 @@ export function ListSkeleton({ count = 3, avatarSize = 40, style }: ListSkeleton
           key={i}
           style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
-          <Skeleton width={avatarSize} height={avatarSize} borderRadius={avatarSize / 2} />
+          <Skeleton width={avatarSize} height={avatarSize} borderRadius={Math.min(avatarSize / 2, 8)} />
           <View style={styles.content}>
             <Skeleton width="60%" height={16} />
             <Skeleton width="40%" height={12} style={{ marginTop: 8 }} />
           </View>
+          {trailing ? <Skeleton width={50} height={20} borderRadius={6} /> : null}
         </View>
       ))}
     </View>

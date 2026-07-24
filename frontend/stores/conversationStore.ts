@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiData } from '../lib/api';
 import type { Conversation, CreateConversationRequest } from '../types';
 
 interface ConversationState {
@@ -24,14 +24,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     const requestId = ++fetchConversationsRequestId;
     set({ loading: true, error: null });
     try {
-      const res = await api.messages.conversations();
+      const list = assertApiData(await api.messages.conversations(), '获取对话列表失败');
       // 已有更新的请求发起，丢弃本次过期结果
       if (requestId !== fetchConversationsRequestId) return;
-      if (res.data) {
-        set({ conversations: res.data, loading: false });
-      } else {
-        set({ error: res.message || '获取对话列表失败', loading: false });
-      }
+      set({ conversations: list, loading: false });
     } catch (error) {
       // 已有更新的请求发起，丢弃本次过期结果
       if (requestId !== fetchConversationsRequestId) return;
@@ -41,14 +37,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   createConversation: async (data: CreateConversationRequest) => {
     try {
-      const res = await api.messages.createConversation(data);
-      if (res.data) {
-        set((state) => ({
-          conversations: [res.data as Conversation, ...state.conversations],
-        }));
-        return res.data as Conversation;
-      }
-      return null;
+      const created = assertApiData(await api.messages.createConversation(data), '创建对话失败');
+      set((state) => ({
+        conversations: [created, ...state.conversations],
+      }));
+      return created;
     } catch (error) {
       set({ error: (error as Error).message });
       return null;

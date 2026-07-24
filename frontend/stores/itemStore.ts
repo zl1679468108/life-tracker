@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { uploadImages } from '../lib/upload';
 import { useAuthStore } from './authStore';
 import { LifeItem, UpdateItemReminderRequest } from '../types';
@@ -84,14 +84,10 @@ export const useItemStore = create<ItemState>((set) => ({
       }
       
       // 创建物品
-      const response = await api.items.create({
+      const data = assertApiData(await api.items.create({
         ...item,
         images: uploadedImages,
-      });
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '创建物品失败');
-      }
-      const data = response.data;
+      }), '创建物品失败');
       
       set((state) => ({
         items: state.items.find((existing) => existing.id === data.id)
@@ -123,10 +119,7 @@ export const useItemStore = create<ItemState>((set) => ({
         }
       }
       
-      const response = await api.items.update(id, { ...updates, images: uploadedImages });
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '更新物品失败');
-      }
+      assertApiData(await api.items.update(id, { ...updates, images: uploadedImages }), '更新物品失败');
       set((state) => ({ 
         items: state.items.map((item) => 
           item.id === id ? { ...item, ...updates, images: uploadedImages } : item

@@ -8,7 +8,7 @@ import { LifeTodo } from '../../types';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors, usePalette } from '../../stores/themeStore';
 import { formatDateZh } from '../../lib/format';
-import { FAB, Checkbox, Badge, PageLoadable, Skeleton, EmptyState, SegmentedTabs, SortPickerModal } from '../../components/ui';
+import { FAB, Checkbox, Badge, PageLoadable, EmptyState, SegmentedTabs, SortPickerModal, ListSkeleton } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -347,16 +347,7 @@ export default function TodoListScreen() {
 
         {loading ? (
           <View style={styles.skeletonList}>
-            {[1, 2, 3].map((i) => (
-              <View key={i} style={[styles.skeletonCard, { backgroundColor: palette.surface }]}>
-                <Skeleton width={22} height={22} borderRadius={6} />
-                <View style={styles.skeletonContent}>
-                  <Skeleton width="70%" height={15} />
-                  <Skeleton width="50%" height={12} style={{ marginTop: 8 }} />
-                </View>
-                <Skeleton width={50} height={20} borderRadius={6} />
-              </View>
-            ))}
+            <ListSkeleton count={3} avatarSize={22} trailing />
           </View>
         ) : (
           <PageLoadable
@@ -543,17 +534,6 @@ const styles = StyleSheet.create({
   },
   skeletonList: {
     padding: spacing.lg,
-  },
-  skeletonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  skeletonContent: {
-    flex: 1,
-    marginLeft: spacing.md,
   },
   headerActions: {
     flexDirection: 'row',

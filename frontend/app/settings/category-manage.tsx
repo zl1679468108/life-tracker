@@ -11,6 +11,7 @@ import { showAlert } from '../../lib/alert';
 import { ColorPicker, FormActions, BottomSheet } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeCategory } from '../../types';
+import { buildTree } from '../../lib/tree';
 import { useTranslation } from '../../lib/i18n';
 
 // 可选图标列表（MaterialCommunityIcons key）
@@ -29,33 +30,6 @@ const typeOptions: { value: 'item' | 'todo'; label: string }[] = [
   { value: 'todo', label: '待办' },
 ];
 
-// 构建树形结构
-const buildCategoryTree = (categories: LifeCategory[]): LifeCategory[] => {
-  const categoryMap = new Map<string, LifeCategory & { children?: LifeCategory[] }>();
-  const roots: LifeCategory[] = [];
-
-  // 初始化映射
-  categories.forEach(cat => {
-    categoryMap.set(cat.id, { ...cat, children: [] });
-  });
-
-  // 构建树
-  categories.forEach(cat => {
-    const node = categoryMap.get(cat.id)!;
-    if (cat.parent_id) {
-      const parent = categoryMap.get(cat.parent_id);
-      if (parent) {
-        parent.children!.push(node);
-      } else {
-        roots.push(node);
-      }
-    } else {
-      roots.push(node);
-    }
-  });
-
-  return roots;
-};
 
 export default function CategoryManageScreen() {
   const router = useRouter();
@@ -94,8 +68,8 @@ export default function CategoryManageScreen() {
   const customItemCategories = categories.filter((c) => c.user_id && c.type === 'item');
   const customTodoCategories = categories.filter((c) => c.user_id && c.type === 'todo');
   
-  const itemCategoryTree = buildCategoryTree(customItemCategories);
-  const todoCategoryTree = buildCategoryTree(customTodoCategories);
+  const itemCategoryTree = buildTree(customItemCategories);
+  const todoCategoryTree = buildTree(customTodoCategories);
 
   const handleAdd = async () => {
     if (loading) return;

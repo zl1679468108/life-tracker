@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, assertApiOk } from '../lib/api';
+import { api, assertApiOk, assertApiData } from '../lib/api';
 import { LifeLocation } from '../types';
 import { cache } from '../lib/cache';
 import { networkMonitor } from '../lib/network';
@@ -61,11 +61,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   addLocation: async (location) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.locations.create(location);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '创建位置失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.locations.create(location), '创建位置失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => ({
         locations: state.locations.find((existing) => existing.id === data.id)
@@ -87,11 +83,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   updateLocation: async (id, updates) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.locations.update(id, updates);
-      if (!response?.data || response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '更新位置失败');
-      }
-      const data = response.data;
+      const data = assertApiData(await api.locations.update(id, updates), '更新位置失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => ({
         locations: state.locations.map((l) => (l.id === id ? { ...l, ...updates, ...data } : l)),

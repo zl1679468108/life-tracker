@@ -11,6 +11,7 @@ import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { FormActions, BottomSheet } from '../../components/ui';
 import { LifeLocation } from '../../types';
+import { buildTree } from '../../lib/tree';
 import { useTranslation } from '../../lib/i18n';
 
 // 可选图标列表（MaterialCommunityIcons key）
@@ -24,33 +25,6 @@ const iconOptions = [
   'swim', 'tennis', 'soccer', 'pool', 'tent',
 ];
 
-// 构建树形结构
-const buildLocationTree = (locations: LifeLocation[]): LifeLocation[] => {
-  const locationMap = new Map<string, LifeLocation & { children?: LifeLocation[] }>();
-  const roots: LifeLocation[] = [];
-
-  // 初始化映射
-  locations.forEach(loc => {
-    locationMap.set(loc.id, { ...loc, children: [] });
-  });
-
-  // 构建树
-  locations.forEach(loc => {
-    const node = locationMap.get(loc.id)!;
-    if (loc.parent_id) {
-      const parent = locationMap.get(loc.parent_id);
-      if (parent) {
-        parent.children!.push(node);
-      } else {
-        roots.push(node);
-      }
-    } else {
-      roots.push(node);
-    }
-  });
-
-  return roots;
-};
 
 export default function LocationManageScreen() {
   const router = useRouter();
@@ -80,7 +54,7 @@ export default function LocationManageScreen() {
   const systemLocations = locations.filter((l) => !l.user_id);
   // 自定义：user_id 不为空
   const customLocations = locations.filter((l) => l.user_id);
-  const locationTree = buildLocationTree(customLocations).filter(Boolean);
+  const locationTree = buildTree(customLocations).filter(Boolean);
 
   const handleAdd = async () => {
     if (!newName.trim()) {
