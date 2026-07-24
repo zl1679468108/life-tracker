@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, NotFoundException, BadRequest
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 import { EventsGateway } from '../common/events/events.gateway';
 
 interface CreateConversationData {
@@ -102,10 +103,7 @@ export class MessagesService {
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(50);
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     if (!conversations || conversations.length === 0) return [];
 
@@ -237,10 +235,7 @@ export class MessagesService {
 
     const { data: messages, error } = await query.limit(limit);
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     // 批量获取发送者信息
     const senderIds = (messages || []).map((msg) => msg.sender_id);
@@ -284,10 +279,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     return convertTimesToBeijing(conv);
   }
@@ -321,10 +313,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     // 更新对话的最后消息信息（与消息插入构成逻辑事务：失败则回滚消息）
     const { error: convUpdateError } = await this.supabase
@@ -395,10 +384,7 @@ export class MessagesService {
         { onConflict: 'user_id,conversation_id' },
       );
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     return { code: 200, data: null, message: '标记已读成功' };
   }
@@ -418,10 +404,7 @@ export class MessagesService {
       .order('display_name', { ascending: true })
       .limit(20);
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     return (profiles || []).map((p) => ({
       id: p.id,
@@ -449,10 +432,7 @@ export class MessagesService {
       .contains('participant_ids', [userId])
       .limit(200);
 
-    if (convError) {
-      console.error('对话操作失败:', convError);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(convError, '对话操作失败:');
 
     const conversationIds = (conversations || []).map((c) => c.id);
     const conversationMap = new Map((conversations || []).map((c) => [c.id, c]));
@@ -468,10 +448,7 @@ export class MessagesService {
         .order('created_at', { ascending: false })
         .limit(30);
 
-      if (msgError) {
-        console.error('消息操作失败:', msgError);
-        throw new InternalServerErrorException('操作失败，请稍后重试');
-      }
+      throwOnSupabaseError(msgError, '消息操作失败:');
       messages = foundMessages || [];
     }
 
@@ -482,7 +459,7 @@ export class MessagesService {
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
       .eq('status', 'accepted');
 
-    if (friendError) { console.error('查询好友失败:', friendError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(friendError, '查询好友失败:');
 
     const friendIds = (friendships || []).map((row) =>
       row.requester_id === userId ? row.addressee_id : row.requester_id,
@@ -532,10 +509,7 @@ export class MessagesService {
       .eq('status', 'accepted')
       .maybeSingle();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
     if (!data) throw new BadRequestException('只能与已通过好友操作');
     return data;
   }
@@ -571,10 +545,7 @@ export class MessagesService {
       .eq('status', 'accepted')
       .order('updated_at', { ascending: false });
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
     const friends = await Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
     return friends.sort((a, b) => Number(b.pinned) - Number(a.pinned));
   }
@@ -587,10 +558,7 @@ export class MessagesService {
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
     return Promise.all((data || []).map((row) => this.enrichFriendship(row, userId)));
   }
 
@@ -605,7 +573,7 @@ export class MessagesService {
       .or(`and(requester_id.eq.${userId},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${userId})`)
       .maybeSingle();
 
-    if (existingError) { console.error('查询好友申请失败:', existingError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(existingError, '查询好友申请失败:');
     if (existing) {
       if (existing.status === 'accepted') throw new BadRequestException('已经是好友');
       if (existing.status === 'pending') throw new BadRequestException('好友申请已发送');
@@ -621,10 +589,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
     this.eventsGateway.emitFriendRequestUpdated(targetUserId, { type: 'request_created', friendship_id: data.id });
     return this.enrichFriendship(data, userId);
   }
@@ -648,10 +613,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     if (status === 'accepted') {
       await this.createOrGetFriendConversation(existing.requester_id, existing.addressee_id);
@@ -682,10 +644,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
     return this.enrichFriendship(data, userId);
   }
 
@@ -706,10 +665,7 @@ export class MessagesService {
       .delete()
       .eq('id', friendshipId);
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     const otherId = existing.requester_id === userId ? existing.addressee_id : existing.requester_id;
     const { error: sharesError } = await this.supabase
@@ -717,7 +673,7 @@ export class MessagesService {
       .delete()
       .or(`and(owner_id.eq.${userId},shared_with_id.eq.${otherId}),and(owner_id.eq.${otherId},shared_with_id.eq.${userId})`);
 
-    if (sharesError) { console.error('清理共享记录失败:', sharesError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(sharesError, '清理共享记录失败:');
 
     // 清理两人之间的对话及消息，避免重新加好友时复用旧对话历史
     const { data: conversations } = await this.supabase
@@ -764,10 +720,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('消息操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '消息操作失败:');
 
     await this.supabase
       .from('life_messages')
@@ -822,10 +775,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (convError) {
-      console.error('对话操作失败:', convError);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(convError, '对话操作失败:');
 
     // 如果有首条消息，创建它
     let createdMessage = null;
@@ -842,10 +792,7 @@ export class MessagesService {
         .select()
         .single();
 
-      if (msgError) {
-        console.error('消息操作失败:', msgError);
-        throw new InternalServerErrorException('操作失败，请稍后重试');
-      }
+      throwOnSupabaseError(msgError, '消息操作失败:');
 
       // 更新对话的最后消息
       await this.supabase
@@ -891,10 +838,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (convError) {
-      console.error('对话操作失败:', convError);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(convError, '对话操作失败:');
 
     // 2. 创建卡片消息（发给对方）
     const cardData = {
@@ -917,10 +861,7 @@ export class MessagesService {
       .select()
       .single();
 
-    if (msgError) {
-        console.error('消息操作失败:', msgError);
-        throw new InternalServerErrorException('操作失败，请稍后重试');
-      }
+    throwOnSupabaseError(msgError, '消息操作失败:');
 
     // 3. 更新对话的最后消息
     await this.supabase

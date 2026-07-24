@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing, toUtcIso } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 
 @Injectable()
 export class BorrowingsService {
@@ -16,10 +17,7 @@ export class BorrowingsService {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('借用记录操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:');
     return (data || []).map((b: any) => ({
       ...convertTimesToBeijing(b),
       item_name: b.life_items?.name,
@@ -34,10 +32,7 @@ export class BorrowingsService {
       .in('status', ['borrowed', 'overdue'])
       .order('expected_return_date', { ascending: true });
 
-    if (error) {
-      console.error('借用记录操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:');
     return (data || []).map((b: any) => ({
       ...convertTimesToBeijing(b),
       item_name: b.life_items?.name,
@@ -52,10 +47,7 @@ export class BorrowingsService {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('借用记录操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:');
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -67,10 +59,7 @@ export class BorrowingsService {
       .eq('user_id', userId)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('借用记录不存在');
-      console.error('借用记录操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:', { notFoundMessage: '借用记录不存在' });
     return {
       ...convertTimesToBeijing(data),
       item_name: (data as any).life_items?.name,
@@ -92,7 +81,7 @@ export class BorrowingsService {
       .limit(1)
       .maybeSingle();
 
-    if (activeError) { console.error('查询活跃借用记录失败:', activeError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(activeError, '查询活跃借用记录失败:');
     if (activeBorrowing) throw new BadRequestException('该物品已有未归还的借用记录');
 
     const { data, error } = await this.supabase
@@ -101,10 +90,7 @@ export class BorrowingsService {
       .select()
       .single();
 
-    if (error) {
-      console.error('借用记录操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:');
 
     // 更新物品的借用状态（与借用记录插入构成逻辑事务：失败则回滚借用记录）
     const { error: itemUpdateError } = await this.supabase
@@ -138,10 +124,7 @@ export class BorrowingsService {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('借用记录不存在');
-      console.error('借用记录操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:', { notFoundMessage: '借用记录不存在' });
 
     // 归还操作：借用记录更新成功后，同步物品状态
     if (updates.status === 'returned' && data) {
@@ -182,10 +165,7 @@ export class BorrowingsService {
       .eq('id', id)
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('借用记录操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '借用记录操作失败:');
 
     // 如果删除的是未归还的记录，检查并更新物品状态
     if (existing && ['borrowed', 'overdue'].includes(existing.status)) {

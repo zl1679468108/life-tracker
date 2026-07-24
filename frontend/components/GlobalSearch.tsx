@@ -1,3 +1,4 @@
+import { AppScreen } from './ui';
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, TextInput, Modal, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,7 +9,6 @@ import { useCategoryStore } from '../stores/categoryStore';
 import { useItemStore } from '../stores/itemStore';
 import { useLocationStore } from '../stores/locationStore';
 import { useTodoStore } from '../stores/todoStore';
-import { SafeScreen } from './SafeScreen';
 import type { LifeCategory, LifeItem, LifeLocation, LifeTodo } from '../types';
 
 interface GlobalSearchProps {
@@ -140,7 +140,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleClose}>
-      <SafeScreen backgroundColor={palette.bg}>
+      <AppScreen scroll={false} padded={false}>
         <View style={[styles.screen, { backgroundColor: palette.bg }]}>
           <View style={styles.header}>
             <View style={[styles.searchBox, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -196,7 +196,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
             )}
           </ScrollView>
         </View>
-      </SafeScreen>
+      </AppScreen>
     </Modal>
   );
 }

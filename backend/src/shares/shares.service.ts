@@ -1,7 +1,8 @@
-import { Injectable, Inject, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 import { MessagesService } from '../messages/messages.service';
 
 @Injectable()
@@ -92,10 +93,7 @@ export class SharesService {
       .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('共享操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '共享操作失败:');
     if (!data || data.length === 0) return [];
 
     // 批量获取被共享者资料
@@ -130,10 +128,7 @@ export class SharesService {
       .eq('shared_with_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('共享操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '共享操作失败:');
     if (!data || data.length === 0) return [];
 
     // 批量获取所有者资料
@@ -170,10 +165,7 @@ export class SharesService {
       .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('共享操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '共享操作失败:');
     if (!data || data.length === 0) return [];
 
     // 批量获取被共享者资料
@@ -212,10 +204,7 @@ export class SharesService {
     const { data: resource, error: resourceError } = await resourceQuery;
 
     if (resourceError) {
-      if (resourceError.code === 'PGRST116') {
-        throw new NotFoundException('资源不存在');
-      }
-      console.error('查询资源失败:', resourceError); throw new InternalServerErrorException('操作失败，请稍后重试');
+      throwOnSupabaseError(resourceError, '查询资源失败:', { notFoundMessage: '资源不存在' });
     }
 
     if (!resource || resource.user_id !== data.owner_id) {
@@ -234,7 +223,7 @@ export class SharesService {
       .eq('status', 'accepted')
       .maybeSingle();
 
-    if (friendshipError) { console.error('查询好友关系失败:', friendshipError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(friendshipError, '查询好友关系失败:');
     if (!friendship) {
       throw new BadRequestException('只能共享给已通过好友');
     }
@@ -261,7 +250,7 @@ export class SharesService {
       if (error.code === '23505') {
         throw new BadRequestException('该共享关系已存在');
       }
-      console.error('共享操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
+      throwOnSupabaseError(error, '共享操作失败:');
     }
 
     // 2. 自动创建对话 + 卡片消息（与 share 插入构成逻辑事务：失败则回滚 share）
@@ -320,10 +309,7 @@ export class SharesService {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('共享关系不存在');
-      console.error('共享操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '共享操作失败:', { notFoundMessage: '共享关系不存在' });
 
     return convertTimesToBeijing(data);
   }
@@ -338,10 +324,7 @@ export class SharesService {
       .eq('id', id)
       .eq('owner_id', userId);
 
-    if (error) {
-      console.error('共享操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '共享操作失败:');
 
     return { code: 200, data: null, message: '删除成功' };
   }
@@ -370,7 +353,7 @@ export class SharesService {
         .eq('status', 'accepted')
         .maybeSingle();
 
-      if (friendshipError) { console.error('查询好友关系失败:', friendshipError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+      throwOnSupabaseError(friendshipError, '查询好友关系失败:');
       if (!friendship) return { hasAccess: false };
 
       return { hasAccess: true, permission: share.permission };

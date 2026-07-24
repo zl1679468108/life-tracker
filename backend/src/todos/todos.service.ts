@@ -3,6 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
 import { toUtcIso, convertTimesToBeijing } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 import { SharesService } from '../shares/shares.service';
 
 @Injectable()
@@ -29,10 +30,7 @@ export class TodosService {
       .eq('id', id)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new BadRequestException('待办不存在');
-      console.error('待办操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '待办操作失败:', { notFoundMessage: '待办不存在', notFoundAs: 'bad_request' });
 
     if (data.user_id === userId) {
       return { todo: data, permission: 'owner' as const };
@@ -55,10 +53,7 @@ export class TodosService {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('待办操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '待办操作失败:');
     const ownTodos = (data || []).map((todo) => this.withAccessMeta(todo, userId, 'owner'));
 
     const { data: shares, error: sharesError } = await this.supabase
@@ -67,7 +62,7 @@ export class TodosService {
       .eq('shared_with_id', userId)
       .eq('resource_type', 'todo');
 
-    if (sharesError) { console.error('查询共享待办失败:', sharesError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(sharesError, '查询共享待办失败:');
 
     const resourceIds = Array.from(new Set((shares || []).map((share) => share.resource_id)));
     if (resourceIds.length === 0) return ownTodos;
@@ -77,7 +72,7 @@ export class TodosService {
       .select(listFields)
       .in('id', resourceIds);
 
-    if (sharedError) { console.error('查询共享待办列表失败:', sharedError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(sharedError, '查询共享待办列表失败:');
 
     const permissionById = new Map((shares || []).map((share) => [share.resource_id, share.permission as 'view' | 'edit']));
     const visibleSharedTodos = (sharedTodos || []).map((todo) => this.withAccessMeta(todo, userId, permissionById.get(todo.id) || 'view'));
@@ -101,10 +96,7 @@ export class TodosService {
       .select()
       .single();
 
-    if (error) {
-      console.error('待办操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '待办操作失败:');
     this.eventsGateway.emitTodoCreated(todo.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -126,10 +118,7 @@ export class TodosService {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new BadRequestException('待办不存在');
-      console.error('待办操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '待办操作失败:', { notFoundMessage: '待办不存在', notFoundAs: 'bad_request' });
     if (data) this.eventsGateway.emitTodoUpdated(data.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -162,10 +151,7 @@ export class TodosService {
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('待办操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '待办操作失败:');
     if (existing) this.eventsGateway.emitTodoDeleted(existing.user_id, id);
     return { code: 200, data: null, message: '删除成功' };
   }

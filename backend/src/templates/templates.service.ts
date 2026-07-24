@@ -1,7 +1,8 @@
-import { Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing, toUtcIso } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 
 @Injectable()
 export class TemplatesService {
@@ -21,10 +22,7 @@ export class TemplatesService {
     }
 
     const { data, error } = await query;
-    if (error) {
-      console.error('模板操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:');
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -36,10 +34,7 @@ export class TemplatesService {
       .eq('user_id', userId)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('模板不存在');
-      console.error('模板操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:', { notFoundMessage: '模板不存在' });
     return convertTimesToBeijing(data);
   }
 
@@ -57,10 +52,7 @@ export class TemplatesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('模板操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:');
     return convertTimesToBeijing(data);
   }
 
@@ -79,10 +71,7 @@ export class TemplatesService {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('模板不存在');
-      console.error('模板操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:', { notFoundMessage: '模板不存在' });
     return convertTimesToBeijing(data);
   }
 
@@ -93,10 +82,7 @@ export class TemplatesService {
       .eq('id', id)
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('模板操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:');
     return { code: 200, data: null, message: '删除成功' };
   }
 
@@ -126,10 +112,7 @@ export class TemplatesService {
       .select()
       .single();
 
-    if (error) {
-      console.error('模板操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '模板操作失败:');
 
     // 更新使用次数
     await this.supabase

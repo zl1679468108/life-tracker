@@ -7,16 +7,21 @@ import type { ReactNode } from 'react';
 // do not have access to the DOM or browser APIs.
 export default function Root({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <title>LifeTracker</title>
+        <meta name="application-name" content="LifeTracker" />
+        <meta name="apple-mobile-web-app-title" content="LifeTracker" />
         <meta name="theme-color" content="#F36F3C" />
-        <meta name="description" content="LifeTracker personal life tracking app" />
+        <meta name="description" content="LifeTracker 个人生活追踪应用" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.

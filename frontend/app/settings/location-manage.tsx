@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { SafeScreen } from '../../components/SafeScreen';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,21 +8,13 @@ import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../cons
 import { usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
-import { FormActions, BottomSheet } from '../../components/ui';
+import { AppScreen, FormActions, BottomSheet } from '../../components/ui';
+import { LOCATION_ICON_OPTIONS } from '../../constants/icons';
 import { LifeLocation } from '../../types';
 import { buildTree } from '../../lib/tree';
 import { useTranslation } from '../../lib/i18n';
 
-// 可选图标列表（MaterialCommunityIcons key）
-const iconOptions = [
-  'book-open-variant', 'bed', 'sofa', 'pot-steam', 'bag-personal-outline',
-  'home', 'office-building', 'warehouse', 'garage', 'castle',
-  'floor-plan', 'door-open', 'stairs', 'elevator-passenger', 'shower-head',
-  'washing-machine', 'fridge', 'microwave', 'stove', 'dishwasher',
-  'map-marker', 'car', 'bike', 'train', 'airplane',
-  'school', 'hospital-building', 'store', 'church', 'basketball',
-  'swim', 'tennis', 'soccer', 'pool', 'tent',
-];
+const iconOptions = LOCATION_ICON_OPTIONS;
 
 
 export default function LocationManageScreen() {
@@ -208,7 +199,7 @@ export default function LocationManageScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <ScrollView style={[styles.lmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.lmContent}>
         {/* 系统预设 */}
         <View style={styles.lmSection}>
@@ -303,7 +294,7 @@ export default function LocationManageScreen() {
           ))}
         </ScrollView>
       </BottomSheet>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

@@ -1,7 +1,8 @@
-import { Injectable, Inject, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 
 @Injectable()
 export class FeedbackService {
@@ -14,7 +15,7 @@ export class FeedbackService {
       .select()
       .single();
 
-    if (error) { console.error('创建反馈失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(error, '创建反馈失败:');
     return convertTimesToBeijing(data);
   }
 }

@@ -19,6 +19,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthExpiredHandler } from '../components/AuthExpiredHandler';
 import { AppAlertHost } from '../components/AppAlertHost';
 import { addNotificationListeners, rescheduleWebReminders } from '../lib/notifications';
+import { setDocumentTitleFromSegments } from '../lib/documentTitle';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -93,6 +94,11 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Web 浏览器标签固定为 LifeTracker（expo-router 默认关闭 documentTitle）
+  useEffect(() => {
+    setDocumentTitleFromSegments();
+  }, [segments]);
 
   useEffect(() => {
     if (loading || !loaded) return;

@@ -1,8 +1,9 @@
-import { Injectable, Inject, InternalServerErrorException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, InternalServerErrorException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
 import { convertTimesToBeijing, toUtcIso } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
 import { SharesService } from '../shares/shares.service';
 
 const OPTIONAL_ITEM_COLUMNS = new Set([
@@ -68,10 +69,7 @@ export class ItemsService {
       .eq('id', id)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');
-      console.error('物品操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:', { notFoundMessage: '物品不存在' });
 
     if (data.user_id === userId) {
       return { item: data, permission: 'owner' as const };
@@ -100,10 +98,7 @@ export class ItemsService {
         reason,
       });
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
   }
 
   // 运行时探测到线上库缺失的可选列，避免 schema 漂移导致列表 500
@@ -166,8 +161,7 @@ export class ItemsService {
 
       const missingColumn = this.getMissingItemColumn(error);
       if (!this.noteUnsupportedItemColumn(missingColumn)) {
-        console.error('物品操作失败:', error);
-        throw new InternalServerErrorException('操作失败，请稍后重试');
+        throwOnSupabaseError(error, '物品操作失败:');
       }
     }
     throw new InternalServerErrorException('操作失败，请稍后重试');
@@ -185,7 +179,7 @@ export class ItemsService {
       .eq('shared_with_id', userId)
       .eq('resource_type', 'item');
 
-    if (sharesError) { console.error('查询共享物品失败:', sharesError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(sharesError, '查询共享物品失败:');
 
     const resourceIds = Array.from(new Set((shares || []).map((share) => share.resource_id)));
     if (resourceIds.length === 0) return ownItems;
@@ -226,10 +220,7 @@ export class ItemsService {
       }
     }
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     this.eventsGateway.emitItemCreated(item.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -266,10 +257,7 @@ export class ItemsService {
       }
     }
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('物品不存在');
-      console.error('物品操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:', { notFoundMessage: '物品不存在' });
     if (data) this.eventsGateway.emitItemUpdated(data.user_id, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -320,10 +308,7 @@ export class ItemsService {
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     if (existing) this.eventsGateway.emitItemDeleted(existing.user_id, id);
     return { code: 200, data: null, message: '删除成功' };
   }
@@ -346,10 +331,7 @@ export class ItemsService {
       .lte('expiry_date', futureDate.toISOString())
       .order('expiry_date', { ascending: true });
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -377,10 +359,7 @@ export class ItemsService {
       .select()
       .single();
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     return convertTimesToBeijing(data);
   }
 
@@ -392,10 +371,7 @@ export class ItemsService {
       .eq('user_id', userId)
       .order('recorded_at', { ascending: false });
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -406,10 +382,7 @@ export class ItemsService {
       .select()
       .single();
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
     return convertTimesToBeijing(data);
   }
 
@@ -419,10 +392,7 @@ export class ItemsService {
       .select('id, name, purchase_price, current_value, currency, category_id')
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('物品操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '物品操作失败:');
 
     let totalPurchase = 0;
     let totalCurrent = 0;
@@ -457,7 +427,7 @@ export class ItemsService {
       .order('recorded_at', { ascending: false })
       .limit(5);
 
-    if (historyError) { console.error('查询价值历史失败:', historyError); throw new InternalServerErrorException('操作失败，请稍后重试'); }
+    throwOnSupabaseError(historyError, '查询价值历史失败:');
 
     const itemNameById = new Map((items || []).map((item) => [item.id, item.name || '未命名物品']));
     const recentChanges = await Promise.all((history || []).map(async (record) => {

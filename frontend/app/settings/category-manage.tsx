@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { SafeScreen } from '../../components/SafeScreen';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,22 +7,14 @@ import { useCategoryStore } from '../../stores/categoryStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
-import { ColorPicker, FormActions, BottomSheet } from '../../components/ui';
+import { AppScreen, ColorPicker, FormActions, BottomSheet } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { LifeCategory } from '../../types';
 import { buildTree } from '../../lib/tree';
 import { useTranslation } from '../../lib/i18n';
+import { CATEGORY_ICON_OPTIONS } from '../../constants/icons';
 
-// 可选图标列表（MaterialCommunityIcons key）
-const iconOptions = [
-  'laptop', 'book-open-variant', 'shopping', 'tshirt-crew', 'food-apple',
-  'car', 'home', 'gift', 'briefcase', 'palette',
-  'music', 'camera', 'dumbbell', 'bike', 'headphones',
-  'wallet', 'key-variant', 'medal', 'star', 'coffee',
-  'flower', 'dog', 'baby-carriage', 'football', 'guitar',
-  'tag', 'heart', 'diamond-stone', 'lightning-bolt', 'leaf',
-  'puzzle', 'rocket-launch', 'shield-check', 'snowflake', 'fire',
-];
+const iconOptions = CATEGORY_ICON_OPTIONS;
 
 const typeOptions: { value: 'item' | 'todo'; label: string }[] = [
   { value: 'item', label: '物品' },
@@ -268,7 +259,7 @@ export default function CategoryManageScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <ScrollView style={[styles.cmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.cmContent}>
         {/* 系统预设 */}
         <View style={styles.cmSection}>
@@ -410,7 +401,7 @@ export default function CategoryManageScreen() {
         onSelect={selectColor}
         currentColor={currentColor}
       />
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

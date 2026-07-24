@@ -70,51 +70,38 @@ eas build --platform android --profile development
 frontend/
   app/                 expo-router 页面
     (tabs)/            首页、工作台、消息、我的
-    auth/              登录、注册、重置密码
-    item/              物品创建（复用编辑）
-    todo/              待办创建（复用编辑）
-    settings/          设置二级页（分类/位置/模板/借用/日历/统计/通知/数据/资产/小组件/账号/主题/语言/反馈）
-  components/          通用组件
-  components/ui/       基础 UI 组件（在 index.ts 统一导出）
-  stores/              Zustand stores（auth/item/todo/category/location/notification/message 等）
-  lib/                 API、上传、通知、缓存、分享等工具
+    auth/              登录、注册、重置/更新密码、邮箱验证、OAuth 回调
+    item/              物品列表/创建/编辑
+    todo/              待办列表/创建/编辑
+    message/           聊天页 `[id]`
+    settings/          二级页（分类/位置/模板/借用/日历/统计/通知/数据/资产/小组件/账号/改密/主题/语言/反馈/版本）
+  components/          通用组件（SafeScreen、SwipeableRow、GlobalSearch 等）
+  components/ui/       基础 UI（AppScreen/Toast/EmptyState…，在 index.ts 统一导出）
+  components/message/  消息领域组件（ConversationRow、MessageBubble 等）
+  stores/              Zustand（auth/item/todo/category/location/notification/message/conversation/share/template/borrowing/profile/theme/sync 等）
+  lib/                 API、上传、通知、缓存、分享、format、hooks 等
   types/               类型定义（api.ts + index.ts）
-  constants/theme.ts   主题、颜色、间距、字体
+  constants/           theme、icons、changelog、Colors
 
 backend/
   src/
-    auth/              认证模块（controller + service）
-    items/             物品模块
-    todos/             待办模块
-    categories/        分类模块
-    locations/         位置模块
-    borrowings/        借用模块
-    templates/         模板模块
-    messages/          消息模块
-    shares/            共享模块
-    feedback/          反馈模块
-    calendar/          日历模块（无独立 service，逻辑在 controller）
-    stats/             统计模块（无独立 service）
-    widgets/           桌面小组件模块（无独立 service）
-    upload/            上传模块
-    ai/                AI 建议模块（当前为模拟）
-    common/            公共模块
-      supabase/        Supabase 客户端
-      auth/            认证守卫和装饰器
-      events/          WebSocket 网关
-      reminder/        提醒调度器（每分钟检查 + 防重复推送）
-      mail/            邮件服务
-      monitoring/      错误监控
-      utils/           工具函数
+    auth/ items/ todos/ categories/ locations/
+    borrowings/ templates/ messages/ shares/ feedback/
+    calendar/ stats/ widgets/   # 无独立 service，逻辑在 controller
+    upload/ ai/
+    common/
+      supabase/ auth/ events/ reminder/ mail/ monitoring/
+      utils/           time、token、supabase-error、owned-resource
 
 docs/
-  PRD.md               产品需求和路线（当前版本 + 后续增强）
+  README.md            文档索引与闭环状态（入口）
+  PRD.md               产品需求和路线
   PROTOTYPE.md         原型方案（页面布局、路由、交互流）
-  TASKS.md             当前任务看板（仅未完成任务）
+  TASKS.md             当前任务看板（仅未完成）
   database-init.sql    数据库初始化脚本（权威建表基准）
-  design/              设计源文件
-  qa/                  QA 记录和截图
-  QA_ACCOUNTS.md       测试账号清单（供 AI 记忆，首次新建对话时读取）
+  migrations/          幂等增量迁移（见 migrations/README.md）
+  release/             发布说明归档
+  QA_ACCOUNTS.md       测试账号清单
 
 scripts/
   qa/                  QA 自动化脚本（冒烟测试、种子数据等）
@@ -173,6 +160,8 @@ scripts/
 - 主题统一使用 `useColors()` 和 `frontend/constants/theme.ts`。页面背景使用 `colors.gray[50]`，卡片/弹窗表面使用 `colors.white`。
 - 图标使用 `@expo/vector-icons/MaterialCommunityIcons`。
 - 基础组件放在 `frontend/components/ui/`，并在 `frontend/components/ui/index.ts` 导出。
+- 新增页面优先使用 `AppScreen`；`Toast` 统一从 `components/ui` 引入（`components/Toast` 为兼容 re-export）。
+- 分类/位置图标选项使用 `frontend/constants/icons.ts`，不要在页面内复制数组。
 - 图片选择、压缩、上传走 `frontend/lib/upload.ts` 和现有图片组件。
 
 ## 7. 跨平台规则
@@ -196,7 +185,8 @@ scripts/
   - `DELETE /api/{resource}/:id`
 - 每个模块保持三件套：`controller`、`service`、`module`。
 - 数据验证使用 `class-validator` 和全局 `ValidationPipe`。
-- Supabase 错误要转换为明确的 HTTP 异常。
+- Supabase 错误要转换为明确的 HTTP 异常；优先使用 `common/utils/supabase-error.ts` 的 `throwOnSupabaseError`。
+- 系统预设资源（`user_id IS NULL`）鉴权优先使用 `common/utils/owned-resource.ts` 的 `assertUserOwnedResource`。
 - 数据库表统一使用 `life_` 前缀。
 
 ## 9. 时间规则

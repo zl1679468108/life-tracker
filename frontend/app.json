@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "life-tracker",
+    "name": "LifeTracker",
     "slug": "life-tracker",
     "version": "1.4.4",
     "orientation": "portrait",
@@ -24,9 +24,9 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png",
-      "name": "Life Tracker",
+      "name": "LifeTracker",
       "shortName": "LifeTracker",
-      "description": "Personal life tracking app",
+      "description": "LifeTracker 个人生活追踪应用",
       "themeColor": "#F36F3C",
       "backgroundColor": "#F6F8FC"
     },

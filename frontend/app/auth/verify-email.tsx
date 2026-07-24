@@ -1,10 +1,10 @@
+import { AppScreen } from '../../components/ui';
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { SafeScreen } from '../../components/SafeScreen';
 import { useAuthStore } from '../../stores/authStore';
 import { showAlert } from '../../lib/alert';
 
@@ -45,7 +45,7 @@ export default function VerifyEmailScreen() {
   }, [params]);
 
   return (
-    <SafeScreen backgroundColor={colors.gray[50]}>
+    <AppScreen scroll={false} padded={false}>
       <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
         {loading ? (
           <View style={styles.content}>
@@ -70,7 +70,7 @@ export default function VerifyEmailScreen() {
           </View>
         )}
       </View>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

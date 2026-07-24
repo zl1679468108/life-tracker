@@ -3,8 +3,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView} from '
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Toast } from '../../components/Toast';
-import { FormActions } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { AppScreen, FormActions } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../stores/authStore';
 import { usePalette } from '../../stores/themeStore';
@@ -118,7 +117,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -167,7 +166,7 @@ export default function ChangePasswordScreen() {
       </View>
 
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

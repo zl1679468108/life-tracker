@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { SafeScreen } from '../../components/SafeScreen';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePickerLib from 'expo-image-picker';
 import { Toast } from '../../components/Toast';
-import { AppListRow, FormActions } from '../../components/ui';
+import { AppScreen, AppListRow, FormActions } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { showAlert } from '../../lib/alert';
 import { useTranslation } from '../../lib/i18n';
@@ -177,7 +176,7 @@ export default function AccountScreen() {
   const profileEmail = email || t('auth.login');
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.heroBlock}>
           <View style={styles.heroRow}>
@@ -275,7 +274,7 @@ export default function AccountScreen() {
       </View>
 
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

@@ -6,8 +6,7 @@ import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
 import { usePalette } from '../../stores/themeStore';
-import { BorrowingCard, Button, EmptyState, SegmentedTabs, ListSkeleton } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { AppScreen, BorrowingCard, Button, EmptyState, SegmentedTabs, ListSkeleton } from '../../components/ui';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
 
@@ -113,7 +112,7 @@ export default function BorrowingsScreen() {
   ];
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <FlatList
         style={{ backgroundColor: palette.bg }}
         contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
@@ -181,7 +180,7 @@ export default function BorrowingsScreen() {
           icon={<MaterialCommunityIcons name="plus-circle" size={16} color="#FFFFFF" style={styles.actionIcon} />}
         />
       </View>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

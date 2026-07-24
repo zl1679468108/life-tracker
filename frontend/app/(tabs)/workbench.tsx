@@ -4,8 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Toast } from '../../components/Toast';
-import { AppHeader, WorkbenchBackground } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { AppScreen, AppHeader, WorkbenchBackground } from '../../components/ui';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useTranslation } from '../../lib/i18n';
 import { useColors, usePalette, useTheme } from '../../stores/themeStore';
@@ -105,7 +104,7 @@ export default function WorkbenchScreen() {
   const go = (route: string) => router.push(route as never);
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <View style={styles.pageWrap}>
         {/* atmosphere */}
         <View style={styles.atmosphereArea} pointerEvents="none">
@@ -213,7 +212,7 @@ export default function WorkbenchScreen() {
           <Toast visible={toastVisible} message={toastMsg} type={toastType} />
         </ScrollView>
       </View>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

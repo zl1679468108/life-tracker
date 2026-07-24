@@ -1,53 +1,47 @@
 # QA 测试账号
 
-> 自动化测试脚本专用的测试账号，由 AI 按需创建。
-> Supabase 实例: `https://fvggqgeiwewsjojargxe.supabase.co`
-> 后端 API: `http://localhost:3020` | 前端: `http://localhost:3021`
+> **用途**: 自动化 / 手工回归。勿用于生产运营。  
+> **同步**: 2026-07-24  
+> Supabase: `https://fvggqgeiwewsjojargxe.supabase.co`  
+> 后端: `http://localhost:3020` · 前端: `http://localhost:3021`
 
-## 现有账号
+## 1. 稳定账号
 
 | 账号 | 密码 | 说明 |
 |---|---|---|
-| `1679468108@qq.com` | `zl123456` | 项目所有者真实账号，含真实数据 |
-| `qa-t78-real@example.com` | `Qauxvxxt!88` | T78 遗留测试账号 |
-| `qa-a-1782646063680@lifetracker.local` | `Qadur7in!72` | 早期 QA 双账号中的 A |
-| `qa-b-1782646063680@lifetracker.local` | `Qa8k44k3!44` | 早期 QA 双账号中的 B |
+| `1679468108@qq.com` | `zl123456` | 项目所有者账号（含真实数据，冒烟慎用写操作） |
+| `qa-a-1782646063680@lifetracker.local` | `Qadur7in!72` | QA 双账号 A |
+| `qa-b-1782646063680@lifetracker.local` | `Qa8k44k3!44` | QA 双账号 B |
+| `qa-t78-real@example.com` | `Qauxvxxt!88` | 历史真实冒烟遗留号 |
 
-## 自动化测试临时账号
+双账号脚本环境变量：
 
-以下账号由 `chat-smoke.mjs` 最新一次运行自动创建，均已通过 Supabase admin API 确认邮箱：
-
-| 账号 | 密码 | 角色 |
-|---|---|---|
-| `qa-chat-b-1783091828202@test.com` | `ChatPassB!` | 聊天测试——账号 B（与 A 和 C 均有好友关系） |
-| `qa-chat-c-1783091828202@test.com` | `ChatPassC!` | 聊天测试——账号 C（与 A 和 B 均有好友关系） |
-
-### 账号关系
-
-```
-A (1679468108@qq.com) ←→ B (qa-chat-b-...)
-A (1679468108@qq.com) ←→ C (qa-chat-c-...)
-C (qa-chat-c-...)      ←→ B (qa-chat-b-...)
+```bash
+export QA_USER_A_EMAIL='qa-a-1782646063680@lifetracker.local'
+export QA_USER_A_PASSWORD='Qadur7in!72'
+export QA_USER_B_EMAIL='qa-b-1782646063680@lifetracker.local'
+export QA_USER_B_PASSWORD='Qa8k44k3!44'
 ```
 
-### 对话数据 (A 视角)
+## 2. 临时账号策略
 
-| 对话 | 方向 | 消息数 | 内容 |
-|---|---|---|---|
-| A↔B | A → B | 4 条 | "A 对 B 说：你好！..." 等 4 条连续消息 |
-| C↔A | C↔A 双向 | 5 条 | C 发 3 条 + A 回 2 条 |
+- `chat-smoke.mjs` / `qa-smoke-v2.mjs` 会**自动创建**临时账号，结果以当次脚本输出为准。  
+- **不要**在本文档固化一次性临时邮箱（易过期且污染清单）。  
+- 旧临时账号数据可留在 Supabase，无需手工清理。
 
----
+## 3. 冒烟脚本索引
 
-## 冒烟测试脚本
-
-| 脚本 | 说明 | 最后运行 |
+| 脚本 | 说明 | 备注 |
 |---|---|---|
-| `scripts/qa/qa-smoke-v2.mjs` | 全功能冒烟（API 种数据 + 浏览器验证） | 2026-07-03 |
-| `scripts/qa/chat-smoke.mjs` | 多账号聊天专项测试（3 账号 36/36 通过） | 2026-07-03 |
-| `scripts/qa/ui-audit-seed.mjs` | UI 审查种子数据（需 QA_USER_A_EMAIL 环境变量） | 2026-06-29 |
-| `scripts/qa/t79-real-smoke.mjs` | v1.4.3 真实冒烟脚本（需 QA_USER_A/B 双账号环境变量） | 2026-07-03 |
-| `scripts/qa/v141-social-flow.mjs` | v1.4.1 社交流验证 | 2026-06-28 |
+| `scripts/qa/t79-real-smoke.mjs` | 真实 API 双账号冒烟 | `npm run qa:t79-real-smoke`（backend） |
+| `scripts/qa/v141-social-flow.mjs` | 社交流程 | `npm run qa:v141-social` |
+| `scripts/qa/qa-smoke-v2.mjs` | API 种数据 + 浏览器 | 会创建临时账号 |
+| `scripts/qa/chat-smoke.mjs` | 多账号聊天 | 会创建临时账号 |
+| `scripts/qa/full-module-smoke.mjs` | 全模块 API | 按需 |
+| `scripts/qa/ui-audit-seed.mjs` | UI 审查种子 | 需 `QA_USER_A_EMAIL` |
 
-> 提示：每次运行 `chat-smoke.mjs` 或 `qa-smoke-v2.mjs` 会自动创建新临时账号。  
-> 旧账号的对话/消息数据仍保留在 Supabase 中，无需手动清理。
+最近一次本地 API 回归（2026-07-24）：signin + 核心读接口 + 分类创建/删除通过（所有者账号）。
+
+## 4. 登录接口
+
+- 正确路径：`POST /api/auth/signin`（不是 `/login`）

@@ -1,7 +1,7 @@
 {
   "name": "LifeTracker",
   "short_name": "LifeTracker",
-  "description": "Personal life tracking app for items, todos, reminders, sharing, and everyday records.",
+  "description": "LifeTracker 个人生活追踪应用：物品、待办、提醒、共享与日常记录。",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -15,16 +15,38 @@
       "type": "image/x-icon"
     },
     {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

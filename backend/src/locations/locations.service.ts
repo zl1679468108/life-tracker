@@ -1,8 +1,22 @@
-import { Injectable, Inject, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
 import { EventsGateway } from '../common/events/events.gateway';
 import { convertTimesToBeijing } from '../common/utils/time';
+import { throwOnSupabaseError } from '../common/utils/supabase-error';
+import { assertUserOwnedResource } from '../common/utils/owned-resource';
+
+const LOCATION_LABELS = {
+  notFound: '位置不存在',
+  systemForbidden: '不能修改系统预设位置',
+  forbidden: '无权修改该位置',
+};
+
+const LOCATION_DELETE_LABELS = {
+  notFound: '位置不存在',
+  systemForbidden: '不能删除系统预设位置',
+  forbidden: '无权删除该位置',
+};
 
 @Injectable()
 export class LocationsService {
@@ -19,10 +33,7 @@ export class LocationsService {
       .or(`user_id.is.null,user_id.eq.${userId}`)
       .order('name');
 
-    if (error) {
-      console.error('位置操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '位置操作失败:');
     return (data || []).map(convertTimesToBeijing);
   }
 
@@ -33,10 +44,7 @@ export class LocationsService {
       .select()
       .single();
 
-    if (error) {
-      console.error('位置操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '位置操作失败:');
     this.eventsGateway.emitLocationCreated(userId, convertTimesToBeijing(data));
     return convertTimesToBeijing(data);
   }
@@ -49,16 +57,11 @@ export class LocationsService {
       .eq('id', id)
       .single();
 
-    if (findError) {
-      if (findError.code === 'PGRST116') throw new BadRequestException('位置不存在');
-      console.error('查询位置失败:', findError); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
-    if (!existing.user_id) {
-      throw new BadRequestException('不能修改系统预设位置');
-    }
-    if (existing.user_id !== userId) {
-      throw new BadRequestException('无权修改该位置');
-    }
+    throwOnSupabaseError(findError, '查询位置失败:', {
+      notFoundMessage: LOCATION_LABELS.notFound,
+      notFoundAs: 'bad_request',
+    });
+    assertUserOwnedResource(existing, userId, LOCATION_LABELS);
 
     const { data, error } = await this.supabase
       .from('life_locations')
@@ -68,28 +71,22 @@ export class LocationsService {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') throw new BadRequestException('位置不存在');
-      console.error('位置操作失败:', error); throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '位置操作失败:', {
+      notFoundMessage: LOCATION_LABELS.notFound,
+      notFoundAs: 'bad_request',
+    });
     return convertTimesToBeijing(data);
   }
 
   async remove(id: string, userId: string) {
     // 不能删除系统预设（user_id 为 NULL），且只能删除自己的位置
-    // 先查出 user_id 用于广播
     const { data: existing } = await this.supabase
       .from('life_locations')
       .select('user_id')
       .eq('id', id)
       .single();
 
-    if (existing && !existing.user_id) {
-      throw new BadRequestException('不能删除系统预设位置');
-    }
-    if (existing && existing.user_id !== userId) {
-      throw new BadRequestException('无权删除该位置');
-    }
+    assertUserOwnedResource(existing, userId, LOCATION_DELETE_LABELS);
 
     const { error } = await this.supabase
       .from('life_locations')
@@ -97,10 +94,7 @@ export class LocationsService {
       .eq('id', id)
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('位置操作失败:', error);
-      throw new InternalServerErrorException('操作失败，请稍后重试');
-    }
+    throwOnSupabaseError(error, '位置操作失败:');
     this.eventsGateway.emitLocationDeleted(userId, id);
     return { code: 200, data: null, message: '删除成功' };
   }

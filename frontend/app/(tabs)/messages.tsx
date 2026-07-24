@@ -15,9 +15,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeScreen } from '../../components/SafeScreen';
 import { SwipeableRow } from '../../components/SwipeableRow';
-import { AppHeader, MessagesBackground, UserAvatar } from '../../components/ui';
+import { AppScreen, AppHeader, MessagesBackground, UserAvatar } from '../../components/ui';
 import { ConversationRow, SheetStatus, UserPickRow } from '../../components/message';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
@@ -299,16 +298,16 @@ export default function MessagesScreen() {
 
   if (loading && conversations.length === 0) {
     return (
-      <SafeScreen backgroundColor={palette.bg}>
+      <AppScreen scroll={false} padded={false}>
         <View style={[styles.center, { backgroundColor: palette.bg }]}>
           <ActivityIndicator size="large" color={palette.orange} />
         </View>
-      </SafeScreen>
+      </AppScreen>
     );
   }
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <View style={[styles.pageWrap, { backgroundColor: 'transparent' }]}>
         {/* 氛围背景层 */}
         <View style={styles.atmosphereArea} pointerEvents="none">
@@ -830,7 +829,7 @@ export default function MessagesScreen() {
           </View>
         )}
       </View>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

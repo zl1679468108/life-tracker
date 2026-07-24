@@ -13,9 +13,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { SafeScreen } from '../../components/SafeScreen';
 import { GlobalSearch } from '../../components/GlobalSearch';
-import { HomeBackground, InlineEmptyState } from '../../components/ui';
+import { AppScreen, HomeBackground, InlineEmptyState } from '../../components/ui';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useItemStore } from '../../stores/itemStore';
 import { useNotificationStore } from '../../stores/notificationStore';
@@ -173,7 +172,7 @@ export default function HomeScreen() {
   ] as const;
 
   return (
-    <SafeScreen backgroundColor={palette.bg} error={itemsError || todosError}>
+    <AppScreen scroll={false} padded={false} error={itemsError || todosError}>
       <View style={styles.pageWrap}>
         {/* 氛围背景层：渐变 + 漂浮装饰 */}
         <View style={styles.atmosphereArea} pointerEvents="none">
@@ -420,7 +419,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
       <GlobalSearch visible={searchVisible} onClose={() => setSearchVisible(false)} />
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

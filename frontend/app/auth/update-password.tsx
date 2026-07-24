@@ -5,8 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { Input } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { AppScreen, Input } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
 import { showAlert } from '../../lib/alert';
 
@@ -59,7 +58,7 @@ export default function UpdatePasswordScreen() {
   };
 
   return (
-    <SafeScreen backgroundColor={colors.gray[50]}>
+    <AppScreen scroll={false} padded={false}>
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.gray[50] }]}
         behavior="height"
@@ -129,7 +128,7 @@ export default function UpdatePasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 

@@ -5,8 +5,7 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import appConfig from '../../app.json';
-import { AppHeader, Logo, SettingsBackground } from '../../components/ui';
-import { SafeScreen } from '../../components/SafeScreen';
+import { AppScreen, AppHeader, Logo, SettingsBackground } from '../../components/ui';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { showAlert } from '../../lib/alert';
 import { i18n, useTranslation } from '../../lib/i18n';
@@ -52,7 +51,7 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeScreen backgroundColor={palette.bg}>
+    <AppScreen scroll={false} padded={false}>
       <View style={styles.pageWrap}>
         {/* 氛围背景层 */}
         <View style={styles.atmosphereArea} pointerEvents="none">
@@ -133,7 +132,7 @@ export default function SettingsScreen() {
           ))}
         </ScrollView>
       </View>
-    </SafeScreen>
+    </AppScreen>
   );
 }
 
