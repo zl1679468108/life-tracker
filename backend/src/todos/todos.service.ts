@@ -47,9 +47,10 @@ export class TodosService {
   }
 
   async findAll(userId: string) {
+    const listFields = 'id, title, description, priority, due_date, reminder_date, notification_id, completed, sort_order, category_id, images, user_id, created_at, updated_at';
     const { data, error } = await this.supabase
       .from('life_todos')
-      .select('*')
+      .select(listFields)
       .eq('user_id', userId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
@@ -73,7 +74,7 @@ export class TodosService {
 
     const { data: sharedTodos, error: sharedError } = await this.supabase
       .from('life_todos')
-      .select('*')
+      .select(listFields)
       .in('id', resourceIds);
 
     if (sharedError) { console.error('查询共享待办列表失败:', sharedError); throw new InternalServerErrorException('操作失败，请稍后重试'); }

@@ -133,10 +133,24 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
       };
     }
 
+    // 识别 { code, data, message } 信封：data 可为 null，不能用 ?? 回退到整个 payload
+    const isEnvelope =
+      payload &&
+      typeof payload === 'object' &&
+      !Array.isArray(payload) &&
+      ('data' in payload || 'code' in payload) &&
+      ('message' in payload || 'data' in payload);
+    if (isEnvelope) {
+      return {
+        code: payload.code ?? response.status,
+        data: payload.data as T,
+        message: payload.message,
+      };
+    }
     return {
-      code: payload?.code ?? response.status,
-      data: payload?.data ?? payload,
-      message: payload?.message,
+      code: response.status,
+      data: payload as T,
+      message: undefined,
     };
   };
 

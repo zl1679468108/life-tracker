@@ -471,6 +471,7 @@ export default function ItemListScreen() {
               ListEmptyComponent={renderEmpty}
               contentContainerStyle={styles.list}
               removeClippedSubviews
+              initialNumToRender={12}
               maxToRenderPerBatch={10}
               updateCellsBatchingPeriod={50}
               windowSize={5}

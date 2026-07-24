@@ -97,9 +97,10 @@ export class ItemsService {
   }
 
   async findAll(userId: string) {
+    const listFields = 'id, name, description, location_id, category_id, images, barcode, expiry_date, reminder_enabled, reminder_days_before, is_borrowed, borrowed_by, purchase_price, purchase_date, current_value, currency, user_id, created_at, updated_at';
     const { data, error } = await this.supabase
       .from('life_items')
-      .select('*')
+      .select(listFields)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -122,7 +123,7 @@ export class ItemsService {
 
     const { data: sharedItems, error: sharedError } = await this.supabase
       .from('life_items')
-      .select('*')
+      .select(listFields)
       .in('id', resourceIds);
 
     if (sharedError) { console.error('查询共享物品列表失败:', sharedError); throw new InternalServerErrorException('操作失败，请稍后重试'); }

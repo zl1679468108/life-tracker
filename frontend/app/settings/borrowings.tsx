@@ -120,6 +120,10 @@ export default function BorrowingsScreen() {
         contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
         data={filteredBorrowings}
         keyExtractor={(item) => item.id}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={8}
         renderItem={({ item }) => (
           <SwipeableRow onDelete={() => handleDelete(item.id)}>
             <BorrowingCard

@@ -34,9 +34,10 @@ async function bootstrap() {
     : parseInt(process.env.PORT || '3020', 10);
   const host = process.env.HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
   await app.listen(port, host);
-  console.log(`🚀 LifeTracker API running on ${host}:${port}`);
-  console.log(`📦 process.env.PORT = ${process.env.PORT}`);
-  console.log(`📦 NODE_ENV = ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📦 SUPABASE_URL = ${process.env.SUPABASE_URL ? 'set' : 'NOT SET'}`);
+  const env = process.env.NODE_ENV || 'development';
+  console.log(`🚀 LifeTracker API running on ${host}:${port} (${env})`);
+  if (env !== 'production') {
+    console.log(`📦 PORT=${process.env.PORT || port} SUPABASE_URL=${process.env.SUPABASE_URL ? 'set' : 'NOT SET'}`);
+  }
 }
 bootstrap();

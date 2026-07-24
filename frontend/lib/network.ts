@@ -40,7 +40,7 @@ class NetworkMonitor {
       // 原生平台定期检测网络状态
       this.checkInterval = setInterval(() => {
         this.checkNetworkStatus();
-      }, 5000);
+      }, 15000);
       this.checkNetworkStatus();
       this.started = true;
     }

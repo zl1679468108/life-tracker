@@ -42,16 +42,16 @@ class SocketService {
     }
 
     this.socket.on('connect', () => {
-      console.log('Socket connected');
+      if (__DEV__) console.log('Socket connected');
       this.socket?.emit('join', userId);
     });
 
     this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+      if (__DEV__) console.log('Socket disconnected');
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      if (__DEV__) console.error('Socket connection error:', error);
     });
   }
 

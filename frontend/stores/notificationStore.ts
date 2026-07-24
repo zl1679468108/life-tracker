@@ -119,7 +119,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       const raw = await AsyncStorage.getItem(READ_IDS_KEY);
       if (raw) {
-        set({ readIds: JSON.parse(raw), loaded: true });
+        const parsed = JSON.parse(raw);
+        set({ readIds: Array.isArray(parsed) ? parsed : [], loaded: true });
       } else {
         set({ loaded: true });
       }

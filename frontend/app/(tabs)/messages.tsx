@@ -439,6 +439,8 @@ export default function MessagesScreen() {
                   keyExtractor={(item) => item.key}
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  initialNumToRender={8}
+                  windowSize={3}
                   contentContainerStyle={styles.storyListContent}
                   renderItem={({ item }) => {
                     const ac = avatarColor(item.name);

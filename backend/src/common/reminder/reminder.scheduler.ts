@@ -36,7 +36,7 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
     // 1. 检查待办提醒
     const { data: todos, error } = await this.supabase
       .from('life_todos')
-      .select('*')
+      .select('id, title, user_id, reminder_date, due_date, priority')
       .not('reminder_date', 'is', null)
       .lte('reminder_date', nowISO)
       .eq('completed', false);
@@ -76,7 +76,7 @@ export class ReminderScheduler implements OnModuleInit, OnModuleDestroy {
     const futureDateISO = new Date(now.getTime() + futureWindowMs).toISOString();
     const { data: expiringItems, error: itemError } = await this.supabase
       .from('life_items')
-      .select('*')
+      .select('id, name, user_id, expiry_date, reminder_days_before, reminder_enabled')
       .eq('reminder_enabled', true)
       .not('expiry_date', 'is', null)
       .gt('expiry_date', nowISO)            // 尚未过期

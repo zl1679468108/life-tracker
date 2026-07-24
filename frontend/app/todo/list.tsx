@@ -384,6 +384,7 @@ export default function TodoListScreen() {
                 contentContainerStyle={styles.list}
                 ListEmptyComponent={renderEmpty}
                 removeClippedSubviews
+                initialNumToRender={12}
                 maxToRenderPerBatch={10}
                 updateCellsBatchingPeriod={50}
                 windowSize={5}

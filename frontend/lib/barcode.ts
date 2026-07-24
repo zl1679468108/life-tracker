@@ -14,7 +14,7 @@ export async function scanBarcode(): Promise<string | null> {
 
   // 原生端需要安装 expo-camera 和 expo-barcode-scanner
   // 这里返回 null，提示用户手动输入
-  console.log('扫码功能需要安装 expo-camera');
+  if (__DEV__) console.log('扫码功能需要安装 expo-camera');
   return null;
 }
 
