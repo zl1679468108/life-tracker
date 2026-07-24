@@ -7,35 +7,42 @@ import { useColors } from '../../stores/themeStore';
 interface AppScreenProps {
   children: React.ReactNode;
   scroll?: boolean;
+  /** 是否应用默认左右与上下内边距，默认 true */
+  padded?: boolean;
   error?: string | null;
   onDismissError?: () => void;
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
   style?: ViewProps['style'];
+  refreshControl?: ScrollViewProps['refreshControl'];
 }
 
 export function AppScreen({
   children,
   scroll = true,
+  padded = true,
   error,
   onDismissError,
   contentContainerStyle,
   style,
+  refreshControl,
 }: AppScreenProps) {
   const colors = useColors();
   const palette = colors.gray[50] === appDesign.dark.bg ? appDesign.dark : appDesign.light;
+  const padStyle = padded ? styles.contentPadded : styles.contentFlush;
 
   return (
     <SafeScreen backgroundColor={palette.bg} error={error} onDismissError={onDismissError}>
       {scroll ? (
         <ScrollView
           style={[styles.container, { backgroundColor: palette.bg }, style]}
-          contentContainerStyle={[styles.content, contentContainerStyle]}
+          contentContainerStyle={[padStyle, contentContainerStyle]}
           keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.container, styles.content, { backgroundColor: palette.bg }, style, contentContainerStyle]}>
+        <View style={[styles.container, padStyle, { backgroundColor: palette.bg }, style, contentContainerStyle]}>
           {children}
         </View>
       )}
@@ -47,9 +54,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  contentPadded: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
     paddingBottom: 112,
+  },
+  contentFlush: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
 });

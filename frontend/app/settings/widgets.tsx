@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppScreen } from '../../components/ui';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
@@ -45,7 +46,7 @@ export default function WidgetsScreen() {
   const priorityLabels: Record<number, string> = { 1: '低', 2: '中', 3: '高' };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       <View style={[styles.sectionCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.sectionHeader}>
           <View>
@@ -171,7 +172,7 @@ export default function WidgetsScreen() {
           ))}
         </View>
       </View>
-    </ScrollView>
+    </AppScreen>
   );
 }
 
@@ -180,7 +181,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   sectionCard: {

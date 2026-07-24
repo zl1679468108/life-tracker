@@ -12,9 +12,14 @@ import { Logger, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_ADMIN_CLIENT } from '../supabase/supabase.module';
 
+const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3021')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3021',
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
   },
   namespace: '/',

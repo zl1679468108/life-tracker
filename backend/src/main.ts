@@ -6,8 +6,13 @@ import { AllExceptionsFilter } from './common/monitoring/all-exceptions.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 支持逗号分隔多源，例如: https://app.example.com,http://localhost:3021
+  const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:3021')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3021',
+    origin: corsOrigin.length === 1 ? corsOrigin[0] : corsOrigin,
     credentials: true,
   });
 

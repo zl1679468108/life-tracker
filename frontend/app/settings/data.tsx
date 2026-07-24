@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
+import { AppScreen } from '../../components/ui';
+import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
@@ -102,7 +103,7 @@ export default function DataManagementScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.gray[50] }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       {/* 数据统计 */}
       <View style={[styles.card, { backgroundColor: colors.white }]}>
         <Text style={[styles.cardTitle, { color: colors.gray[800] }]}>数据统计</Text>
@@ -196,7 +197,7 @@ export default function DataManagementScreen() {
           </View>
         </View>
       </View>
-    </ScrollView>
+    </AppScreen>
   );
 }
 

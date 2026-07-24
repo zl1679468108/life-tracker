@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppScreen } from '../../components/ui';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useItemStore } from '../../stores/itemStore';
 import { useTodoStore } from '../../stores/todoStore';
@@ -115,7 +116,7 @@ export default function StatsScreen() {
           : '待办已清空';
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       <View style={[styles.heroCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.heroTop}>
           <View style={styles.heroCopy}>
@@ -227,7 +228,7 @@ export default function StatsScreen() {
           <EmptyPanel palette={palette} icon="chart-donut" title="暂无分类数据" desc="添加物品并选择分类后，这里会显示最常用的物品分类。" />
         )}
       </View>
-    </ScrollView>
+    </AppScreen>
   );
 }
 
@@ -281,7 +282,7 @@ const metricWidth = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  content: { paddingBottom: spacing.xl },
   heroCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,

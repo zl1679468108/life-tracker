@@ -38,6 +38,8 @@ export const CHANGELOGS: ChangelogEntry[] = [
         '删除失败时不再静默从列表移除',
         '上传限制 5MB 与图片类型',
         '模板使用字段白名单，避免脏数据写入',
+        '设置页统一 AppScreen/SafeScreen 外壳',
+        'CORS 支持多源；上传 multer 5MB 限制',
       ],
     },
   },

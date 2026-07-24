@@ -6,6 +6,7 @@ import { useShareStore } from '../../stores/shareStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { EmptyState, ShareDialog, Skeleton } from '../../components/ui';
+import { SafeScreen } from '../../components/SafeScreen';
 import { showAlert } from '../../lib/alert';
 import type { LifeShare } from '../../types';
 
@@ -113,7 +114,7 @@ export default function SharesScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
+    <SafeScreen backgroundColor={colors.gray[50]}>
       <View style={[styles.tabBar, { backgroundColor: colors.white }]}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'outgoing' && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}
@@ -168,7 +169,7 @@ export default function SharesScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeScreen>
   );
 }
 

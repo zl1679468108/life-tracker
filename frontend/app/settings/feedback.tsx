@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Toast } from '../../components/Toast';
-import { FormSection } from '../../components/ui';
+import { FormSection, AppScreen } from '../../components/ui';
 import { api } from '../../lib/api';
 
 const feedbackTypes = [
@@ -56,12 +56,11 @@ export default function FeedbackScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.gray[50] }]}>
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.gray[50] }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView style={{ backgroundColor: colors.gray[50] }} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.gray[50] }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <AppScreen contentContainerStyle={styles.content}>
           <FormSection label="反馈类型" required>
             <View style={styles.typeGrid}>
               {feedbackTypes.map((ft) => {
@@ -141,10 +140,9 @@ export default function FeedbackScreen() {
               <Text style={[styles.submitBtnText, { color: colors.white }]}>提交反馈</Text>
             )}
           </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </AppScreen>
       <Toast visible={toastVisible} message="感谢您的反馈" type="success" />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -153,7 +151,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   typeGrid: {
     flexDirection: 'row',

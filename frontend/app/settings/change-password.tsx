@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView} from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Toast } from '../../components/Toast';
-import { AppScreen, FormActions } from '../../components/ui';
+import { FormActions } from '../../components/ui';
+import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
@@ -118,8 +119,12 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.bg }]}>
-      <AppScreen contentContainerStyle={styles.content}>
+    <SafeScreen backgroundColor={palette.bg}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.section}>
           <PasswordField
             label="当前密码"
@@ -149,7 +154,7 @@ export default function ChangePasswordScreen() {
             palette={palette}
           />
         </View>
-      </AppScreen>
+      </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: palette.bg, borderTopColor: palette.border }]}>
         <FormActions
@@ -163,7 +168,7 @@ export default function ChangePasswordScreen() {
       </View>
 
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
-    </View>
+    </SafeScreen>
   );
 }
 
@@ -172,6 +177,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
     paddingBottom: 132,
   },
   section: {

@@ -2,36 +2,24 @@
 
 > 仅保留未完成任务。产品见 [PRD.md](./PRD.md)，原型见 [PROTOTYPE.md](./PROTOTYPE.md)。
 
-## 状态规则
-
-| 状态 | 含义 |
-|---|---|
-| `todo` / `in_progress` / `blocked` | 未完成 |
-| 完成后 | 从本文件移除 |
-
----
-
 ## 当前状态（2026-07-24）
 
 | 主线 | 状态 |
 |---|---|
 | v1.4.4 功能主线 | 已收口 |
-| T95 缺陷收口 | 已收口并提交 |
-| T96 第二轮缺陷修复 | 已收口 |
+| T95 / T96 缺陷修复 | 已收口并提交 |
+| T97 可选优化执行 | 已收口 |
 
-### T96 本轮已修复（摘要）
+### T97 本轮（摘要）
 
-| ID | 处理 |
+| 项 | 处理 |
 |---|---|
-| T96.1 | Socket 换用户重连、避免 pending 重复绑定 |
-| T96.2 | `assertApiOk` + 删除链路统一校验错误码 |
-| T96.3 | 上传限制 5MB + 仅图片 + 文件名清洗 |
-| T96.4 | 模板使用白名单字段 + 时间规范化 |
-| T96.5 | items 嵌套路由前置 |
+| 设置页壳统一 | 简单页 `AppScreen`；列表/底栏页 `SafeScreen`；`AppScreen` 支持 `padded`/`refreshControl` |
+| CORS 多源 | `main.ts` + WebSocket gateway 支持逗号分隔 origin |
+| multer 限制 | 上传 interceptor `fileSize: 5MB` 与 service 校验双保险 |
+| env 文档 | `.env.example` 补充多源说明 |
 
 **当前可执行任务：无。**
-
----
 
 ## 待办任务
 
@@ -39,12 +27,4 @@
 |---|---|---|---|---|---|
 | — | — | （暂无） | — | — | — |
 
-## 可选后续（未立项）
-
-| 项 | 说明 |
-|---|---|
-| 设置页统一 AppScreen | 视觉大体一致，非阻断 |
-| 生产 CORS_ORIGIN | `.env.production` 占位需上线前替换 |
-| multer 内存全局 limit | 已在 service 层校验大小；可再加 interceptor limits |
-
-历史：T80–T96 已收口。
+历史：T80–T97 已收口。

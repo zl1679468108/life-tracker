@@ -4,6 +4,10 @@ import { UploadService } from './upload.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
 
+const FILE_LIMITS = {
+  fileSize: 5 * 1024 * 1024, // 5MB，与 UploadService 一致
+};
+
 @Controller('api/upload')
 @UseGuards(SupabaseAuthGuard)
 export class UploadController {
@@ -13,7 +17,7 @@ export class UploadController {
    * 上传单个文件
    */
   @Post('single')
-  @UseInterceptors(FilesInterceptor('files', 1))
+  @UseInterceptors(FilesInterceptor('files', 1, { limits: FILE_LIMITS }))
   async uploadSingle(
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: SupabaseUser,
@@ -39,7 +43,7 @@ export class UploadController {
    * 批量上传文件
    */
   @Post('batch')
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(FilesInterceptor('files', 10, { limits: FILE_LIMITS }))
   async uploadBatch(
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: SupabaseUser,

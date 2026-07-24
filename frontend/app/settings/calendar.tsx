@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppScreen } from '../../components/ui';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { CalendarDay } from '../../types';
@@ -111,7 +112,7 @@ export default function CalendarScreen() {
   }, [calendarGrid]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       <View style={[styles.toolbarCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <TouchableOpacity
           style={[styles.monthNavBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}
@@ -261,13 +262,13 @@ export default function CalendarScreen() {
           </View>
         )}
       </View>
-    </ScrollView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  content: { paddingBottom: spacing.xl },
   toolbarCard: {
     flexDirection: 'row',
     alignItems: 'center',

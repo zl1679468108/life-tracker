@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, RefreshControl, TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTemplateStore } from '../../stores/templateStore';
 import { appDesign, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
-import { TemplateCard, EmptyState, Skeleton } from '../../components/ui';
+import { TemplateCard, EmptyState, Skeleton, AppScreen } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { showAlert } from '../../lib/alert';
 
@@ -67,12 +67,10 @@ export default function TemplatesScreen() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.bg }]}>
-      <ScrollView
-        style={{ backgroundColor: palette.bg }}
-        contentContainerStyle={[styles.content, { backgroundColor: palette.bg }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
-      >
+    <AppScreen
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.orange]} tintColor={palette.orange} />}
+    >
         <View style={[styles.filterTabs, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
             {tabs.map((tab) => (
               <TouchableOpacity
@@ -121,8 +119,7 @@ export default function TemplatesScreen() {
             </SwipeableRow>
           ))
         )}
-      </ScrollView>
-    </View>
+    </AppScreen>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeScreen } from '../../components/SafeScreen';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -177,7 +178,7 @@ export default function AccountScreen() {
   const profileEmail = email || t('auth.login');
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.bg }]}>
+    <SafeScreen backgroundColor={palette.bg}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.heroBlock}>
           <View style={styles.heroRow}>
@@ -275,7 +276,7 @@ export default function AccountScreen() {
       </View>
 
       <Toast visible={toastVisible} message={toastMsg} type={toastType} />
-    </View>
+    </SafeScreen>
   );
 }
 

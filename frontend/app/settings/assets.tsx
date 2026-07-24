@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppScreen } from '../../components/ui';
+import { ActivityIndicator, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
@@ -67,7 +68,7 @@ export default function AssetsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       <View style={[styles.heroCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
         <View style={styles.heroTop}>
           <View>
@@ -224,7 +225,7 @@ export default function AssetsScreen() {
           <Text style={[styles.emptyInline, { color: palette.textMuted }]}>编辑物品当前估值后，这里会显示最近变化。</Text>
         )}
       </View>
-    </ScrollView>
+    </AppScreen>
   );
 }
 
@@ -238,7 +239,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   heroCard: {

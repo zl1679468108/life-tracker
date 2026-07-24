@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { appDesign, borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { useColors } from '../../stores/themeStore';
 import { Notification, useNotificationStore } from '../../stores/notificationStore';
-import { EmptyState, Skeleton } from '../../components/ui';
+import { EmptyState, Skeleton, AppScreen } from '../../components/ui';
 
 type FilterTab = 'all' | 'unread' | 'read';
 const MARK_UNREAD_WIDTH = 80;
@@ -180,7 +180,7 @@ export default function NotificationsScreen() {
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.bg }]} contentContainerStyle={styles.content}>
+    <AppScreen contentContainerStyle={styles.content}>
       {/* filter tabs */}
       <View style={[styles.segmentWrap, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
         {tabs.map((tab) => (
@@ -289,13 +289,13 @@ export default function NotificationsScreen() {
           })}
         </View>
       )}
-    </ScrollView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingTop: spacing.lg, paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  content: { paddingBottom: spacing.xl },
   segmentWrap: {
     flexDirection: 'row',
     padding: 4,

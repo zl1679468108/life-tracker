@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { SafeScreen } from '../../components/SafeScreen';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -234,7 +235,7 @@ export default function LocationManageScreen() {
   };
 
   return (
-    <View style={[styles.lmContainer, { backgroundColor: palette.bg }]}>
+    <SafeScreen backgroundColor={palette.bg}>
       <ScrollView style={[styles.lmContainer, { backgroundColor: palette.bg }]} contentContainerStyle={styles.lmContent}>
         {/* 系统预设 */}
         <View style={styles.lmSection}>
@@ -329,7 +330,7 @@ export default function LocationManageScreen() {
           ))}
         </ScrollView>
       </BottomSheet>
-    </View>
+    </SafeScreen>
   );
 }
 
