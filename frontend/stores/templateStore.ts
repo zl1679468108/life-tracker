@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { LifeTemplate, CreateTemplateRequest, UpdateTemplateRequest } from '../types';
 
 interface TemplateState {
@@ -106,17 +106,11 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   deleteTemplate: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.templates.delete(id);
-      if (res.code === 200 || res.code === '200') {
+      assertApiOk(await api.templates.delete(id), '删除失败');
         set((state) => ({
           templates: state.templates.filter((t) => t.id !== id),
           loading: false,
         }));
-      } else {
-        const message = res.message || '删除模板失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;

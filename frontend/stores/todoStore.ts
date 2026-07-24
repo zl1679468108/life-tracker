@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { scheduleTodoReminder, cancelReminder } from '../lib/notifications';
 import { useAuthStore } from './authStore';
 import { LifeTodo } from '../types';
@@ -153,7 +153,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         await cancelReminder(todo.notification_id);
       }
       
-      await api.todos.delete(id);
+      assertApiOk(await api.todos.delete(id), '删除待办失败');
       set((state) => ({ todos: state.todos.filter((t) => t.id !== id), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

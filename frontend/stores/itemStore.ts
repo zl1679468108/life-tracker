@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { uploadImages } from '../lib/upload';
 import { useAuthStore } from './authStore';
 import { LifeItem, UpdateItemReminderRequest } from '../types';
@@ -141,7 +141,7 @@ export const useItemStore = create<ItemState>((set) => ({
   deleteItem: async (id) => {
     set({ loading: true, error: null });
     try {
-      await api.items.delete(id);
+      assertApiOk(await api.items.delete(id), '删除物品失败');
       set((state) => ({ items: state.items.filter((item) => item.id !== id), loading: false }));
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

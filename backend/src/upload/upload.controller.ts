@@ -23,7 +23,7 @@ export class UploadController {
     }
 
     const file = files[0];
-    const url = await this.uploadService.uploadFile(file.buffer, file.originalname, user.id);
+    const url = await this.uploadService.uploadFile(file.buffer, file.originalname, user.id, file.mimetype);
 
     return {
       code: 200,
@@ -48,10 +48,9 @@ export class UploadController {
       throw new BadRequestException('No files uploaded');
     }
 
-    const fileNames = files.map(f => f.originalname);
-    const buffers = files.map(f => f.buffer);
-
-    const urls = await this.uploadService.uploadFiles(buffers, fileNames, user.id);
+    const urls = await Promise.all(
+      files.map((f) => this.uploadService.uploadFile(f.buffer, f.originalname, user.id, f.mimetype)),
+    );
 
     return {
       code: 200,

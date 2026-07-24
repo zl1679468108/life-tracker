@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { LifeShare, CreateShareRequest, UpdateShareRequest } from '../types';
 
 interface ShareState {
@@ -117,19 +117,13 @@ export const useShareStore = create<ShareState>((set) => ({
   deleteShare: async (id: string) => {
     set({ mutationLoading: true, error: null });
     try {
-      const res = await api.shares.delete(id);
-      if (res.code === 200 || res.code === '200') {
+      assertApiOk(await api.shares.delete(id), '删除失败');
         set((state) => ({
           outgoingShares: state.outgoingShares.filter((s) => s.id !== id),
           incomingShares: state.incomingShares.filter((s) => s.id !== id),
           resourceShares: state.resourceShares.filter((s) => s.id !== id),
           mutationLoading: false,
         }));
-      } else {
-        const message = res.message || '删除失败';
-        set({ error: message, mutationLoading: false });
-        throw new Error(message);
-      }
     } catch (error) {
       set({ error: (error as Error).message, mutationLoading: false });
       throw error;

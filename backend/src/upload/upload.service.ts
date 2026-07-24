@@ -6,6 +6,15 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 export class UploadService {
   private supabase: SupabaseClient;
   private bucketName = 'items-images';
+  /** 单文件上限 5MB */
+  private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024;
+  private static readonly ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+  private static readonly ALLOWED_MIME = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+  ]);
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
@@ -21,14 +30,16 @@ export class UploadService {
   /**
    * 上传单个文件
    */
-  async uploadFile(file: Buffer, fileName: string, userId: string): Promise<string> {
+  async uploadFile(file: Buffer, fileName: string, userId: string, mimeType?: string): Promise<string> {
     try {
-      const filePath = `${userId}/${Date.now()}_${fileName}`;
+      this.validateFile(file, fileName, mimeType);
+      const safeName = this.sanitizeFileName(fileName);
+      const filePath = `${userId}/${Date.now()}_${safeName}`;
       
       const { data, error } = await this.supabase.storage
         .from(this.bucketName)
         .upload(filePath, file, {
-          contentType: this.getContentType(fileName),
+          contentType: this.getContentType(safeName),
           upsert: false,
         });
       
@@ -78,6 +89,27 @@ export class UploadService {
     }
   }
 
+  private validateFile(file: Buffer, fileName: string, mimeType?: string) {
+    if (!file || file.length === 0) {
+      throw new BadRequestException('文件内容为空');
+    }
+    if (file.length > UploadService.MAX_FILE_SIZE) {
+      throw new BadRequestException('文件大小不能超过 5MB');
+    }
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    if (!UploadService.ALLOWED_EXT.has(ext)) {
+      throw new BadRequestException('仅支持 jpg/png/gif/webp 图片');
+    }
+    if (mimeType && !UploadService.ALLOWED_MIME.has(mimeType) && mimeType !== 'application/octet-stream') {
+      throw new BadRequestException('文件类型不受支持');
+    }
+  }
+
+  private sanitizeFileName(fileName: string): string {
+    const base = fileName.split(/[/\\]/).pop() || 'image';
+    return base.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+  }
+
   /**
    * 根据文件名获取 Content-Type
    */
@@ -89,10 +121,7 @@ export class UploadService {
       'png': 'image/png',
       'gif': 'image/gif',
       'webp': 'image/webp',
-      'pdf': 'application/pdf',
-      'doc': 'application/msword',
-      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     };
-    return mimeTypes[ext] || 'application/octet-stream';
+    return mimeTypes[ext || ''] || 'image/jpeg';
   }
 }

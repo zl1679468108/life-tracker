@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { LifeLocation } from '../types';
 import { cache } from '../lib/cache';
 import { networkMonitor } from '../lib/network';
@@ -109,10 +109,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   deleteLocation: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.locations.delete(id);
-      if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '删除位置失败');
-      }
+      assertApiOk(await api.locations.delete(id), '删除位置失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => ({
         locations: state.locations.filter((l) => l.id !== id),

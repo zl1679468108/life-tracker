@@ -34,6 +34,27 @@ export class ItemsController {
     return this.itemsService.getTotalValue(user.id);
   }
 
+  // 嵌套路由必须在 :id 之前注册，避免被参数路由抢先匹配
+  @Get(':id/borrowings')
+  async findBorrowings(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.borrowingsService.findByItemId(id, user.id);
+  }
+
+  @Get(':id/value-history')
+  async getValueHistory(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.getValueHistory(id, user.id);
+  }
+
+  @Post(':id/value-history')
+  async recordValueHistory(@Param('id') id: string, @Body() body: RecordValueHistoryDto, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.recordValueHistory(id, user.id, body);
+  }
+
+  @Put(':id/value')
+  async updateValue(@Param('id') id: string, @Body() body: UpdateValueDto, @CurrentUser() user: SupabaseUser) {
+    return this.itemsService.updateValue(id, user.id, body);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.findOne(id, user.id);
@@ -52,26 +73,5 @@ export class ItemsController {
   @Delete(':id')
   async remove(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
     return this.itemsService.remove(id, user.id);
-  }
-
-  @Get(':id/borrowings')
-  async findBorrowings(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
-    return this.borrowingsService.findByItemId(id, user.id);
-  }
-
-  // T47: 价值追踪端点
-  @Put(':id/value')
-  async updateValue(@Param('id') id: string, @Body() body: UpdateValueDto, @CurrentUser() user: SupabaseUser) {
-    return this.itemsService.updateValue(id, user.id, body);
-  }
-
-  @Get(':id/value-history')
-  async getValueHistory(@Param('id') id: string, @CurrentUser() user: SupabaseUser) {
-    return this.itemsService.getValueHistory(id, user.id);
-  }
-
-  @Post(':id/value-history')
-  async recordValueHistory(@Param('id') id: string, @Body() body: RecordValueHistoryDto, @CurrentUser() user: SupabaseUser) {
-    return this.itemsService.recordValueHistory(id, user.id, body);
   }
 }

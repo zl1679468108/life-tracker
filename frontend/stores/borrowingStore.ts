@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { LifeBorrowing, CreateBorrowingRequest, UpdateBorrowingRequest } from '../types';
 
 interface BorrowingState {
@@ -115,18 +115,12 @@ export const useBorrowingStore = create<BorrowingState>((set, get) => ({
   deleteBorrowing: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.borrowings.delete(id);
-      if (res.code === 200 || res.code === '200') {
+      assertApiOk(await api.borrowings.delete(id), '删除失败');
         set((state) => ({
           borrowings: state.borrowings.filter((b) => b.id !== id),
           activeBorrowings: state.activeBorrowings.filter((b) => b.id !== id),
           loading: false,
         }));
-      } else {
-        const message = res.message || '删除失败';
-        set({ error: message, loading: false });
-        throw new Error(message);
-      }
     } catch (error) {
       set({ error: (error as Error).message, loading: false });
       throw error;

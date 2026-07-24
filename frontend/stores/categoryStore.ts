@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../lib/api';
+import { api, assertApiOk } from '../lib/api';
 import { LifeCategory } from '../types';
 import { cache } from '../lib/cache';
 import { networkMonitor } from '../lib/network';
@@ -117,10 +117,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   deleteCategory: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await api.categories.delete(id);
-      if (response.code === 'NETWORK_ERROR' || (typeof response.code === 'number' && response.code >= 400)) {
-        throw new Error(response?.message || '删除分类失败');
-      }
+      assertApiOk(await api.categories.delete(id), '删除分类失败');
       // 用响应数据直接更新本地 state，避免二次全量拉取
       set((state) => ({
         categories: state.categories.filter((c) => c.id !== id),

@@ -10,31 +10,40 @@ class SocketService {
   private pendingCallbacks: Array<{ event: string; callback: (...args: any[]) => void }> = [];
 
   async connect(userId: string) {
-    if (this.socket?.connected) {
-      console.log('Socket already connected');
+    // 同一用户已连接：直接复用
+    if (this.socket?.connected && this.userId === userId) {
       return;
+    }
+
+    // 换用户或存在旧实例：先干净断开（不清理 store 级 pending 回调）
+    if (this.socket) {
+      try {
+        if (this.userId) this.socket.emit('leave', this.userId);
+      } catch {
+        // ignore
+      }
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
     }
 
     this.userId = userId;
     const socketUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3020';
-    // 读取 token 用于后端鉴权（连接时校验，校验失败会被服务端断开）
     const token = await getAuthToken();
     this.socket = io(socketUrl, {
-      // 允许 polling 回退，受限网络环境（如代理/防火墙拦截 ws）下可降级到轮询
       transports: ['polling', 'websocket'],
       autoConnect: true,
       auth: { token },
     });
 
+    // 将已排队/store 级回调挂到新 socket（只绑一次；后续 reconnect 靠 socket.io 保留 listeners）
+    for (const { event, callback } of this.pendingCallbacks) {
+      this.socket.on(event, callback);
+    }
+
     this.socket.on('connect', () => {
       console.log('Socket connected');
-      // 后端已在 handleConnection 中根据 token 自动 join 房间；
-      // 这里保留显式 join 以兼容旧逻辑，但服务端会校验身份一致性。
       this.socket?.emit('join', userId);
-      // 绑定之前注册的延迟回调
-      for (const { event, callback } of this.pendingCallbacks) {
-        this.socket?.on(event, callback);
-      }
     });
 
     this.socket.on('disconnect', () => {
@@ -49,21 +58,30 @@ class SocketService {
   disconnect() {
     if (this.socket) {
       if (this.userId) {
-        this.socket.emit('leave', this.userId);
+        try {
+          this.socket.emit('leave', this.userId);
+        } catch {
+          // ignore
+        }
       }
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
-      this.userId = null;
     }
-    this.pendingCallbacks = [];
+    this.userId = null;
+    // 保留 pendingCallbacks：store 模块级监听需要在下次 connect 时重新挂载
   }
 
-  // 通用监听方法，支持 socket 未连接时延迟注册
+  // 通用监听方法：socket 已创建则直接绑定，否则进入 pending（connect 时挂载）
   private on(event: string, callback: (...args: any[]) => void) {
-    if (this.socket) {
-      this.socket.on(event, callback);
-    } else {
+    // 避免重复登记
+    const exists = this.pendingCallbacks.some((c) => c.event === event && c.callback === callback);
+    if (!exists) {
       this.pendingCallbacks.push({ event, callback });
+    }
+    if (this.socket) {
+      this.socket.off(event, callback);
+      this.socket.on(event, callback);
     }
   }
 

@@ -1,7 +1,7 @@
 import { Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_CLIENT } from '../common/supabase/supabase.module';
-import { convertTimesToBeijing } from '../common/utils/time';
+import { convertTimesToBeijing, toUtcIso } from '../common/utils/time';
 
 @Injectable()
 export class TemplatesService {
@@ -116,17 +116,9 @@ export class TemplatesService {
       throw new NotFoundException('模板不存在');
     }
 
-    // 合并模板数据和覆盖项
-    const templateData = { ...template.data, ...overrides };
     const table = template.template_type === 'item' ? 'life_items' : 'life_todos';
-
-    // 插入新记录
-    const insertData = {
-      ...templateData,
-      user_id: userId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const merged = { ...(template.data || {}), ...(overrides || {}) };
+    const insertData = this.pickTemplateInsert(template.template_type, merged, userId);
 
     const { data, error } = await this.supabase
       .from(table)
@@ -150,5 +142,47 @@ export class TemplatesService {
       type: template.template_type,
       ...convertTimesToBeijing(data),
     };
+  }
+
+  /** 仅允许业务字段写入，避免模板 data 污染系统列 */
+  private pickTemplateInsert(
+    type: 'item' | 'todo',
+    source: Record<string, any>,
+    userId: string,
+  ) {
+    const now = new Date().toISOString();
+    if (type === 'item') {
+      const item: Record<string, any> = {
+        user_id: userId,
+        name: String(source.name || '未命名物品').slice(0, 200),
+        description: source.description ?? null,
+        category_id: source.category_id ?? null,
+        location_id: source.location_id ?? null,
+        images: Array.isArray(source.images) ? source.images : [],
+        barcode: source.barcode ?? null,
+        reminder_enabled: Boolean(source.reminder_enabled),
+        reminder_days_before: source.reminder_days_before ?? 7,
+        value: source.value ?? null,
+        created_at: now,
+        updated_at: now,
+      };
+      if (source.expiry_date) item.expiry_date = toUtcIso(String(source.expiry_date));
+      if (source.purchase_date) item.purchase_date = toUtcIso(String(source.purchase_date));
+      return item;
+    }
+
+    const todo: Record<string, any> = {
+      user_id: userId,
+      title: String(source.title || source.name || '未命名待办').slice(0, 200),
+      description: source.description ?? null,
+      category_id: source.category_id ?? null,
+      priority: source.priority ?? 'medium',
+      completed: false,
+      created_at: now,
+      updated_at: now,
+    };
+    if (source.due_date) todo.due_date = toUtcIso(String(source.due_date));
+    if (source.reminder_date) todo.reminder_date = toUtcIso(String(source.reminder_date));
+    return todo;
   }
 }

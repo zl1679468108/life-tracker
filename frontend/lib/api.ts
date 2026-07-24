@@ -173,6 +173,25 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<A
   }
 }
 
+
+/** 统一判断 API 是否成功；失败时抛错，避免静默当成功处理 */
+export function assertApiOk<T>(response: ApiResponse<T> | null | undefined, fallbackMessage = '操作失败'): ApiResponse<T> {
+  if (!response) {
+    throw new Error(fallbackMessage);
+  }
+  const code = response.code as unknown;
+  const numeric = typeof code === 'number' ? code : (typeof code === 'string' && code !== 'NETWORK_ERROR' ? Number(code) : NaN);
+  const failed =
+    code === 'NETWORK_ERROR' ||
+    (typeof numeric === 'number' && !Number.isNaN(numeric) && numeric >= 400) ||
+    (typeof code === 'string' && code !== '200' && code !== 'NETWORK_ERROR' && Number.isNaN(numeric) && code.toUpperCase().includes('ERROR'));
+
+  if (failed) {
+    throw new Error(response.message || fallbackMessage);
+  }
+  return response;
+}
+
 export const resetAuthExpiredState = () => {
   authExpiredEmitted = false;
 };
