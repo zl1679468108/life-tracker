@@ -7,10 +7,9 @@ import { api } from '../../lib/api';
 import { showAlert } from '../../lib/alert';
 import type { WidgetStatsData, WidgetTodoData } from '../../types';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 
 export default function WidgetsScreen() {
-  const colors = useColors();
   const palette = usePalette();
   const [stats, setStats] = useState<WidgetStatsData | null>(null);
   const [todos, setTodos] = useState<WidgetTodoData[]>([]);

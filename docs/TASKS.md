@@ -4,7 +4,7 @@
 
 ## 当前状态（2026-07-24）
 
-主线已收口。T95–T100 优化与共享抽象已完成。
+主线已收口。T95–T101 优化已完成。
 
 **当前可执行任务：无。**
 
@@ -14,9 +14,7 @@
 |---|---|---|---|---|---|
 | — | — | （暂无） | — | — | — |
 
-## 本轮已完成（T100，不入待办）
+## 本轮已完成（T101，不入待办）
 
-- `assertApiData` + stores 创建/更新/列表成功校验统一
-- 共享页/数据页/反馈页改 `usePalette` + SegmentedTabs/ListSkeleton
-- 消息气泡拆出 `MessageBubble`（memo），详情页瘦身
-- `buildTree` 分类/位置复用；待办列表骨架统一
+- 设置页去除残留 `useColors` / `colors.gray`，分类/位置改 palette
+- 消息列表拆出 `ConversationRow` / `UserPickRow` / `SheetStatus`

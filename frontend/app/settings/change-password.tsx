@@ -7,7 +7,7 @@ import { FormActions } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { appDesign, borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../stores/authStore';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 
 function PasswordField({
   label,
@@ -53,7 +53,6 @@ function PasswordField({
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { changePassword } = useAuthStore();
-  const colors = useColors();
   const palette = usePalette();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');

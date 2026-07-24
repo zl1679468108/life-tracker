@@ -4,7 +4,7 @@ import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
 import { spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { Input, FormSection, DatePicker, FormActions, BottomSheet, FormCard } from '../../components/ui';
 import { Toast } from '../../components/Toast';
 import { showAlert } from '../../lib/alert';
@@ -14,7 +14,6 @@ export default function CreateBorrowingScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ itemId?: string }>();
-  const colors = useColors();
   const palette = usePalette();
   const { createBorrowing, loading } = useBorrowingStore();
   const { items, fetchItems } = useItemStore();

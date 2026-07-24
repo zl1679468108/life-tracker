@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useBorrowingStore } from '../../stores/borrowingStore';
 import { useItemStore } from '../../stores/itemStore';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { BorrowingCard, Button, EmptyState, SegmentedTabs, ListSkeleton } from '../../components/ui';
 import { SafeScreen } from '../../components/SafeScreen';
 import { showAlert } from '../../lib/alert';
@@ -16,7 +16,6 @@ type TabType = 'all' | 'borrowed' | 'returned' | 'overdue';
 export default function BorrowingsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ itemId?: string }>();
-  const colors = useColors();
   const palette = usePalette();
   const { borrowings, fetchBorrowings, fetchByItemId, returnBorrowing, deleteBorrowing } = useBorrowingStore();
   const { items, fetchItems } = useItemStore();

@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCategoryStore } from '../../stores/categoryStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { ColorPicker, FormActions, BottomSheet } from '../../components/ui';
 import { SwipeableRow } from '../../components/SwipeableRow';
@@ -33,7 +33,6 @@ const typeOptions: { value: 'item' | 'todo'; label: string }[] = [
 
 export default function CategoryManageScreen() {
   const router = useRouter();
-  const colors = useColors();
   const palette = usePalette();
   const { t } = useTranslation();
   const { categories, fetchCategories, addCategory, updateCategory, deleteCategory, loading } = useCategoryStore();
@@ -56,7 +55,7 @@ export default function CategoryManageScreen() {
   // 颜色选择弹窗
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [colorPickerTarget, setColorPickerTarget] = useState<'add' | 'edit'>('add');
-  const [newColor, setNewColor] = useState(colors.success);
+  const [newColor, setNewColor] = useState(palette.success);
 
   useEffect(() => {
     fetchCategories(undefined, true);
@@ -91,7 +90,7 @@ export default function CategoryManageScreen() {
       setNewName('');
       setNewIcon('tag');
       setNewType('item');
-      setNewColor(colors.success);
+      setNewColor(palette.success);
       setNewParentId(undefined);
       setShowAdd(false);
       await fetchCategories(undefined, true);
@@ -104,7 +103,7 @@ export default function CategoryManageScreen() {
     setEditingId(cat.id);
     setEditName(cat.name);
     setEditIcon(cat.icon || 'tag');
-    setEditColor(cat.color || colors.success);
+    setEditColor(cat.color || palette.success);
   };
 
   const handleCancelEdit = () => {
@@ -190,7 +189,7 @@ export default function CategoryManageScreen() {
   const currentColor = colorPickerTarget === 'add' ? newColor : editColor;
 
   const renderCategoryItem = (cat: LifeCategory & { children?: LifeCategory[] }, isCustom: boolean, depth: number = 0) => {
-    const categoryColor = cat.color || (isCustom ? colors.success : colors.primary);
+    const categoryColor = cat.color || (isCustom ? palette.success : palette.orange);
     const indent = depth * 20;
     
     const displayRow = (
@@ -227,18 +226,18 @@ export default function CategoryManageScreen() {
             <View style={styles.cmIconColorRow}>
               <TouchableOpacity style={[styles.cmIconSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openIconPicker('edit')}>
                 <LinearGradient
-                  colors={[editColor || colors.success, (editColor || colors.success) + '80']}
+                  colors={[editColor || palette.success, (editColor || palette.success) + '80']}
                   style={styles.cmIconPreview}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <MaterialCommunityIcons name={editIcon as any} size={22} color={colors.white} />
+                  <MaterialCommunityIcons name={editIcon as any} size={22} color="#FFFFFF" />
                 </LinearGradient>
                 <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.cmColorSelect, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]} onPress={() => openColorPicker('edit')}>
-                <View style={[styles.cmColorPreview, { backgroundColor: editColor || colors.success, borderColor: palette.border }]} />
+                <View style={[styles.cmColorPreview, { backgroundColor: editColor || palette.success, borderColor: palette.border }]} />
                 <Text style={[styles.cmColorSelectText, { color: palette.textMuted }]}>{t('categories.color')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />
               </TouchableOpacity>
@@ -248,7 +247,7 @@ export default function CategoryManageScreen() {
                 <Text style={[styles.cmCancelBtnText, { color: palette.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.cmSaveBtn, { backgroundColor: palette.orange, shadowColor: palette.orange }]} onPress={handleSaveEdit}>
-                <Text style={[styles.cmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
+                <Text style={[styles.cmSaveBtnText, { color: '#FFFFFF' }]}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -357,7 +356,7 @@ export default function CategoryManageScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <MaterialCommunityIcons name={newIcon as any} size={22} color={colors.white} />
+                  <MaterialCommunityIcons name={newIcon as any} size={22} color="#FFFFFF" />
                 </LinearGradient>
                 <Text style={[styles.cmIconSelectText, { color: palette.textMuted }]}>选择图标</Text>
                 <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textMuted} />

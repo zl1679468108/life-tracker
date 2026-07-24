@@ -13,7 +13,7 @@ import { useTranslation } from '../../lib/i18n';
 import { compressAvatar, uploadImage } from '../../lib/upload';
 import { useAuthStore } from '../../stores/authStore';
 import { useProfileStore } from '../../stores/profileStore';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 
 type Palette = typeof appDesign.dark;
 
@@ -57,7 +57,6 @@ function InfoField({
 
 export default function AccountScreen() {
   const router = useRouter();
-  const colors = useColors();
   const palette = usePalette();
   const { t } = useTranslation();
   const { user, signOut } = useAuthStore();

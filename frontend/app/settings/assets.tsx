@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../lib/api';
 import type { TotalValueResponse } from '../../types';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_COLORS = ['#F36F3C', '#7C5CFC', '#10A66E', '#D89400', '#3B82F6', '#E84A5F', '#8B5CF6', '#06B6D4'];
@@ -20,7 +20,6 @@ const formatDelta = (value: number, currency?: string) => {
 };
 
 export default function AssetsScreen() {
-  const colors = useColors();
   const palette = usePalette();
   const [loading, setLoading] = useState(true);
   const [totalValue, setTotalValue] = useState<TotalValueResponse | null>(null);

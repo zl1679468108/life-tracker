@@ -18,15 +18,16 @@ import { useRouter } from 'expo-router';
 import { SafeScreen } from '../../components/SafeScreen';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { AppHeader, MessagesBackground, UserAvatar } from '../../components/ui';
+import { ConversationRow, SheetStatus, UserPickRow } from '../../components/message';
 import { borderRadius, fontSize, fontWeight, shadows, spacing } from '../../constants/theme';
 import { api } from '../../lib/api';
 import { useDebounce } from '../../lib/hooks';
 import { showAlert } from '../../lib/alert';
 import { avatarColor } from '../../lib/avatar';
-import { formatChatListTime, getMessageSummary } from '../../lib/format';
+import { formatChatListTime } from '../../lib/format';
 import { socketService } from '../../lib/socket';
 import { useAuthStore } from '../../stores/authStore';
-import { usePalette, useTheme, type AppPalette } from '../../stores/themeStore';
+import { usePalette, useTheme } from '../../stores/themeStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import type { Conversation, LifeFriend } from '../../types';
 
@@ -461,45 +462,16 @@ export default function MessagesScreen() {
                 </View>
                 {chatConversations.map((conv, ci) => {
                   const userInfo = resolveUserInfo(conv);
-                  const lastMsg = conv.last_message;
-                  const hasUnread = (conv.unread_count ?? 0) > 0;
                   return (
-                    <TouchableOpacity
+                    <ConversationRow
                       key={conv.id}
-                      style={[
-                        styles.row,
-                        ci < chatConversations.length - 1 && { borderBottomColor: palette.border, borderBottomWidth: StyleSheet.hairlineWidth },
-                      ]}
+                      conversation={conv}
+                      displayName={userInfo.display_name}
+                      avatarUrl={userInfo.avatar_url}
+                      palette={palette}
+                      showDivider={ci < chatConversations.length - 1}
                       onPress={() => router.push(`/message/${conv.id}` as never)}
-                      activeOpacity={0.82}
-                      testID={`conversation-row-${conv.id}`}
-                      accessibilityLabel={`打开对话 ${userInfo.display_name}`}
-                      accessibilityRole="button"
-                    >
-                      <UserAvatar name={userInfo.display_name} avatarUrl={userInfo.avatar_url} size={50} />
-                      <View style={styles.rowContent}>
-                        <View style={styles.rowHead}>
-                          <Text style={[styles.rowTitle, { color: palette.text }]} numberOfLines={1}>
-                            {userInfo.display_name}
-                          </Text>
-                          <Text style={[styles.timeText, { color: palette.textMuted }]}>
-                            {conv.last_message_at ? formatChatListTime(conv.last_message_at) : ''}
-                          </Text>
-                        </View>
-                        <Text style={[styles.previewText, { color: palette.textMuted }]} numberOfLines={1}>
-                          {getMessageSummary(lastMsg ?? null)}
-                        </Text>
-                      </View>
-                      {hasUnread && (
-                        (conv.unread_count ?? 0) > 1 ? (
-                          <View style={[styles.unreadBadge, { backgroundColor: palette.danger }]}>
-                            <Text style={styles.unreadText}>{(conv.unread_count ?? 0) > 99 ? '99+' : String(conv.unread_count ?? 0)}</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.unreadDot, { backgroundColor: palette.danger }]} />
-                        )
-                      )}
-                    </TouchableOpacity>
+                    />
                   );
                 })}
               </View>
@@ -631,33 +603,39 @@ export default function MessagesScreen() {
                             {friendRequests
                               .filter((r) => r.status === 'pending')
                               .map((r) => (
-                                <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                                  <UserAvatar name={r.friend.display_name} size={40} />
-                                  <View style={styles.userText}>
-                                    <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
-                                    <Text style={[styles.userDesc, { color: palette.textMuted }]}>
-                                      {r.direction === 'incoming' ? (r.request_message || '请求添加你为好友') : '已发送好友申请'}
-                                    </Text>
-                                  </View>
-                                  {r.direction === 'incoming' ? (
-                                    <>
-                                      <TouchableOpacity
-                                        onPress={() => handleRespondRequest(r.id, 'reject')}
-                                        style={[styles.requestIconBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                                      >
-                                        <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        onPress={() => handleRespondRequest(r.id, 'accept')}
-                                        style={[styles.requestIconBtn, { backgroundColor: `${palette.success}16` }]}
-                                      >
-                                        <MaterialCommunityIcons name="check" size={18} color={palette.success} />
-                                      </TouchableOpacity>
-                                    </>
-                                  ) : (
-                                    <Text style={[styles.statusLabel, { color: palette.textMuted }]}>等待对方通过</Text>
-                                  )}
-                                </View>
+                                <UserPickRow
+                                  key={r.id}
+                                  id={r.id}
+                                  name={r.friend.display_name}
+                                  desc={
+                                    r.direction === 'incoming'
+                                      ? (r.request_message || '请求添加你为好友')
+                                      : '已发送好友申请'
+                                  }
+                                  palette={palette}
+                                  showCheck={false}
+                                  onPress={() => {}}
+                                  trailing={
+                                    r.direction === 'incoming' ? (
+                                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <TouchableOpacity
+                                          onPress={() => handleRespondRequest(r.id, 'reject')}
+                                          style={[styles.requestIconBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                                        >
+                                          <MaterialCommunityIcons name="close" size={18} color={palette.danger} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          onPress={() => handleRespondRequest(r.id, 'accept')}
+                                          style={[styles.requestIconBtn, { backgroundColor: `${palette.success}16` }]}
+                                        >
+                                          <MaterialCommunityIcons name="check" size={18} color={palette.success} />
+                                        </TouchableOpacity>
+                                      </View>
+                                    ) : (
+                                      <Text style={[styles.statusLabel, { color: palette.textMuted }]}>等待对方通过</Text>
+                                    )
+                                  }
+                                />
                               ))}
                           </View>
                         )}
@@ -708,15 +686,15 @@ export default function MessagesScreen() {
                             {friendRequests
                               .filter((r) => r.status === 'rejected')
                               .map((r) => (
-                                <View key={r.id} style={[styles.requestRow, { borderColor: palette.border, backgroundColor: palette.surfaceSoft }]}>
-                                  <UserAvatar name={r.friend.display_name} size={40} />
-                                  <View style={styles.userText}>
-                                    <Text style={[styles.userName, { color: palette.text }]}>{r.friend.display_name}</Text>
-                                    <Text style={[styles.userDesc, { color: palette.textMuted }]}>
-                                      {r.direction === 'incoming' ? '已拒绝对方申请' : '对方已拒绝你的申请'}
-                                    </Text>
-                                  </View>
-                                </View>
+                                <UserPickRow
+                                  key={r.id}
+                                  id={r.id}
+                                  name={r.friend.display_name}
+                                  desc={r.direction === 'incoming' ? '已拒绝对方申请' : '对方已拒绝你的申请'}
+                                  palette={palette}
+                                  showCheck={false}
+                                  onPress={() => {}}
+                                />
                               ))}
                           </View>
                         )}
@@ -796,9 +774,13 @@ export default function MessagesScreen() {
                       {messageSearchResults.friends.map((f) => {
                         const conv = conversations.find((c) => c.other_user?.user_id === f.friend.id);
                         return (
-                          <TouchableOpacity
+                          <UserPickRow
                             key={f.friend.id}
-                            style={[styles.userRow, { borderColor: palette.border }]}
+                            id={f.friend.id}
+                            name={f.friend.display_name}
+                            desc={f.friend.email || undefined}
+                            palette={palette}
+                            showCheck={false}
                             onPress={() => {
                               closeSearch();
                               if (conv) {
@@ -811,15 +793,8 @@ export default function MessagesScreen() {
                                 });
                               }
                             }}
-                            activeOpacity={0.82}
-                          >
-                            <UserAvatar name={f.friend.display_name} size={40} />
-                            <View style={styles.userText}>
-                              <Text style={[styles.userName, { color: palette.text }]}>{f.friend.display_name}</Text>
-                              {f.friend.email && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{f.friend.email}</Text>}
-                            </View>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />
-                          </TouchableOpacity>
+                            trailing={<MaterialCommunityIcons name="chevron-right" size={20} color={palette.textMuted} />}
+                          />
                         );
                       })}
                     </View>
@@ -828,26 +803,24 @@ export default function MessagesScreen() {
                     <View style={styles.sheetSection}>
                       <Text style={[styles.sectionTitle, { color: palette.text, marginBottom: spacing.sm }]}>聊天记录</Text>
                       {messageSearchResults.messages.map((msg) => (
-                        <TouchableOpacity
+                        <UserPickRow
                           key={msg.id}
-                          style={[styles.userRow, { borderColor: palette.border }]}
+                          id={msg.id}
+                          name={msg.other_user_name || '聊天'}
+                          desc={`${msg.sender_name}: ${msg.content || ''}`}
+                          palette={palette}
+                          showCheck={false}
                           onPress={() => {
                             closeSearch();
                             router.push(`/message/${msg.conversation_id}` as never);
                           }}
-                          activeOpacity={0.82}
-                        >
-                          <View style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
-                            <MaterialCommunityIcons name="message-text-outline" size={18} color={palette.orange} />
-                          </View>
-                          <View style={styles.userText}>
-                            <Text style={[styles.userName, { color: palette.text }]}>{msg.other_user_name || '聊天'}</Text>
-                            <Text style={[styles.userDesc, { color: palette.textMuted }]} numberOfLines={1}>
-                              {msg.sender_name}: {msg.content || ''}
-                            </Text>
-                          </View>
-                          <Text style={[styles.timeText, { color: palette.textMuted }]}>{formatChatListTime(msg.created_at)}</Text>
-                        </TouchableOpacity>
+                          leading={
+                            <View style={[styles.requestIconBtn, { backgroundColor: palette.surfaceSoft, borderColor: palette.border }]}>
+                              <MaterialCommunityIcons name="message-text-outline" size={18} color={palette.orange} />
+                            </View>
+                          }
+                          trailing={<Text style={[styles.searchTime, { color: palette.textMuted }]}>{formatChatListTime(msg.created_at)}</Text>}
+                        />
                       ))}
                     </View>
                   )}
@@ -858,65 +831,6 @@ export default function MessagesScreen() {
         )}
       </View>
     </SafeScreen>
-  );
-}
-
-function SheetStatus({ palette, text, icon }: { palette: AppPalette; text: string; icon?: keyof typeof MaterialCommunityIcons.glyphMap }) {
-  return (
-    <View style={styles.sheetStatus}>
-      {icon ? <MaterialCommunityIcons name={icon} size={28} color={palette.textMuted} /> : <ActivityIndicator size="small" color={palette.orange} />}
-      <Text style={[styles.sheetStatusText, { color: palette.textMuted }]}>{text}</Text>
-    </View>
-  );
-}
-
-function UserPickRow({
-  id,
-  name,
-  desc,
-  selected,
-  palette,
-  onPress,
-  pinned = false,
-  trailing,
-}: {
-  id: string;
-  name: string;
-  desc?: string;
-  selected: boolean;
-  palette: AppPalette;
-  onPress: () => void;
-  pinned?: boolean;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <TouchableOpacity
-      key={id}
-      style={[styles.userRow, { borderColor: palette.border }, selected && { backgroundColor: palette.surfaceSoft }]}
-      onPress={onPress}
-      activeOpacity={0.82}
-      testID={`user-pick-row-${id}`}
-      accessibilityLabel={`选择用户 ${name || '未知用户'}`}
-      accessibilityRole="button"
-    >
-      <UserAvatar name={name} size={40} />
-      <View style={styles.userText}>
-        <View style={styles.userNameRow}>
-          <Text style={[styles.userName, { color: palette.text }]} numberOfLines={1}>
-            {name || '未知用户'}
-          </Text>
-          {pinned && (
-            <View style={[styles.pinnedBadge, { backgroundColor: `${palette.warning}16` }]}>
-              <MaterialCommunityIcons name="star" size={12} color={palette.warning} />
-              <Text style={[styles.pinnedBadgeText, { color: palette.warning }]}>置顶</Text>
-            </View>
-          )}
-        </View>
-        {!!desc && <Text style={[styles.userDesc, { color: palette.textMuted }]}>{desc}</Text>}
-      </View>
-      {trailing}
-      {selected && <MaterialCommunityIcons name="check-circle-outline" size={22} color={palette.orange} />}
-    </TouchableOpacity>
   );
 }
 
@@ -1091,49 +1005,9 @@ const styles = StyleSheet.create({
   featuredChevron: {
     marginLeft: spacing.sm,
   },
-  row: {
-    minHeight: 68,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    lineHeight: 20,
-    fontWeight: fontWeight.bold,
-  },
-  rowContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rowHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginBottom: 3,
-  },
-  rowTitle: {
-    flex: 1,
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    fontWeight: fontWeight.semiBold,
-  },
   timeText: {
     fontSize: fontSize.xs,
     lineHeight: 16,
-  },
-  previewText: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
   },
   unreadBadge: {
     minWidth: 18,
@@ -1148,11 +1022,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 12,
     fontWeight: fontWeight.bold,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   emptyPanel: {
     borderRadius: borderRadius.xl,
@@ -1313,26 +1182,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: fontWeight.bold,
   },
-  userRow: {
-    minHeight: 68,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  requestRow: {
-    minHeight: 74,
-    borderWidth: 1,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
+
   requestIconBtn: {
     width: 34,
     height: 34,
@@ -1341,55 +1191,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  userText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  userName: {
-    fontSize: fontSize.xl,
-    lineHeight: 22,
-    fontWeight: fontWeight.semiBold,
-  },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  userDesc: {
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    marginTop: 1,
-  },
-  pinnedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 6,
-    height: 20,
-    borderRadius: 10,
-  },
-  pinnedBadgeText: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: fontWeight.bold,
-  },
-  sheetStatus: {
-    minHeight: 132,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  sheetStatusText: {
-    fontSize: fontSize.base,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
   createButton: {
     height: 48,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,
+  },
+  searchTime: {
+    fontSize: fontSize.xs,
+    lineHeight: 16,
   },
   createText: {
     color: '#FFFFFF',

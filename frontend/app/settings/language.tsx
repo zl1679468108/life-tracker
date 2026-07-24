@@ -5,11 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppScreen } from '../../components/ui';
 import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 import { i18n, Language, useTranslation } from '../../lib/i18n';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 
 export default function LanguageScreen() {
   const router = useRouter();
-  const colors = useColors();
   const palette = usePalette();
   const { t } = useTranslation();
   const currentLanguage = i18n.getLanguage();

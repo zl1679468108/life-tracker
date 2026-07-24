@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocationStore } from '../../stores/locationStore';
 import { spacing, borderRadius, fontSize, fontWeight, shadows } from '../../constants/theme';
-import { useColors, usePalette } from '../../stores/themeStore';
+import { usePalette } from '../../stores/themeStore';
 import { showAlert } from '../../lib/alert';
 import { SwipeableRow } from '../../components/SwipeableRow';
 import { FormActions, BottomSheet } from '../../components/ui';
@@ -28,7 +28,6 @@ const iconOptions = [
 
 export default function LocationManageScreen() {
   const router = useRouter();
-  const colors = useColors();
   const palette = usePalette();
   const { t } = useTranslation();
   const { locations, fetchLocations, addLocation, updateLocation, deleteLocation } = useLocationStore();
@@ -190,7 +189,7 @@ export default function LocationManageScreen() {
                 <Text style={[styles.lmCancelBtnText, { color: palette.textSecondary }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.lmSaveBtn, { backgroundColor: palette.orange, shadowColor: palette.orange }]} onPress={handleSaveEdit}>
-                <Text style={[styles.lmSaveBtnText, { color: colors.white }]}>{t('common.save')}</Text>
+                <Text style={[styles.lmSaveBtnText, { color: '#FFFFFF' }]}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
