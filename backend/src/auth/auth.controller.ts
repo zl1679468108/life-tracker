@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Put, UseGuards, Headers, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, UseGuards, Headers, Query, Req} from '@nestjs/common';
+import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
@@ -92,6 +93,16 @@ export class AuthController {
       session: result.session,
       user: result.user,
     };
+  }
+
+
+  @Post('logout')
+  @UseGuards(SupabaseAuthGuard)
+  async logout(@Req() req: Request) {
+    const authHeader = req.headers.authorization || '';
+    const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const data = await this.authService.logout(accessToken);
+    return { code: 200, data, message: '已登出' };
   }
 
   @Post('change-password')

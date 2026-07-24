@@ -424,6 +424,13 @@ export const api = {
         body: { currentPassword, newPassword } 
       });
     },
+
+    logout: async (): Promise<ApiResponse<{ success: boolean }>> => {
+      return request<{ success: boolean }>('/api/auth/logout', {
+        method: 'POST',
+        body: {},
+      });
+    },
     
     getProfile: async (): Promise<ApiResponse<LifeProfile>> => {
       return request<LifeProfile>('/api/auth/profile');

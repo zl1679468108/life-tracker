@@ -96,11 +96,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   signOut: async () => {
+    // 先尝试吊销服务端会话（失败不阻塞本地清理）
+    try {
+      await api.auth.logout();
+    } catch {
+      // ignore
+    }
     // 断开 socket 连接
     socketService.disconnect();
     // 清除头像缓存
     await useProfileStore.getState().clearCache();
-    // TODO: 调用后端登出 API
     await setAuthToken(null);
     await setRefreshToken(null);
     set({ user: null, loading: false });

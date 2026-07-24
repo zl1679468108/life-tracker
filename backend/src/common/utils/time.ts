@@ -9,12 +9,17 @@
  */
 export function toUtcIso(beijingTimeStr: string): string {
   if (!beijingTimeStr) return beijingTimeStr;
-  const d = new Date(beijingTimeStr);
-  // 无时区信息时，JS 按服务器本地时区解析，需手动减去 8 小时偏移
-  if (!beijingTimeStr.includes('+') && !beijingTimeStr.includes('Z')) {
-    return new Date(d.getTime() - 8 * 3600 * 1000).toISOString();
+  const raw = String(beijingTimeStr).trim().replace(' ', 'T');
+  // 已带时区（Z / ±HH:MM）时直接解析
+  if (/[zZ]$/.test(raw) || /[+-]\d{2}:\d{2}$/.test(raw)) {
+    const parsed = new Date(raw);
+    if (isNaN(parsed.getTime())) return beijingTimeStr;
+    return parsed.toISOString();
   }
-  return d.toISOString();
+  // 无时区：按北京时间（UTC+8）解释，避免依赖服务器本地时区
+  const parsed = new Date(`${raw}+08:00`);
+  if (isNaN(parsed.getTime())) return beijingTimeStr;
+  return parsed.toISOString();
 }
 
 /**

@@ -15,17 +15,21 @@ export class SharesService {
    * 通过邮箱查找用户 ID
    */
   async findUserByEmail(email: string): Promise<string | null> {
+    const normalized = (email || '').trim().toLowerCase();
+    if (!normalized) return null;
+
     const { data: profile } = await this.supabase
       .from('life_profiles')
-      .select('user_id')
-      .eq('email', email)
-      .single();
+      .select('id')
+      .ilike('email', normalized)
+      .maybeSingle();
 
-    return profile?.user_id || null;
+    return profile?.id || null;
   }
 
   /**
-   * 批量获取用户资料名称，返回 user_id -> full_name 的映射
+   * 批量获取用户资料名称，返回 user_id -> display_name 的映射
+   * life_profiles 主键为 id（= auth.users.id），展示字段为 display_name
    */
   private async getProfileNameMap(userIds: string[]): Promise<Map<string, string>> {
     const uniqueIds = [...new Set(userIds.filter(Boolean))];
@@ -34,11 +38,15 @@ export class SharesService {
 
     const { data: profiles } = await this.supabase
       .from('life_profiles')
-      .select('user_id, full_name')
-      .in('user_id', uniqueIds);
+      .select('id, display_name, email')
+      .in('id', uniqueIds);
 
     for (const profile of profiles || []) {
-      map.set(profile.user_id, profile.full_name || '未知用户');
+      const name =
+        profile.display_name ||
+        (profile.email ? String(profile.email).split('@')[0] : '') ||
+        '未知用户';
+      map.set(profile.id, name);
     }
     return map;
   }

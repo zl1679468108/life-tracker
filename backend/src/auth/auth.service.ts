@@ -389,4 +389,22 @@ export class AuthService {
       };
     }
   }
+
+  /**
+   * 登出：吊销当前 access token 对应会话（best-effort，前端仍会清本地 token）
+   */
+  async logout(accessToken: string) {
+    if (!accessToken) {
+      return { success: true };
+    }
+    try {
+      const { error } = await this.adminClient.auth.admin.signOut(accessToken, 'global');
+      if (error) {
+        console.error('登出吊销会话失败:', error.message);
+      }
+    } catch (err) {
+      console.error('登出吊销会话异常:', err);
+    }
+    return { success: true };
+  }
 }

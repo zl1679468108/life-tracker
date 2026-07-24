@@ -35,7 +35,7 @@ export default function LanguageScreen() {
               style={[
                 styles.languageCard,
                 {
-                  backgroundColor: selected ? '#FFF4EC' : palette.surface,
+                  backgroundColor: selected ? `${palette.orange}14` : palette.surface,
                   borderColor: selected ? palette.orange : palette.border,
                 },
               ]}

@@ -164,7 +164,7 @@ export default function CalendarScreen() {
                     style={[
                       styles.dayCell,
                       {
-                        backgroundColor: isSelected ? '#FFF4EC' : 'transparent',
+                        backgroundColor: isSelected ? `${palette.orange}14` : 'transparent',
                         borderColor: isSelected ? palette.orange : 'transparent',
                       },
                     ]}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query, BadRequestException } from '@nestjs/common';
 import { SharesService } from './shares.service';
 import { SupabaseAuthGuard } from '../common/auth/supabase-auth.guard';
 import { CurrentUser, SupabaseUser } from '../common/auth/current-user.decorator';
@@ -32,7 +32,7 @@ export class SharesController {
   async create(@Body() body: CreateShareDto, @CurrentUser() user: SupabaseUser) {
     const sharedWithId = body.shared_with_id || await this.sharesService.findUserByEmail(body.shared_with_email);
     if (!sharedWithId) {
-      return { code: 400, message: '找不到该邮箱对应的用户' };
+      throw new BadRequestException('找不到该邮箱对应的用户');
     }
 
     return this.sharesService.create({

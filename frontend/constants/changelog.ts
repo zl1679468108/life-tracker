@@ -13,6 +13,31 @@ export interface ChangelogEntry {
 
 export const CHANGELOGS: ChangelogEntry[] = [
   {
+    version: '1.4.4',
+    date: '2026-07-23',
+    changes: {
+      new: [
+        '版本信息页：展示版本日志与应用 Logo',
+        '双 token 无感刷新：access_token 过期自动续期',
+      ],
+      improved: [
+        '消息模块 UI 统一：气泡、输入区、加号面板、故事板与空状态',
+        '聊天页接入 SafeArea，适配刘海与底部手势条',
+        '主题 / 语言 / 日历选中态适配深浅色，去掉浅色硬编码',
+        '文档闭环：PRD 路线收口，TASKS 仅保留未完成任务',
+      ],
+      fixed: [
+        'Logo 渐变 id 唯一化，修复多实例渲染图标不显示',
+        '消息页 picker 标题居中与搜索 sheet 高度',
+        '对话头像对齐与列表间距统一',
+        '修复共享模块资料字段错误（邮箱共享与对方显示名）',
+        '修复无时区时间入库依赖服务器时区导致偏移 8 小时',
+        '修复 CORS 默认端口与前端不一致',
+        '登出时吊销服务端会话',
+      ],
+    },
+  },
+  {
     version: '1.4.1',
     date: '2026-07-10',
     changes: {

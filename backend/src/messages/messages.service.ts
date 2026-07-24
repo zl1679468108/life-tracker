@@ -75,7 +75,18 @@ export class MessagesService {
     return map;
   }
 
+  /** 清洗 PostgREST ilike / or 过滤片段，避免特殊字符破坏过滤语法 */
+  private sanitizeSearchTerm(query: string, maxLen = 50): string {
+    return String(query || '')
+      .trim()
+      .replace(/[%_,.()"'\\]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .slice(0, maxLen)
+      .trim();
+  }
+
   private resolveDisplayName(userInfo: { display_name?: string; email?: string }) {
+
     return userInfo.display_name || userInfo.email?.split('@')[0] || '未知用户';
   }
 
@@ -396,12 +407,13 @@ export class MessagesService {
    * 搜索用户（通过邮箱前缀或用户名模糊匹配）
    */
   async searchUsers(userId: string, query: string) {
-    if (!query || query.length < 1) return [];
+    const term = this.sanitizeSearchTerm(query);
+    if (!term) return [];
 
     const { data: profiles, error } = await this.supabase
       .from('life_profiles')
       .select('id, email, display_name, avatar_url')
-      .or(`email.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .or(`email.ilike.%${term}%,display_name.ilike.%${term}%`)
       .neq('id', userId)
       .order('display_name', { ascending: true })
       .limit(20);
@@ -423,11 +435,12 @@ export class MessagesService {
    * 搜索消息模块：好友 + 聊天记录
    */
   async searchMessages(userId: string, query: string) {
-    if (!query || query.length < 1) {
+    const term = this.sanitizeSearchTerm(query);
+    if (!term) {
       return { friends: [], messages: [] };
     }
 
-    const q = query.trim().toLowerCase();
+    const q = term.toLowerCase();
 
     // 1. 获取当前用户的所有对话
     const { data: conversations, error: convError } = await this.supabase
